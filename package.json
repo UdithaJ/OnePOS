@@ -1,0 +1,66 @@
+{
+  "name": "onepos",
+  "version": "1.0.0",
+  "description": "Service Record Management System",
+  "main": "main/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:electron\" \"npm run dev:client\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:electron": "electron .",
+    "build:client": "cd client && npm run build",
+    "build": "npm run build:client && npx electron-packager . MyApp --platform=win32 --arch=x64 --overwrite --extra-resource=.env",
+    "clear-cache": "node clear-electron-cache.js",
+    "dist": "npm run clear-cache && npm run build:client && electron-builder",
+    "dist:win": "npm run build:client && electron-builder --win",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "build": {
+    "appId": "com.onepos.app",
+    "productName": "OnePOS",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main/**/*",
+      "client/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      ".env"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "installerHeader": "build/installerHeader.bmp",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "installerHeaderIcon": "build/icon.ico",
+      "license": "build/LICENSE.txt"
+    }
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "electron-store": "^11.0.2",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.3"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.3",
+    "electron-builder": "^26.0.12",
+    "nodemon": "^3.1.11"
+  }
+}

@@ -1,0 +1,33 @@
+const mongoose = require('mongoose');
+
+const cashFlowEventSchema = new mongoose.Schema({
+  event_type: {
+    type: String,
+    enum: ['PAYMENT', 'EXPENSE'],
+    required: true
+  },
+  date: {
+    type: Date,
+    default: Date.now
+  },
+  amount: {
+    type: Number,
+    required: true
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  source_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true
+  },
+  sessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CashBoxSession',
+    required: true
+  }
+});
+
+module.exports = mongoose.model('CashFlowEvent', cashFlowEventSchema);
