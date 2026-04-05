@@ -40,6 +40,9 @@ const orderSchema = new mongoose.Schema({
   dueAmount: {
     type: Number,
     required: true
+  },
+  rackNumber: {
+    type: String
   }
 });
 

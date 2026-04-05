@@ -7,8 +7,10 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 
 // Routes
-import authRoutes from './routes/auth.js';
-import customerRoutes from './routes/customer.js';
+
+import authRoutes from './routes/auth.route.js';
+import customerRoutes from './routes/customer.route.js';
+import orderRoutes from './routes/order.route.js';
 
 
 const app = express();
@@ -18,8 +20,10 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cors());
 
 // Mount routes
+
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/orders', orderRoutes);
 
 // __dirname replacement in ES modules
 import { fileURLToPath } from 'url';
