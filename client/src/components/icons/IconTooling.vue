@@ -16,4 +16,4 @@
       fill="currentColor"
     ></path>
   </svg>
-</template>
+<!-- Removed: No longer needed for dashboard-only UI -->
