@@ -60,7 +60,7 @@ const createWindow = () => {
 
   // Load Vue dev server in development
   if (process.env.NODE_ENV === 'development') {
-    win.loadURL('http://localhost:5173');
+    win.loadURL('http://localhost:3000');
   } else {
     // Remove the menu bar
     Menu.setApplicationMenu(null);
