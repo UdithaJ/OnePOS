@@ -6,8 +6,9 @@
     </v-app-bar>
     <v-navigation-drawer app v-model="drawer">
       <v-list>
-        <v-list-item to="/" title="Home" />
+        <v-list-item to="/" title="Dashboard" />
         <v-list-item to="/order-list" title="Orders" />
+        <v-list-item to="/customers" title="Customers" />
         <!-- Add more navigation items here -->
       </v-list>
     </v-navigation-drawer>
