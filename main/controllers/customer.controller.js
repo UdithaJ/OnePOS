@@ -1,9 +1,10 @@
-const Customer = require('../models/customer');
+
+const customerService = require('../services/customer.service');
 
 // Get all customers
 exports.getAllCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find();
+    const customers = await customerService.getAllCustomers();
     res.json(customers);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -13,7 +14,7 @@ exports.getAllCustomers = async (req, res) => {
 // Get one customer
 exports.getCustomerById = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id);
+    const customer = await customerService.getCustomerById(req.params.id);
     if (!customer) return res.status(404).json({ message: 'Customer not found' });
     res.json(customer);
   } catch (err) {
@@ -23,9 +24,8 @@ exports.getCustomerById = async (req, res) => {
 
 // Create a customer
 exports.createCustomer = async (req, res) => {
-  const customer = new Customer(req.body);
   try {
-    const newCustomer = await customer.save();
+    const newCustomer = await customerService.createCustomer(req.body);
     res.status(201).json(newCustomer);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -35,7 +35,7 @@ exports.createCustomer = async (req, res) => {
 // Update a customer
 exports.updateCustomer = async (req, res) => {
   try {
-    const updatedCustomer = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updatedCustomer = await customerService.updateCustomer(req.params.id, req.body);
     if (!updatedCustomer) return res.status(404).json({ message: 'Customer not found' });
     res.json(updatedCustomer);
   } catch (err) {
@@ -46,7 +46,7 @@ exports.updateCustomer = async (req, res) => {
 // Delete a customer
 exports.deleteCustomer = async (req, res) => {
   try {
-    const deletedCustomer = await Customer.findByIdAndDelete(req.params.id);
+    const deletedCustomer = await customerService.deleteCustomer(req.params.id);
     if (!deletedCustomer) return res.status(404).json({ message: 'Customer not found' });
     res.json({ message: 'Customer deleted' });
   } catch (err) {

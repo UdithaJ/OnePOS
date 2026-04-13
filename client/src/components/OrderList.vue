@@ -1,26 +1,12 @@
 <template>
   <v-container>
     <h2 class="mb-4">Laundromat Orders</h2>
-    <v-btn color="primary" class="mb-4" @click="showForm = true">Place Order</v-btn>
-    <v-table>
-      <thead>
-        <tr>
-          <th>Order #</th>
-          <th>Customer</th>
-          <th>Status</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="order in orders" :key="order.id">
-          <td>{{ order.id }}</td>
-          <td>{{ order.customer }}</td>
-          <td>{{ order.status }}</td>
-          <td>{{ order.total }}</td>
-        </tr>
-      </tbody>
-    </v-table>
-
+    <BaseList
+      title="Orders"
+      :headers="orderHeaders"
+      :items="orders"
+      @add="showForm = true"
+    />
     <v-dialog v-model="showForm" max-width="700" scrim>
       <template #default>
         <v-card class="pa-6" style="background: #23272f; color: #fff;">
@@ -37,9 +23,19 @@
  </template>
 
 <script lang="ts" setup>
+
 import { ref } from 'vue'
+import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
 import { useDynamicForm } from '@/composables/useDynamicForm'
+
+
+const orderHeaders = [
+  { title: 'Order #', key: 'id', align: 'start' },
+  { title: 'Customer', key: 'customer', align: 'start' },
+  { title: 'Status', key: 'status', align: 'start' },
+  { title: 'Total', key: 'total', align: 'end' },
+]
 
 const orders = [
   { id: '1001', customer: 'Alice', status: 'Completed', total: '$25.00' },
