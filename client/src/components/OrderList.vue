@@ -37,43 +37,60 @@ const orderHeaders = [
   { title: 'Total', key: 'total', align: 'end' },
 ]
 
-const orders = [
-  { id: '1001', customer: 'Alice', status: 'Completed', total: '$25.00' },
-  { id: '1002', customer: 'Bob', status: 'In Progress', total: '$18.50' },
-  { id: '1003', customer: 'Charlie', status: 'Pending', total: '$30.00' },
-]
+import { getAllOrders } from '@/services/orderApiService'
+
+const orders = ref<any[]>([])
 
 const showForm = ref(false)
 
 import { onMounted } from 'vue'
 import { getAllCustomers } from '@/services/customerApiService'
+import { createOrder } from '@/services/orderApiService'
 
 const customers = ref([])
 
 const orderFormSchema = ref({
   fields: [
-    { name: 'customer', label: 'Customer', type: 'autoselect', required: true, options: customers },
+    { name: 'customer', label: 'Customer', type: 'autoselect', required: true, options: customers, allowFreeText: false },
     { name: 'weight', label: 'Weight (kg)', type: 'number', required: true },
     { name: 'deliveryDate', label: 'Delivery Date', type: 'date', required: true },
-    { name: 'status', label: 'Status', type: 'text', required: true },
-    // paymentStatus and createdUser fields removed
     { name: 'totalAmount', label: 'Total Amount', type: 'number', required: true },
     // dueAmount field removed
-    { name: 'rackNumber', label: 'Rack Number', type: 'text' },
+    // rackNumber field removed
   ]
 })
 
 import type { CustomerPayload } from '@/services/customerApiService'
 onMounted(async () => {
-  const data = await getAllCustomers()
-  customers.value = (data || []).map((c: CustomerPayload & { id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c.id }))
+  const [customerData, orderData] = await Promise.all([
+    getAllCustomers(),
+    getAllOrders()
+  ])
+  customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id }))
+  orders.value = (orderData || []).map((order: any) => ({
+    id: order._id,
+    customer: customers.value.find(c => c.value === (order.customerID?._id || order.customerID))?.label || order.customerID,
+    status: order.status,
+    total: typeof order.totalAmount === 'number' ? `$${order.totalAmount.toFixed(2)}` : order.totalAmount
+  }))
 })
 
 const { form, isValid } = useDynamicForm(orderFormSchema.value)
 
-function handleSubmit() {
-  // Here you would handle the form submission, e.g., add to orders
-  showForm.value = false
-  // Optionally reset form fields here
+async function handleSubmit() {
+  try {
+    const payload = {
+      customerID: form.value.customer, // This should be the customer ID
+      weight: form.value.weight,
+      deliveryDate: form.value.deliveryDate,
+      totalAmount: form.value.totalAmount,
+    };
+    await createOrder(payload);
+    showForm.value = false;
+    // Optionally reset form fields here
+  } catch (error) {
+    // Handle error (show notification, etc.)
+    console.error('Order creation failed', error);
+  }
 }
 </script>

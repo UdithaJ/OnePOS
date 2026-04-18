@@ -19,8 +19,9 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
   status: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Status',
+    type: String,
+    enum: ['todo', 'in_progress', 'completed', 'cancelled'],
+    default: 'todo',
     required: true
   },
   paymentStatus: {

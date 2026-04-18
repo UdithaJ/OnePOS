@@ -1,9 +1,10 @@
 const Order = require('../models/order');
+const orderService = require('../services/order.service');
 
 // Get all orders
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find();
+    const orders = await orderService.getAllOrders();
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -13,7 +14,7 @@ exports.getAllOrders = async (req, res) => {
 // Get one order
 exports.getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await orderService.getOrderById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (err) {
@@ -21,21 +22,25 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-// Create an order
+// Create an order using orderService
 exports.createOrder = async (req, res) => {
-  const order = new Order(req.body);
   try {
-    const newOrder = await order.save();
+    const newOrder = await orderService.createOrder(req.body);
     res.status(201).json(newOrder);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 };
 
+// Get order status list
+exports.getOrderStatuses = (req, res) => {
+  res.json(orderService.getOrderStatuses());
+};
+
 // Update an order
 exports.updateOrder = async (req, res) => {
   try {
-    const updatedOrder = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updatedOrder = await orderService.updateOrder(req.params.id, req.body);
     if (!updatedOrder) return res.status(404).json({ message: 'Order not found' });
     res.json(updatedOrder);
   } catch (err) {
@@ -46,7 +51,7 @@ exports.updateOrder = async (req, res) => {
 // Delete an order
 exports.deleteOrder = async (req, res) => {
   try {
-    const deletedOrder = await Order.findByIdAndDelete(req.params.id);
+    const deletedOrder = await orderService.deleteOrder(req.params.id);
     if (!deletedOrder) return res.status(404).json({ message: 'Order not found' });
     res.json({ message: 'Order deleted' });
   } catch (err) {
