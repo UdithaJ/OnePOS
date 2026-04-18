@@ -11,6 +11,8 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.route.js';
 import customerRoutes from './routes/customer.route.js';
 import orderRoutes from './routes/order.route.js';
+import categoryRoutes from './routes/category.route.js';
+import statusRoutes from './routes/status.route.js';
 
 
 const app = express();
@@ -24,6 +26,8 @@ app.use(cors());
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/statuses', statusRoutes);
 
 // __dirname replacement in ES modules
 import { fileURLToPath } from 'url';

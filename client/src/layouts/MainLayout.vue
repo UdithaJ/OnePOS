@@ -9,7 +9,7 @@
         <v-list-item to="/" title="Dashboard" />
         <v-list-item to="/order-list" title="Orders" />
         <v-list-item to="/customers" title="Customers" />
-        <!-- Add more navigation items here -->
+        <v-list-item to="/category-config" title="Category Config" />
       </v-list>
     </v-navigation-drawer>
     <v-main>
