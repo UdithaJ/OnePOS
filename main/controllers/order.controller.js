@@ -1,9 +1,13 @@
 const Order = require('../models/order');
+const orderService = require('../services/order.service');
 
 // Get all orders
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find();
+    const orders = await Order.find()
+      .populate('customerID')
+      .populate('status')
+      .populate('categoryLines.categoryId');
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -13,7 +17,10 @@ exports.getAllOrders = async (req, res) => {
 // Get one order
 exports.getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id)
+      .populate('customerID')
+      .populate('status')
+      .populate('categoryLines.categoryId');
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (err) {
@@ -23,9 +30,15 @@ exports.getOrderById = async (req, res) => {
 
 // Create an order
 exports.createOrder = async (req, res) => {
-  const order = new Order(req.body);
   try {
+    const payload = await orderService.prepareOrderPayload(req.body);
+    const order = new Order(payload);
     const newOrder = await order.save();
+    await newOrder.populate([
+      { path: 'customerID' },
+      { path: 'status' },
+      { path: 'categoryLines.categoryId' },
+    ]);
     res.status(201).json(newOrder);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -35,7 +48,17 @@ exports.createOrder = async (req, res) => {
 // Update an order
 exports.updateOrder = async (req, res) => {
   try {
-    const updatedOrder = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    let payload = req.body;
+    if (req.body.categoryLines && Array.isArray(req.body.categoryLines)) {
+      payload = await orderService.prepareOrderPayload(req.body);
+    }
+    const updatedOrder = await Order.findByIdAndUpdate(req.params.id, payload, {
+      new: true,
+      runValidators: true,
+    })
+      .populate('customerID')
+      .populate('status')
+      .populate('categoryLines.categoryId');
     if (!updatedOrder) return res.status(404).json({ message: 'Order not found' });
     res.json(updatedOrder);
   } catch (err) {

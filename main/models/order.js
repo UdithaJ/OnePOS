@@ -1,49 +1,71 @@
 const mongoose = require('mongoose');
 
+const categoryLineSchema = new mongoose.Schema(
+  {
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      required: true,
+    },
+    weight: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema({
   customerID: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Customer',
-    required: true
+    required: true,
   },
-  weight: {
-    type: Number,
-    required: true
+  categoryLines: {
+    type: [categoryLineSchema],
+    required: true,
+    validate: {
+      validator(lines) {
+        return Array.isArray(lines) && lines.length >= 1;
+      },
+      message: 'At least one category line is required',
+    },
   },
   createdDate: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   deliveryDate: {
     type: Date,
-    required: true
+    required: true,
   },
   status: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Status',
-    required: true
+    required: true,
   },
   paymentStatus: {
     type: String,
     enum: ['unpaid', 'partial', 'paid'],
-    default: 'unpaid'
+    default: 'unpaid',
   },
   createdUser: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
   },
   totalAmount: {
     type: Number,
-    required: true
+    required: true,
   },
   dueAmount: {
     type: Number,
-    required: true
+    required: true,
   },
   rackNumber: {
-    type: String
-  }
+    type: String,
+  },
 });
 
 module.exports = mongoose.model('Order', orderSchema);

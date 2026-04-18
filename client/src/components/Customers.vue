@@ -27,9 +27,16 @@
 
 import { onMounted, ref } from 'vue'
 import BaseList from '@/components/BaseList.vue'
-import { createCustomer, CustomerPayload, getAllCustomers } from '@/services/customerApiService'
+import { createCustomer, getAllCustomers, type CustomerPayload } from '@/services/customerApiService'
 import DynamicForm from '@/components/DynamicForm.vue'
 import { useDynamicForm } from '@/composables/useDynamicForm'
+
+interface CustomerListItem {
+  name: string
+  mobileNumber: string
+  city: string
+  state: string
+}
 
 const customerHeaders = [
   { title: 'Name', key: 'name', align: 'start' },
@@ -38,7 +45,7 @@ const customerHeaders = [
   { title: 'State', key: 'state', align: 'start' },
 ]
 
-const customers = ref([])
+const customers = ref<CustomerListItem[]>([])
 
 onMounted(async () => {
   try {
@@ -79,7 +86,7 @@ function onAddCustomer() {
 async function handleSubmit() {
   try {
     // Call backend API to register customer
-    const payload = { ...form.value }
+    const payload = { ...form.value } as CustomerPayload
     const saved = await createCustomer(payload)
     // Add to local list (merge first/last name for display)
     customers.value.push({
