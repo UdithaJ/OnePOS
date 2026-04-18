@@ -31,6 +31,15 @@
           item-value="value"
           :required="field.required"
         />
+        <v-autocomplete
+          v-else-if="field.type === 'autoselect'"
+          v-model="form[field.name]"
+          :label="field.label"
+          :items="field.options"
+          item-title="label"
+          item-value="value"
+          :required="field.required"
+        />
         <!-- Add more field types as needed -->
       </v-col>
     </v-row>

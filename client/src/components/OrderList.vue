@@ -45,25 +45,31 @@ const orders = [
 
 const showForm = ref(false)
 
-const orderFormSchema = {
+import { onMounted } from 'vue'
+import { getAllCustomers } from '@/services/customerApiService'
+
+const customers = ref([])
+
+const orderFormSchema = ref({
   fields: [
-    { name: 'customerID', label: 'Customer ID', type: 'text', required: true },
+    { name: 'customer', label: 'Customer', type: 'autoselect', required: true, options: customers },
     { name: 'weight', label: 'Weight (kg)', type: 'number', required: true },
     { name: 'deliveryDate', label: 'Delivery Date', type: 'date', required: true },
     { name: 'status', label: 'Status', type: 'text', required: true },
-    { name: 'paymentStatus', label: 'Payment Status', type: 'select', required: true, options: [
-      { label: 'Unpaid', value: 'unpaid' },
-      { label: 'Partial', value: 'partial' },
-      { label: 'Paid', value: 'paid' },
-    ] },
-    { name: 'createdUser', label: 'Created User', type: 'text', required: true },
+    // paymentStatus and createdUser fields removed
     { name: 'totalAmount', label: 'Total Amount', type: 'number', required: true },
-    { name: 'dueAmount', label: 'Due Amount', type: 'number', required: true },
+    // dueAmount field removed
     { name: 'rackNumber', label: 'Rack Number', type: 'text' },
   ]
-}
+})
 
-const { form, isValid } = useDynamicForm(orderFormSchema)
+import type { CustomerPayload } from '@/services/customerApiService'
+onMounted(async () => {
+  const data = await getAllCustomers()
+  customers.value = (data || []).map((c: CustomerPayload & { id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c.id }))
+})
+
+const { form, isValid } = useDynamicForm(orderFormSchema.value)
 
 function handleSubmit() {
   // Here you would handle the form submission, e.g., add to orders
