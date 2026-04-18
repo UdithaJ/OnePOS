@@ -3,6 +3,11 @@
     <v-app-bar app color="primary" dark>
       <v-app-bar-nav-icon @click="drawer = !drawer" />
       <v-toolbar-title>Main Layout</v-toolbar-title>
+      <v-spacer />
+      <v-btn icon @click="handleLogout">
+        <v-icon>mdi-logout</v-icon>
+        <v-tooltip activator="parent">Logout</v-tooltip>
+      </v-btn>
     </v-app-bar>
     <v-navigation-drawer app v-model="drawer">
       <v-list>
@@ -20,7 +25,17 @@
 
 <script lang="ts" setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
+
 const drawer = ref(false)
+const router = useRouter()
+const { logout } = useAuth()
+
+function handleLogout() {
+  logout()
+  router.push('/login')
+}
 </script>
 
 <style scoped>

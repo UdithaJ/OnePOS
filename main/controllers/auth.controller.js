@@ -1,9 +1,9 @@
-const authService = require('../services/auth.service');
+import { login, register } from '../services/auth.service.js';
 
 // Login
-exports.login = async (req, res) => {
+export const loginUser = async (req, res) => {
   try {
-    const result = await authService.login(req.body);
+    const result = await login(req.body);
     res.json(result);
   } catch (err) {
     res.status(401).json({ message: err.message });
@@ -11,9 +11,9 @@ exports.login = async (req, res) => {
 };
 
 // Register
-exports.register = async (req, res) => {
+export const registerUser = async (req, res) => {
   try {
-    const result = await authService.register(req.body);
+    const result = await register(req.body);
     res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ message: err.message });

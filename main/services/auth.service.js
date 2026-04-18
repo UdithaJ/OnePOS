@@ -1,21 +1,38 @@
 // auth.service.js
-import Store from 'electron-store';
+import User from '../models/user.js';
 
-const store = new Store();
+export async function login({ userName, password }) {
+  const user = await User.findOne({ userName });
+  if (!user) throw new Error('Invalid username or password');
 
-export const AuthService = {
-  /**
-   * Get the currently logged-in user from the store
-   * @returns {object|null} user object or null if not logged in
-   */
-  getLoggedInUser() {
-    return store.get('user') || null;
-  },
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) throw new Error('Invalid username or password');
 
-  /**
-   * Clear the logged-in user from the store
-   */
-  logout() {
-    store.delete('user');
-  }
-};
+  return {
+    user: {
+      _id: user._id,
+      userName: user.userName,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      userRole: user.userRole,
+    }
+  };
+}
+
+export async function register({ firstName, lastName, userName, password, userRole }) {
+  const existing = await User.findOne({ userName });
+  if (existing) throw new Error('Username already exists');
+
+  const user = new User({ firstName, lastName, userName, password, userRole });
+  await user.save();
+
+  return {
+    user: {
+      _id: user._id,
+      userName: user.userName,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      userRole: user.userRole,
+    }
+  };
+}

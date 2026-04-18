@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   userName: { type: String, required: true, unique: true },
   userRole: { type: String, required: true },
   section: { type: mongoose.Schema.Types.ObjectId, ref: 'Section', required: false },
-  referenceNo: { type: String, required: true, unique: true },
+  referenceNo: { type: String, required: false, unique: true, sparse: true },
   password: { type: String, required: true },
   // Base64 (no data URL prefix) or full data URL string of profile image
   profileImage: { type: String, required: false },
