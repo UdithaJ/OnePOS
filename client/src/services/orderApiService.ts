@@ -1,3 +1,15 @@
+
+export async function getOrderById(orderId: string) {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.get(`${baseUrl}/api/orders/${orderId}`)
+  return response.data
+}
+
+export async function updateOrder(orderId: string, payload: Partial<OrderPayload>) {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.put(`${baseUrl}/api/orders/${orderId}`, payload)
+  return response.data
+}
 import axios from 'axios'
 
 export interface OrderPayload {

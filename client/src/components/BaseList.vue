@@ -11,7 +11,9 @@
       v-model:sort-desc="sortDesc"
       class="elevation-1"
     >
-      <!-- Remove custom item slot to allow VDataTable to render headers and rows automatically -->
+      <template #item.actions="{ item }">
+        <v-btn icon="mdi-pencil" size="small" @click="$emit('edit', item)"></v-btn>
+      </template>
       <template v-slot:no-data>
         <v-alert type="info">No records found.</v-alert>
       </template>
@@ -34,7 +36,7 @@ const props = defineProps<{
   items: any[]
 }>()
 
-const emit = defineEmits(['add', 'sort'])
+const emit = defineEmits(['add', 'sort', 'edit'])
 
 const sortBy = ref([props.headers[0]?.value ?? ''])
 const sortDesc = ref(false)
