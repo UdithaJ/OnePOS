@@ -23,9 +23,21 @@
               :isValid="isValid"
               :onSubmit="handleSubmit"
             />
+            <template v-if="editOrderId">
+              <v-divider class="my-4" />
+              <v-btn color="success" @click="showPaymentDialog = true">Make Payment</v-btn>
+            </template>
           </v-card>
         </template>
       </v-dialog>
+      <OrderPaymentDialog
+        v-if="editOrderId"
+        :show="showPaymentDialog"
+        :order-id="editOrderId"
+        :due-amount="form.totalAmount"
+        @close="showPaymentDialog = false"
+        @paid="onPaymentMade"
+      />
     </v-container>
   </div>
 </template>
@@ -35,6 +47,7 @@
 import { ref, computed } from 'vue'
 import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
+import OrderPaymentDialog from './OrderPaymentDialog.vue'
 import { useDynamicForm } from '@/composables/useDynamicForm'
 
 
@@ -52,6 +65,24 @@ const orders = ref<any[]>([])
 
 const showForm = ref(false)
 const editOrderId = ref<string|null>(null)
+const showPaymentDialog = ref(false)
+import { makePayment } from '@/services/paymentApiService'
+async function onPaymentMade(payment) {
+  // Call payment API
+  try {
+    await makePayment({
+      orderId: editOrderId.value,
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      type: payment.type
+    })
+    showToast('Payment successful!', 'success')
+    await loadOrders()
+    showPaymentDialog.value = false
+  } catch (e) {
+    showToast('Payment failed', 'error')
+  }
+}
 
 import { onMounted } from 'vue'
 import { getAllCustomers } from '@/services/customerApiService'

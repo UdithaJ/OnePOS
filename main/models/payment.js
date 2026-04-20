@@ -10,11 +10,6 @@ const paymentSchema = new mongoose.Schema({
     ref: 'Order',
     required: true
   },
-  customerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Customer',
-    required: true
-  },
   type: {
     type: String,
     enum: ['advance', 'full_payment', 'settlement'],
