@@ -24,6 +24,12 @@ const cashBoxSessionSchema = new mongoose.Schema({
   },
   closingAmount: {
     type: Number
+  },
+  status: {
+    type: String,
+    enum: ['open', 'closed'],
+    default: 'open',
+    required: true
   }
 });
 
