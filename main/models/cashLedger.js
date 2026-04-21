@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const cashFlowEventSchema = new mongoose.Schema({
+const cashLedgerSchema = new mongoose.Schema({
   event_type: {
     type: String,
     enum: ['PAYMENT', 'EXPENSE', 'DEPOSIT', 'WITHDRAWAL'],
@@ -21,7 +21,7 @@ const cashFlowEventSchema = new mongoose.Schema({
   },
   source_id: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true
+    required: false
   },
   sessionId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -30,4 +30,4 @@ const cashFlowEventSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model('CashFlowEvent', cashFlowEventSchema);
+module.exports = mongoose.model('CashLedger', cashLedgerSchema);
