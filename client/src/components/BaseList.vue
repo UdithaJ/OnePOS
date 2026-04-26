@@ -1,8 +1,7 @@
 <template>
-  <v-card>
-    <v-card-title class="d-flex align-center justify-space-between">
+  <v-card class="base-list-card">
+    <v-card-title>
       <span>{{ title }}</span>
-      <v-btn color="primary" @click="$emit('add')">Add New</v-btn>
     </v-card-title>
     <v-data-table
       :headers="headers || []"
@@ -49,4 +48,5 @@ function onSortDesc(val: boolean) {
   sortDesc.value = val
   emit('sort', { sortBy: sortBy.value, sortDesc: val })
 }
+import '../styles/BaseList.scss'
 </script>

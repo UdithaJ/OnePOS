@@ -1,5 +1,130 @@
+
 @layer vuetify-overrides {
   code, pre, .v-code {
     font-family: var(--font-mono);
   }
+// removed extra closing curly brace
+
+// Global styles for Orders UI redesign
+.orders-ui-redesign {
+  display: flex;
+  .main-content {
+    flex: 1;
+    padding: 32px 40px;
+    background: #18142a !important;
+    min-height: 100vh;
+    .header {
+      .breadcrumbs {
+        color: #bdbdbd;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+      }
+      .title-search {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        .search {
+          flex: 1;
+          padding: 8px 16px;
+          border-radius: 8px;
+          border: none;
+          background: #231e3a;
+          color: #fff;
+          font-size: 1rem;
+        }
+        .new-order {
+          background: #b18cff;
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          padding: 8px 20px;
+          font-weight: 600;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: background 0.2s;
+          &:hover {
+            background: #a07be0;
+          }
+        }
+      }
+    }
+    .orders-list {
+      margin-top: 32px;
+    }
+
+// Make all v-main backgrounds dark globally
+.v-main {
+  background: #18142a !important;
 }
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+      }
+      .title-search {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        .search {
+          flex: 1;
+          padding: 8px 16px;
+          border-radius: 8px;
+          border: none;
+          background: #231e3a;
+          color: #fff;
+          font-size: 1rem;
+        }
+        .new-order {
+          background: #b18cff;
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          padding: 8px 20px;
+          font-weight: 600;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: background 0.2s;
+          &:hover {
+            background: #a07be0;
+          }
+        }
+      }
+    }
+    .orders-list {
+      margin-top: 32px;
+      // Table styles
+      .v-data-table {
+        background: #231e3a;
+        color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px 0 rgba(0,0,0,0.12);
+        border: none !important;
+        overflow: hidden;
+        background-clip: padding-box !important;
+        /* Remove white border at top and bottom corners */
+        &::before,
+        &::after {
+          display: none !important;
+        }
+        th, td {
+          border-bottom: 1px solid #2d235a !important;
+        }
+        th {
+          color: #bdbdbd;
+          font-weight: 600;
+          background: #231e3a;
+        }
+        tr {
+          &:hover {
+            background: #2d235a;
+          }
+        }
+        .v-btn {
+          color: #b18cff;
+        }
+      }
+      /* Remove white background from v-card wrapping the table */
+      .v-card {
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+    }
+  }

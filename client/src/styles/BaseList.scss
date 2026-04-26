@@ -1,0 +1,37 @@
+/* BaseList specific styles for dark themed table/card */
+.base-list-card {
+  background: #231e3a !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.12) !important;
+  border: none !important;
+  overflow: hidden !important;
+  background-clip: padding-box !important;
+}
+.base-list-card .v-data-table {
+  background: transparent !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+  border: none !important;
+  overflow: hidden !important;
+  background-clip: padding-box !important;
+}
+.base-list-card .v-data-table::before,
+.base-list-card .v-data-table::after {
+  display: none !important;
+}
+.base-list-card .v-data-table th,
+.base-list-card .v-data-table td {
+  border-bottom: 1px solid #2d235a !important;
+}
+.base-list-card .v-data-table th {
+  color: #bdbdbd !important;
+  font-weight: 600 !important;
+  background: #231e3a !important;
+}
+.base-list-card .v-data-table tr:hover {
+  background: #2d235a !important;
+}
+.base-list-card .v-data-table .v-btn {
+  color: #b18cff !important;
+}

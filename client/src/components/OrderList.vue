@@ -1,22 +1,27 @@
 
+
 <template>
-  <div>
-    <!-- Toast notification always in top right -->
-    <div v-if="toast.show" :class="['toast', toast.type]" :style="toastStyle">
-      {{ toast.message }}
-    </div>
-    <v-container>
-      <h2 class="mb-4">Laundromat Orders</h2>
-      <v-alert v-if="errorMsg" type="error" class="mb-4">{{ errorMsg }}</v-alert>
-      <v-skeleton-loader v-if="loading" type="table" class="mb-4" :loading="loading" />
-      <BaseList
-        v-if="!loading && !errorMsg"
-        title="Orders"
-        :headers="orderHeaders"
-        :items="orders"
-        @add="() => { showForm = true; editOrderId = null; resetForm(); }"
-        @edit="onEditOrder"
-      />
+  <div class="orders-ui-redesign">
+    <main class="main-content">
+      <header class="header">
+        <div class="breadcrumbs">Laundromat · Orders</div>
+        <div class="title-search">
+          <input class="search" type="text" placeholder="Search orders..." />
+          <button class="new-order" @click="() => { showForm = true; editOrderId = null; resetForm(); }">+ New order</button>
+        </div>
+        <!-- Status button filters removed as requested -->
+      </header>
+      <section class="orders-list">
+        <v-alert v-if="errorMsg" type="error" class="mb-4">{{ errorMsg }}</v-alert>
+        <v-skeleton-loader v-if="loading" type="table" class="mb-4" :loading="loading" />
+        <BaseList
+          v-if="!loading && !errorMsg"
+          :headers="orderHeaders"
+          :items="orders"
+          @add="() => { showForm = true; editOrderId = null; resetForm(); }"
+          @edit="onEditOrder"
+        />
+      </section>
       <v-dialog v-model="showForm" max-width="700" scrim>
         <template #default>
           <v-card class="pa-6" style="background: #23272f; color: #fff;">
@@ -79,7 +84,7 @@
         @close="showPaymentDialog = false"
         @paid="onPaymentMade"
       />
-    </v-container>
+    </main>
   </div>
 </template>
 
