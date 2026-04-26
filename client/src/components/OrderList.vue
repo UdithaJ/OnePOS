@@ -7,7 +7,10 @@
     </div>
     <v-container>
       <h2 class="mb-4">Laundromat Orders</h2>
+      <v-alert v-if="errorMsg" type="error" class="mb-4">{{ errorMsg }}</v-alert>
+      <v-skeleton-loader v-if="loading" type="table" class="mb-4" :loading="loading" />
       <BaseList
+        v-if="!loading && !errorMsg"
         title="Orders"
         :headers="orderHeaders"
         :items="orders"
@@ -145,13 +148,15 @@ async function onPaymentMade(payment) {
   }
 }
 
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { getAllCustomers } from '@/services/customerApiService'
 import { createOrder } from '@/services/orderApiService'
 import { useToast, toastStyle } from '@/composables/useToast'
 const { toast, showToast } = useToast()
 
 const customers = ref([])
+const loading = ref(false)
+const errorMsg = ref('')
 
 const ORDER_STATUSES = [
   { label: 'To Do', value: 'todo' },
@@ -176,19 +181,28 @@ import type { CustomerPayload } from '@/services/customerApiService'
 
 import { getAllCategories } from '@/services/categoryApiService'
 async function loadCustomersAndOrders() {
-  const [customerData, orderData, categoryData] = await Promise.all([
-    getAllCustomers(),
-    getAllOrders(),
-    getAllCategories()
-  ])
-  customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id }))
-  if (Array.isArray(categoryData)) {
-    categories.value = categoryData.map((cat: any) => ({ label: cat.name, value: cat._id, unitPrice: cat.unitPrice }))
-  } else {
-    categories.value = []
-    console.error('Failed to load categories:', categoryData)
+  loading.value = true
+  errorMsg.value = ''
+  try {
+    const [customerData, orderData, categoryData] = await Promise.all([
+      getAllCustomers(),
+      getAllOrders(),
+      getAllCategories()
+    ])
+    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id }))
+    if (Array.isArray(categoryData)) {
+      categories.value = categoryData.map((cat: any) => ({ label: cat.name, value: cat._id, unitPrice: cat.unitPrice }))
+    } else {
+      categories.value = []
+      console.error('Failed to load categories:', categoryData)
+    }
+    setOrdersFromData(orderData)
+  } catch (err) {
+    errorMsg.value = 'Failed to load orders or related data. Please try again.'
+    console.error('Data load error:', err)
+  } finally {
+    loading.value = false
   }
-  setOrdersFromData(orderData)
 }
 
 function setOrdersFromData(orderData: any[]) {

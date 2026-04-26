@@ -29,11 +29,13 @@
 
 
 // main/index.js
+
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import Store from 'electron-store';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import './server.js'; // runs your server
+import http from 'http';
+import './server.js';
 
 const store = new Store();
 
@@ -72,7 +74,36 @@ const createWindow = () => {
   }
 };
 
-app.whenReady().then(createWindow);
+
+// Helper to wait for backend to be ready before creating window
+function waitForBackendAndCreateWindow() {
+  // If server.js exports the app, listen event can be used
+  // But since server.js starts listening directly, we can poll the port
+  const port = process.env.PORT || 5000;
+  const maxAttempts = 20;
+  let attempts = 0;
+  function check() {
+    http.get(`http://localhost:${port}/api/health`, res => {
+      if (res.statusCode === 200) {
+        createWindow();
+      } else {
+        retry();
+      }
+    }).on('error', retry);
+  }
+  function retry() {
+    attempts++;
+    if (attempts < maxAttempts) {
+      setTimeout(check, 500);
+    } else {
+      console.error('Backend did not start in time. Loading window anyway.');
+      createWindow();
+    }
+  }
+  check();
+}
+
+app.whenReady().then(waitForBackendAndCreateWindow);
 
 ipcMain.handle('store-get', (event, key) => store.get(key));
 ipcMain.handle('store-set', (event, key, value) => store.set(key, value));
