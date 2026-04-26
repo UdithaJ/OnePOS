@@ -14,5 +14,4 @@
 </template>
 
 <script lang="ts" setup>
-  // No direct import needed; routed components are loaded by vue-router
 </script>
