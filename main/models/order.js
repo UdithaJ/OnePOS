@@ -6,10 +6,11 @@ const orderSchema = new mongoose.Schema({
     ref: 'Customer',
     required: true
   },
-  weight: {
-    type: Number,
+  suborders: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'OrderCategory',
     required: true
-  },
+  }],
   createdDate: {
     type: Date,
     default: Date.now

@@ -23,6 +23,44 @@
               :isValid="isValid"
               :onSubmit="handleSubmit"
             />
+            <div class="mt-4">
+              <h4>Suborders</h4>
+              <v-btn color="primary" @click="addSuborder">Add Suborder</v-btn>
+              <div v-for="(sub, idx) in suborders" :key="idx" class="d-flex align-center mt-2">
+                <v-select
+                  v-model="sub.category"
+                  :items="categories"
+                  item-title="label"
+                  item-value="value"
+                  label="Category"
+                  class="mr-2"
+                  style="max-width: 180px"
+                  @change="() => updateSuborderAmount(idx)"
+                  required
+                />
+                <v-text-field
+                  v-model="sub.weight"
+                  label="Weight (kg)"
+                  type="number"
+                  class="mr-2"
+                  style="max-width: 120px"
+                  @input="() => updateSuborderAmount(idx)"
+                  required
+                />
+                <v-text-field
+                  :value="sub.amount"
+                  label="Amount"
+                  type="number"
+                  readonly
+                  style="max-width: 120px"
+                  class="mr-2"
+                />
+                <v-btn icon color="error" @click="removeSuborder(idx)"><v-icon>mdi-delete</v-icon></v-btn>
+              </div>
+              <div class="mt-2 text-right">
+                <strong>Total: {{ totalAmount }}</strong>
+              </div>
+            </div>
             <template v-if="editOrderId">
               <v-divider class="my-4" />
               <v-btn color="success" @click="showPaymentDialog = true">Make Payment</v-btn>
@@ -44,7 +82,7 @@
 
 <script lang="ts" setup>
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
 import OrderPaymentDialog from './OrderPaymentDialog.vue'
@@ -62,10 +100,33 @@ const orderHeaders = [
 import { getAllOrders, getOrderById, updateOrder } from '@/services/orderApiService'
 
 const orders = ref<any[]>([])
-
 const showForm = ref(false)
 const editOrderId = ref<string|null>(null)
 const showPaymentDialog = ref(false)
+const categories = ref<any[]>([])
+const suborders = ref<any[]>([])
+
+function addSuborder() {
+  suborders.value.push({ category: '', weight: '', amount: 0 })
+}
+function removeSuborder(idx: number) {
+  suborders.value.splice(idx, 1)
+}
+function updateSuborderAmount(idx: number) {
+  const sub = suborders.value[idx]
+  const cat = categories.value.find((c: any) => c.value === sub.category)
+  if (cat && sub.weight) {
+    sub.amount = Number(sub.weight) * Number(cat.unitPrice)
+  } else {
+    sub.amount = 0
+  }
+}
+const totalAmount = computed(() => suborders.value.reduce((sum, s) => sum + Number(s.amount || 0), 0))
+
+// Watch suborders for changes to recalculate amounts
+watch(suborders, (subs) => {
+  subs.forEach((sub, idx) => updateSuborderAmount(idx))
+}, { deep: true })
 import { makePayment } from '@/services/paymentApiService'
 async function onPaymentMade(payment) {
   // Call payment API
@@ -102,9 +163,7 @@ const ORDER_STATUSES = [
 const orderFormSchema = computed(() => ({
   fields: [
     { name: 'customer', label: 'Customer', type: 'autoselect', required: true, options: customers.value, allowFreeText: false },
-    { name: 'weight', label: 'Weight (kg)', type: 'number', required: true },
     { name: 'deliveryDate', label: 'Delivery Date', type: 'date', required: true },
-    { name: 'totalAmount', label: 'Total Amount', type: 'number', required: true },
     ...(editOrderId.value ? [
       { name: 'status', label: 'Status', type: 'select', required: true, options: ORDER_STATUSES },
       { name: 'rackNumber', label: 'Rack Number', type: 'text' },
@@ -115,12 +174,20 @@ const orderFormSchema = computed(() => ({
 import type { CustomerPayload } from '@/services/customerApiService'
 
 
+import { getAllCategories } from '@/services/categoryApiService'
 async function loadCustomersAndOrders() {
-  const [customerData, orderData] = await Promise.all([
+  const [customerData, orderData, categoryData] = await Promise.all([
     getAllCustomers(),
-    getAllOrders()
+    getAllOrders(),
+    getAllCategories()
   ])
   customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id }))
+  if (Array.isArray(categoryData)) {
+    categories.value = categoryData.map((cat: any) => ({ label: cat.name, value: cat._id, unitPrice: cat.unitPrice }))
+  } else {
+    categories.value = []
+    console.error('Failed to load categories:', categoryData)
+  }
   setOrdersFromData(orderData)
 }
 
@@ -151,11 +218,10 @@ form.value.rackNumber = ''
 
 function resetForm() {
   form.value.customer = ''
-  form.value.weight = ''
   form.value.deliveryDate = ''
-  form.value.totalAmount = ''
   form.value.status = ''
   form.value.rackNumber = ''
+  suborders.value = []
 }
 
 async function onEditOrder(order: any) {
@@ -164,11 +230,22 @@ async function onEditOrder(order: any) {
   const data = await getOrderById(orderId)
   editOrderId.value = orderId
   form.value.customer = data.customerID?._id || data.customerID
-  form.value.weight = data.weight
   form.value.deliveryDate = data.deliveryDate?.substring(0, 10)
-  form.value.totalAmount = data.totalAmount
   form.value.status = data.status || 'todo'
   form.value.rackNumber = data.rackNumber || ''
+  // Map suborders to ensure category is the ID and amount is recalculated
+  suborders.value = (data.suborders || []).map((sub: any) => {
+    let categoryId = sub.category?._id || sub.category;
+    // Find matching category for unitPrice
+    const cat = categories.value.find((c: any) => c.value === categoryId);
+    let weight = sub.weight || '';
+    let amount = (cat && weight) ? Number(weight) * Number(cat.unitPrice) : 0;
+    return {
+      category: categoryId,
+      weight,
+      amount
+    };
+  });
   showForm.value = true
 }
 
@@ -176,9 +253,9 @@ async function handleSubmit() {
   try {
     const payload = {
       customerID: form.value.customer,
-      weight: form.value.weight,
       deliveryDate: form.value.deliveryDate,
-      totalAmount: form.value.totalAmount,
+      suborders: suborders.value,
+      totalAmount: totalAmount.value,
     };
     if (editOrderId.value) {
       const editPayload = { ...payload, status: form.value.status, rackNumber: form.value.rackNumber }
