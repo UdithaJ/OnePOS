@@ -6,7 +6,13 @@ exports.createCashBoxSession = async (data) => {
 };
 
 exports.updateCashBoxSession = async (id, data) => {
-  return await CashBoxSession.findByIdAndUpdate(id, data, { new: true });
+  // If closing, set status and closedAt
+  const update = { ...data };
+  if ((data.closingAmount !== undefined || data.closedBy !== undefined) && data.status !== 'open') {
+    update.status = 'closed';
+    update.closedAt = new Date();
+  }
+  return await CashBoxSession.findByIdAndUpdate(id, update, { new: true });
 };
 
 exports.getAllCashBoxSessions = async () => {
