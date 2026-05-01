@@ -1,5 +1,3 @@
-
-
 <template>
   <div class="orders-ui-redesign">
     <main class="main-content">
@@ -7,7 +5,7 @@
         <div class="breadcrumbs">Laundromat · Orders</div>
         <div class="title-search">
           <input class="search" type="text" placeholder="Search orders..." />
-          <button class="new-order" @click="() => { showForm = true; editOrderId = null; resetForm(); }">+ New order</button>
+          <button class="new-order" @click="handleNewOrderClick">+ New order</button>
         </div>
         <!-- Status button filters removed as requested -->
       </header>
@@ -18,8 +16,7 @@
           v-if="!loading && !errorMsg"
           :headers="orderHeaders"
           :items="orders"
-          @add="() => { showForm = true; editOrderId = null; resetForm(); }"
-          @edit="onEditOrder"
+          @add="handleAddOrder"
         />
       </section>
       <v-dialog v-model="showForm" max-width="900" scrim>
@@ -97,7 +94,7 @@ import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
 import OrderPaymentDialog from './OrderPaymentDialog.vue'
 import { useDynamicForm } from '@/composables/useDynamicForm'
-
+import { getActiveCashBoxSession } from '../services/cashBoxSessionApiService'
 
 const orderHeaders = [
   { title: 'Order #', key: 'id', align: 'start' },
@@ -293,5 +290,20 @@ async function handleSubmit() {
     showToast(editOrderId.value ? 'Order update failed' : 'Order creation failed', 'error');
     console.error('Order save failed', error);
   }
+}
+
+async function handleNewOrderClick() {
+  const activeSession = await getActiveCashBoxSession();
+  if (!activeSession) {
+    showToast('No active cash box session. Please open one first.', 'warning');
+    return;
+  }
+  showForm.value = true;
+  editOrderId.value = null;
+  resetForm();
+}
+
+async function handleAddOrder() {
+  await handleNewOrderClick();
 }
 </script>

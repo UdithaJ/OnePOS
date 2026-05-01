@@ -9,9 +9,13 @@
         position="absolute"
         @click="$vuetify.theme.cycle()"
       />
+      <div v-if="toast.show" :style="toastStyle">
+        {{ toast.message }}
+      </div>
     </v-main>
   </v-app>
 </template>
 
 <script lang="ts" setup>
+import { toast, toastStyle } from './composables/useToast'
 </script>

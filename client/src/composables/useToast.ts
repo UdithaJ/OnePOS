@@ -35,7 +35,8 @@ export function useToast() {
   }
   return {
     toast,
-    showToast,
-    toastStyle
+    showToast
   }
 }
+
+export { toast }

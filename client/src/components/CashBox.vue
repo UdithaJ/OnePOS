@@ -1,4 +1,3 @@
-
 <template>
   <v-card color="secondary" dark>
     <v-card-title class="d-flex align-center">
@@ -31,16 +30,37 @@
     </v-card-text>
     <v-card-actions class="d-flex flex-row justify-space-between">
       <template v-if="activeSession">
-        <v-btn color="error" @click="closeSession" :loading="actionLoading" :disabled="actionLoading">
+        <v-btn color="error" @click="openCloseDialog" :loading="actionLoading" :disabled="actionLoading">
           Close Cash Box
         </v-btn>
       </template>
       <template v-else>
-        <v-btn color="primary" @click="startSession" :loading="actionLoading" :disabled="actionLoading">
+        <v-btn color="primary" @click="openSessionDialog" :loading="actionLoading" :disabled="actionLoading">
           Start New Session
         </v-btn>
       </template>
     </v-card-actions>
+    <ConfirmationDialog
+      v-model="showOpenDialog"
+      title="Open Cash Box Session"
+      @confirm="confirmStartSession"
+    >
+      <div>
+        <div><strong>Opening Amount:</strong> $0.00</div>
+        <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
+      </div>
+    </ConfirmationDialog>
+    <ConfirmationDialog
+      v-model="showCloseDialog"
+      title="Close Cash Box Session"
+      @confirm="confirmCloseSession"
+    >
+      <div>
+        <div><strong>Opening Amount:</strong> ${{ activeSession?.openingAmount?.toFixed(2) }}</div>
+        <div><strong>Opened At:</strong> {{ formatDate(activeSession?.openedAt) }}</div>
+        <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
+      </div>
+    </ConfirmationDialog>
   </v-card>
 </template>
 
@@ -48,11 +68,14 @@
 import { ref, onMounted } from 'vue'
 import { getActiveCashBoxSession, createCashBoxSession, closeCashBoxSession } from '../services/cashBoxSessionApiService'
 import { useAuth } from '../composables/useAuth'
+import ConfirmationDialog from './ConfirmationDialog.vue'
 
 const loading = ref(true)
 const actionLoading = ref(false)
 const activeSession = ref<any | null>(null)
 const { getUser } = useAuth()
+const showOpenDialog = ref(false)
+const showCloseDialog = ref(false)
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
@@ -69,10 +92,24 @@ async function fetchSession() {
 }
 
 async function startSession() {
+  openSessionDialog()
+}
+
+async function closeSession() {
+  openCloseDialog()
+}
+
+function openSessionDialog() {
+  showOpenDialog.value = true
+}
+function openCloseDialog() {
+  showCloseDialog.value = true
+}
+
+async function confirmStartSession() {
   actionLoading.value = true
   try {
     const user = getUser()
-    // Prompt for opening amount, here default to 0 for demo
     const openingAmount = 0
     await createCashBoxSession({ openingAmount, openedBy: user?._id })
     await fetchSession()
@@ -81,11 +118,10 @@ async function startSession() {
   }
 }
 
-async function closeSession() {
+async function confirmCloseSession() {
   actionLoading.value = true
   try {
     const user = getUser()
-    // Prompt for closing amount, here use openingAmount for demo
     const closingAmount = activeSession.value.openingAmount
     await closeCashBoxSession(activeSession.value._id, { closingAmount, closedBy: user?._id })
     await fetchSession()
