@@ -11,7 +11,7 @@
     </v-app-bar>
     <v-navigation-drawer app permanent :rail="rail" class="custom-sidebar">
       <div class="sidebar-logo">Washly</div>
-      <v-list :active-class="'sidebar-item--active'">
+      <v-list :active-class="'sidebar-item--active'" class="sidebar-list-bg">
         <v-list-item
           v-for="item in menuItems"
           :key="item.title"
@@ -59,7 +59,7 @@ function handleLogout() {
 
 <style scoped>
 .custom-app-bar {
-  background: #18142a !important;
+  background: #20194a !important;
   color: #fff !important;
   box-shadow: none !important;
 }
@@ -79,24 +79,32 @@ function handleLogout() {
   margin-bottom: 48px;
   text-align: center;
 }
+</style>
+<style scoped>
+.sidebar-list-bg {
+  background: #20194a !important;
+  box-shadow: none !important;
+}
+</style>
+<style scoped>
+/* Sidebar item default color */
 .sidebar-item {
+  background: #20194a !important;
   color: #bdbdbd !important;
   border-radius: 8px 0 0 8px;
   margin-bottom: 8px;
-  background: transparent !important;
   transition: background 0.2s, color 0.2s;
 }
 .sidebar-item .v-list-item__content,
-.sidebar-item .v-list-item-title {
-  color: #bdbdbd !important;
-}
+.sidebar-item .v-list-item-title,
 .sidebar-item .v-icon {
   color: #bdbdbd !important;
 }
+/* Active sidebar item: lighter background and text */
 .sidebar-item--active,
 .sidebar-item--active .v-list-item__content,
 .sidebar-item--active .v-list-item-title {
-  background: #2d235a !important;
+  background: #372e6c !important;
   color: #fff !important;
 }
 .sidebar-item--active .v-icon {
@@ -105,7 +113,7 @@ function handleLogout() {
 .sidebar-item:hover,
 .sidebar-item:hover .v-list-item__content,
 .sidebar-item:hover .v-list-item-title {
-  background: #2d235a !important;
+  background: #372e6c !important;
   color: #fff !important;
 }
 .sidebar-item:hover .v-icon {

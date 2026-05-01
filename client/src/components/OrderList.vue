@@ -22,56 +22,58 @@
           @edit="onEditOrder"
         />
       </section>
-      <v-dialog v-model="showForm" max-width="700" scrim>
+      <v-dialog v-model="showForm" max-width="900" scrim>
         <template #default>
-          <v-card class="pa-6" style="background: #23272f; color: #fff;">
+          <v-card class="order-modal-card pa-6" style="background:#20194a; color:#fff;">
             <DynamicForm
               :schema="orderFormSchema"
               :form="form"
               :isValid="isValid"
               :onSubmit="handleSubmit"
-            />
-            <div class="mt-4">
-              <h4>Suborders</h4>
-              <v-btn color="primary" @click="addSuborder">Add Suborder</v-btn>
-              <div v-for="(sub, idx) in suborders" :key="idx" class="d-flex align-center mt-2">
-                <v-select
-                  v-model="sub.category"
-                  :items="categories"
-                  item-title="label"
-                  item-value="value"
-                  label="Category"
-                  class="mr-2"
-                  style="max-width: 180px"
-                  @change="() => updateSuborderAmount(idx)"
-                  required
-                />
-                <v-text-field
-                  v-model="sub.weight"
-                  label="Weight (kg)"
-                  type="number"
-                  class="mr-2"
-                  style="max-width: 120px"
-                  @input="() => updateSuborderAmount(idx)"
-                  required
-                />
-                <v-text-field
-                  :value="sub.amount"
-                  label="Amount"
-                  type="number"
-                  readonly
-                  style="max-width: 120px"
-                  class="mr-2"
-                />
-                <v-btn icon color="error" @click="removeSuborder(idx)"><v-icon>mdi-delete</v-icon></v-btn>
-              </div>
-              <div class="mt-2 text-right">
-                <strong>Total: {{ totalAmount }}</strong>
-              </div>
-            </div>
+            >
+              <template #suborders>
+                <div class="mt-4">
+                  <h4>Suborders</h4>
+                  <v-btn color="primary" class="modal-form mb-2" @click="addSuborder">Add Suborder</v-btn>
+                  <div class="suborder-table">
+                    <div v-for="(sub, idx) in suborders" :key="idx" class="suborder-row">
+                      <v-select
+                        v-model="sub.category"
+                        :items="categories"
+                        item-title="label"
+                        item-value="value"
+                        label="Category"
+                        class="modal-form suborder-field small-field"
+                        @change="() => updateSuborderAmount(idx)"
+                        required
+                      />
+                      <v-text-field
+                        v-model="sub.weight"
+                        label="Weight (kg)"
+                        type="number"
+                        class="modal-form suborder-field small-field"
+                        @input="() => updateSuborderAmount(idx)"
+                        required
+                      />
+                      <v-text-field
+                        :value="sub.amount"
+                        label="Amount"
+                        type="number"
+                        readonly
+                        class="modal-form suborder-field small-field"
+                      />
+                      <v-btn icon color="error" class="modal-form delete-btn" @click="removeSuborder(idx)"><v-icon>mdi-delete</v-icon></v-btn>
+                    </div>
+                  </div>
+                  <div class="mt-2 text-right">
+                    <strong>Total: {{ totalAmount }}</strong>
+                  </div>
+                </div>
+              </template>
+            </DynamicForm>
             <template v-if="editOrderId">
               <v-divider class="my-4" />
-              <v-btn color="success" @click="showPaymentDialog = true">Make Payment</v-btn>
+              <v-btn color="success" class="modal-form" @click="showPaymentDialog = true">Make Payment</v-btn>
             </template>
           </v-card>
         </template>
@@ -153,7 +155,7 @@ async function onPaymentMade(payment) {
   }
 }
 
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { getAllCustomers } from '@/services/customerApiService'
 import { createOrder } from '@/services/orderApiService'
 import { useToast, toastStyle } from '@/composables/useToast'

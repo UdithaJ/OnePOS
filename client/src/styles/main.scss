@@ -1,3 +1,144 @@
+.suborder-table {
+  width: 100%;
+}
+.suborder-header-row {
+  display: flex;
+  font-weight: 600;
+  color: #bdbdbd;
+  margin-bottom: 4px;
+  gap: 12px;
+}
+.suborder-header {
+  flex: 1 1 0;
+  min-width: 120px;
+  max-width: 140px;
+}
+.suborder-header:last-child {
+  min-width: 60px;
+  max-width: 80px;
+  text-align: center;
+}
+.suborder-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.suborder-row .delete-btn {
+  align-self: flex-end;
+  margin-bottom: 0;
+  margin-left: 0;
+}
+.small-field {
+  min-width: 120px;
+  max-width: 140px;
+  font-size: 0.95rem;
+}
+.suborder-field {
+  min-width: 180px;
+  max-width: 220px;
+  flex: 1 1 0;
+}
+.suborder-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.suborder-row .delete-btn {
+  align-self: flex-end;
+  margin-bottom: 0;
+  margin-left: 0;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-bottom: 8px;
+}
+.form-actions .v-btn {
+  min-width: 120px;
+  border-radius: 8px;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.modal-form {
+  padding: 24px 24px 0 24px !important;
+  box-sizing: border-box;
+}
+
+// Common modal form styles
+.modal-form {
+  padding-bottom: 0;
+}
+.modal-form .v-row,
+.modal-form .v-col {
+  margin-bottom: 0;
+}
+.modal-form .v-text-field,
+.modal-form .v-select,
+.modal-form .v-autocomplete {
+  background: #20194a !important;
+  color: #fff !important;
+  border-radius: 8px;
+}
+.modal-form .v-label,
+.modal-form .v-field-label {
+  color: #bdbdbd !important;
+}
+.modal-form .v-input__control {
+  color: #fff !important;
+}
+.modal-form .v-btn {
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: none !important;
+}
+.modal-form .v-btn.primary {
+  background: #b18cff !important;
+  color: #fff !important;
+}
+.modal-form .v-btn.success {
+  background: #4caf50 !important;
+  color: #fff !important;
+}
+.modal-form .v-btn.error {
+  background: #e53935 !important;
+  color: #fff !important;
+}
+.modal-form .v-divider {
+  border-color: #372e6c !important;
+}
+.modal-form .v-select .v-input__append-inner .v-icon,
+.modal-form .v-text-field .v-input__append-inner .v-icon {
+  color: #bdbdbd !important;
+}
+.modal-form .v-list-item {
+  background: #20194a !important;
+  color: #fff !important;
+}
+.modal-form .v-list-item--active {
+  background: #372e6c !important;
+  color: #fff !important;
+}
+.modal-form .v-list-item:hover {
+  background: #372e6c !important;
+  color: #fff !important;
+}
+.modal-form .v-list-item__content,
+.modal-form .v-list-item-title {
+  color: #fff !important;
+}
+.modal-form .v-list-item__icon {
+  color: #bdbdbd !important;
+}
+.modal-form .v-list-item--active .v-list-item__icon,
+.modal-form .v-list-item--active .v-list-item-title {
+  color: #fff !important;
+}
 // Global dark background for all v-main (main content area)
 .v-main {
   background: #18142a !important;

@@ -1,5 +1,5 @@
 <template>
-  <v-form @submit.prevent="onSubmit">
+  <v-form @submit.prevent="onSubmit" class="modal-form">
     <v-row>
       <v-col cols="12" md="6" v-for="field in schema.fields" :key="field.name">
         <v-text-field
@@ -7,6 +7,7 @@
           v-model="form[field.name]"
           :label="field.label"
           :required="field.required"
+          class="modal-form"
         />
         <v-text-field
           v-else-if="field.type === 'number'"
@@ -14,6 +15,7 @@
           :label="field.label"
           :type="'number'"
           :required="field.required"
+          class="modal-form"
         />
         <v-text-field
           v-else-if="field.type === 'date'"
@@ -21,6 +23,7 @@
           :label="field.label"
           :type="'date'"
           :required="field.required"
+          class="modal-form"
         />
         <v-select
           v-else-if="field.type === 'select'"
@@ -30,6 +33,7 @@
           item-title="label"
           item-value="value"
           :required="field.required"
+          class="modal-form"
         />
         <v-autocomplete
           v-else-if="field.type === 'autoselect'"
@@ -39,11 +43,15 @@
           item-title="label"
           item-value="value"
           :required="field.required"
+          class="modal-form"
         />
         <!-- Add more field types as needed -->
       </v-col>
     </v-row>
-    <v-btn type="submit" :disabled="!isValid" color="primary">Submit</v-btn>
+    <slot name="suborders" />
+    <div class="form-actions">
+      <v-btn type="submit" :disabled="!isValid" color="primary" class="modal-form">Submit</v-btn>
+    </div>
   </v-form>
 </template>
 
