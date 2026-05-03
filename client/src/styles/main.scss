@@ -1,3 +1,106 @@
+// Redesign for new order form UI
+.order-form-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.order-form-field {
+  flex: 1 1 0;
+}
+.order-suborders-section {
+  margin-top: 24px;
+}
+.order-suborders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.suborders-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.suborders-badge {
+  display: inline-block;
+  background: #232323;
+  color: #bdbdbd;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  padding: 2px 10px;
+  font-weight: 600;
+}
+.add-suborder-btn {
+  min-width: 140px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.order-divider {
+  margin: 24px 0 16px 0;
+}
+.order-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.order-total-label {
+  color: #bdbdbd;
+}
+.order-total-amount {
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.submit-order-btn {
+  width: 100%;
+  font-weight: 600;
+  border-radius: 8px;
+  margin-top: 0;
+  margin-bottom: 0;
+  border: 1px solid #bdbdbd !important;
+}
+// Order form redesign
+.order-form-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.order-form-field {
+  flex: 1 1 0;
+}
+.order-suborders-section {
+  margin-top: 24px;
+}
+.order-suborders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.add-suborder-btn {
+  min-width: 140px;
+}
+.order-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 32px;
+  margin-top: 24px;
+}
+.order-total {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+.submit-btn {
+  min-width: 140px;
+  font-weight: 600;
+}
 .suborder-table {
   width: 100%;
 }

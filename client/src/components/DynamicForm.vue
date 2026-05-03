@@ -49,7 +49,7 @@
       </v-col>
     </v-row>
     <slot name="suborders" />
-    <div class="form-actions">
+    <div class="form-actions" v-if="!hideDefaultSubmit">
       <v-btn type="submit" :disabled="!isValid" color="primary" class="modal-form">Submit</v-btn>
     </div>
   </v-form>
@@ -64,7 +64,8 @@ const props = defineProps<{
   form: Record<string, any>
   isValid: boolean
   onSubmit: () => void
+  hideDefaultSubmit?: boolean
 }>()
 
-const { schema, form, isValid, onSubmit } = toRefs(props)
+const { schema, form, isValid, onSubmit, hideDefaultSubmit } = toRefs(props)
 </script>

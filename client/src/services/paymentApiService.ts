@@ -5,6 +5,8 @@ export interface PaymentPayload {
   amount: number
   paymentMethod: string
   type: string
+  sessionId: string
+  userId: string
 }
 
 export async function makePayment(payload: PaymentPayload) {

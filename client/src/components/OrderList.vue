@@ -27,11 +27,41 @@
               :form="form"
               :isValid="isValid"
               :onSubmit="handleSubmit"
+              :hideDefaultSubmit="true"
             >
+              <template #default>
+                <div class="order-form-row">
+                  <div class="order-form-field">
+                    <v-autocomplete
+                      v-model="form.customer"
+                      :items="orderFormSchema.fields[0].options"
+                      label="Customer"
+                      :rules="[v => !!v || 'Customer is required']"
+                      required
+                      class="modal-form"
+                    />
+                  </div>
+                  <div class="order-form-field">
+                    <v-text-field
+                      v-model="form.deliveryDate"
+                      label="Delivery date"
+                      type="date"
+                      :rules="[v => !!v || 'Delivery date is required']"
+                      required
+                      class="modal-form"
+                    />
+                  </div>
+                </div>
+              </template>
               <template #suborders>
-                <div class="mt-4">
-                  <h4>Suborders</h4>
-                  <v-btn color="primary" class="modal-form mb-2" @click="addSuborder">Add Suborder</v-btn>
+                <div class="order-suborders-section">
+                  <div class="order-suborders-header">
+                    <div class="suborders-label">
+                      <span>Suborders</span>
+                      <span class="suborders-badge">{{ suborders.length }}</span>
+                    </div>
+                    <v-btn color="primary" class="add-suborder-btn" @click="addSuborder" variant="outlined">+ Add suborder</v-btn>
+                  </div>
                   <div class="suborder-table">
                     <div v-for="(sub, idx) in suborders" :key="idx" class="suborder-row">
                       <v-select
@@ -40,6 +70,7 @@
                         item-title="label"
                         item-value="value"
                         label="Category"
+                        :rules="[v => !!v || 'Category is required']"
                         class="modal-form suborder-field small-field"
                         @change="() => updateSuborderAmount(idx)"
                         required
@@ -48,6 +79,7 @@
                         v-model="sub.weight"
                         label="Weight (kg)"
                         type="number"
+                        :rules="[v => !!v || 'Weight is required']"
                         class="modal-form suborder-field small-field"
                         @input="() => updateSuborderAmount(idx)"
                         required
@@ -62,9 +94,12 @@
                       <v-btn icon color="error" class="modal-form delete-btn" @click="removeSuborder(idx)"><v-icon>mdi-delete</v-icon></v-btn>
                     </div>
                   </div>
-                  <div class="mt-2 text-right">
-                    <strong>Total: {{ totalAmount }}</strong>
+                  <v-divider class="order-divider" />
+                  <div class="order-total-row">
+                    <span class="order-total-label">Order total</span>
+                    <span class="order-total-amount">LKR {{ totalAmount.toFixed(2) }}</span>
                   </div>
+                  <v-btn color="primary" class="submit-order-btn" type="submit" block variant="outlined">Submit order</v-btn>
                 </div>
               </template>
             </DynamicForm>
@@ -95,6 +130,8 @@ import DynamicForm from '@/components/DynamicForm.vue'
 import OrderPaymentDialog from './OrderPaymentDialog.vue'
 import { useDynamicForm } from '@/composables/useDynamicForm'
 import { getActiveCashBoxSession } from '../services/cashBoxSessionApiService'
+import { useAuth } from '../composables/useAuth'
+const { getUser } = useAuth()
 
 const orderHeaders = [
   { title: 'Order #', key: 'id', align: 'start' },
@@ -135,14 +172,18 @@ watch(suborders, (subs) => {
   subs.forEach((sub, idx) => updateSuborderAmount(idx))
 }, { deep: true })
 import { makePayment } from '@/services/paymentApiService'
-async function onPaymentMade(payment) {
+async function onPaymentMade(payment: any) {
   // Call payment API
   try {
+    const activeSession = await getActiveCashBoxSession();
+    const user = getUser();
     await makePayment({
-      orderId: editOrderId.value,
+      orderId: editOrderId.value || '',
       amount: payment.amount,
       paymentMethod: payment.paymentMethod,
-      type: payment.type
+      type: payment.type,
+      sessionId: activeSession?._id,
+      userId: user?._id
     })
     showToast('Payment successful!', 'success')
     await loadOrders()
