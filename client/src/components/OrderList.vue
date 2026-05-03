@@ -17,6 +17,7 @@
           :headers="orderHeaders"
           :items="orders"
           @add="handleAddOrder"
+          @edit="onEditOrder"
         />
       </section>
       <v-dialog v-model="showForm" max-width="900" scrim>
