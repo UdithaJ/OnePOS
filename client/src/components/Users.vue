@@ -13,7 +13,6 @@
         <v-btn icon="mdi-delete" size="small" color="error" @click="onDeleteUser(item)"></v-btn>
       </template>
     </BaseList>
-    <v-btn color="primary" class="mt-4" @click="onAddUser">+ Add User</v-btn>
 
     <v-dialog v-model="showForm" max-width="700">
       <template #default>
