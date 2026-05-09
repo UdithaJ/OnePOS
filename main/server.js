@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 
 
 import authRoutes from './routes/auth.route.js';
+import userRoutes from './routes/users.route.js';
 import customerRoutes from './routes/customer.route.js';
 import orderRoutes from './routes/order.route.js';
 import paymentRoutes from './routes/payment.route.js';
@@ -31,6 +32,7 @@ app.get('/api/health', (req, res) => {
 
 // Mount routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);

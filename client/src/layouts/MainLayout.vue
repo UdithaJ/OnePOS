@@ -45,6 +45,7 @@ const menuItems = [
   { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard', disabled: false },
   { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list', disabled: false },
   { title: 'Customers', to: '/customers', icon: 'mdi-account-group', disabled: false },
+  { title: 'Users', to: '/users', icon: 'mdi-account-cog', disabled: false },
 ]
 
 function isActive(to: string) {
