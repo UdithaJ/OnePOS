@@ -1,35 +1,45 @@
 <template>
-  <v-container>
-    <h2 class="mb-4">Customers</h2>
-    <BaseList
-      title="Customer List"
-      :headers="customerHeaders"
-      :items="customers"
-      @add="onAddCustomer"
-    />
-    <v-dialog v-model="showForm" max-width="600">
-      <template #default>
-        <v-card class="pa-6">
-          <h3 class="mb-4">Register Customer</h3>
-          <DynamicForm
-            :schema="customerFormSchema"
-            :form="form"
-            :isValid="isValid"
-            :onSubmit="handleSubmit"
-          />
-        </v-card>
-      </template>
-    </v-dialog>
-  </v-container>
+  <div>
+    <v-container>
+      <h2 class="mb-4">Customers</h2>
+      <BaseList
+        title="Customer List"
+        :headers="customerHeaders"
+        :items="customers"
+        @add="onAddCustomer"
+      />
+      <v-dialog v-model="showForm" max-width="600">
+        <template #default>
+          <v-card class="pa-6">
+            <h3 class="mb-4">Register Customer</h3>
+            <DynamicForm
+              :schema="customerFormSchema"
+              :form="form"
+              :isValid="isValid"
+              :onSubmit="handleSubmit"
+            />
+          </v-card>
+        </template>
+      </v-dialog>
+    </v-container>
+    <div v-if="toast.show" :style="toastStyle">
+      {{ toast.message }}
+    </div>
+  </div>
 </template>
 
 <script lang="ts" setup>
 
-import { onMounted, ref } from 'vue'
-import BaseList from '@/components/BaseList.vue'
-import { createCustomer, CustomerPayload, getAllCustomers } from '@/services/customerApiService'
-import DynamicForm from '@/components/DynamicForm.vue'
+
+import { ref, onMounted } from 'vue'
+import { useToast, toastStyle } from '@/composables/useToast'
 import { useDynamicForm } from '@/composables/useDynamicForm'
+import { getAllCustomers, createCustomer } from '@/services/customerApiService'
+
+import { defineAsyncComponent } from 'vue'
+
+const BaseList = defineAsyncComponent(() => import('./BaseList.vue'))
+const DynamicForm = defineAsyncComponent(() => import('./DynamicForm.vue'))
 
 const customerHeaders = [
   { title: 'Name', key: 'name', align: 'start' },
@@ -71,6 +81,7 @@ const customerFormSchema = {
 }
 
 const { form, isValid } = useDynamicForm(customerFormSchema)
+const { showToast, toast } = useToast()
 
 function onAddCustomer() {
   showForm.value = true
@@ -92,8 +103,10 @@ async function handleSubmit() {
     showForm.value = false
     // Reset form fields
     Object.keys(form.value).forEach(key => form.value[key] = '')
+    showToast('Customer registered successfully!', 'success')
   } catch (err) {
     alert('Failed to register customer. Please try again.')
   }
 }
 </script>
+

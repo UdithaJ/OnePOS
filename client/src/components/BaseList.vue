@@ -1,7 +1,10 @@
 <template>
   <v-card class="base-list-card">
-    <v-card-title>
+    <v-card-title class="d-flex justify-space-between align-center">
       <span>{{ title }}</span>
+      <v-btn color="primary" icon="mdi-plus" @click="$emit('add')" size="small" class="ml-2" title="Add">
+        <v-icon>mdi-plus</v-icon>
+      </v-btn>
     </v-card-title>
     <v-data-table
       :headers="headers || []"
