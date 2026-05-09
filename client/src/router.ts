@@ -38,6 +38,11 @@ const routes: RouteRecordRaw[] = [
         name: 'Categories',
         component: () => import('@/components/Categories.vue'),
       },
+      {
+        path: 'expense-categories',
+        name: 'ExpenseCategories',
+        component: () => import('@/components/ExpenseCategories.vue'),
+      },
       // Add more child routes here
     ],
   },
