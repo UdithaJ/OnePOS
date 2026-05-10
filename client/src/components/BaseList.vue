@@ -14,7 +14,9 @@
       class="elevation-1"
     >
       <template #item.actions="{ item }">
-        <v-btn icon="mdi-pencil" size="small" @click="$emit('edit', item)"></v-btn>
+        <slot name="actions" :item="item">
+          <v-btn icon="mdi-pencil" size="small" @click="$emit('edit', item)"></v-btn>
+        </slot>
       </template>
       <template v-slot:no-data>
         <v-alert type="info">No records found.</v-alert>

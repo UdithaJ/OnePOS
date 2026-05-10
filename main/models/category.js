@@ -6,7 +6,7 @@ const categorySchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  minimumWeight: {
+  minimumPrice: {
     type: Number,
     required: true
   },

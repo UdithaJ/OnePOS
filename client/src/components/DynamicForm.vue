@@ -25,6 +25,17 @@
           :required="field.required"
           class="modal-form"
         />
+        <v-text-field
+          v-else-if="field.type === 'password'"
+          v-model="form[field.name]"
+          :label="field.label"
+          :type="passwordVisibility[field.name] ? 'text' : 'password'"
+          :append-inner-icon="passwordVisibility[field.name] ? 'mdi-eye-off' : 'mdi-eye'"
+          @click:append-inner="passwordVisibility[field.name] = !passwordVisibility[field.name]"
+          :required="field.required"
+          autocomplete="new-password"
+          class="modal-form"
+        />
         <v-select
           v-else-if="field.type === 'select'"
           v-model="form[field.name]"
@@ -56,7 +67,7 @@
 </template>
 
 <script lang="ts" setup>
-import { toRefs } from 'vue'
+import { reactive, toRefs } from 'vue'
 import type { FormSchema } from '@/composables/useDynamicForm'
 
 const props = defineProps<{
@@ -68,4 +79,5 @@ const props = defineProps<{
 }>()
 
 const { schema, form, isValid, onSubmit, hideDefaultSubmit } = toRefs(props)
+const passwordVisibility = reactive<Record<string, boolean>>({})
 </script>

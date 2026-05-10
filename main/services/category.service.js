@@ -16,3 +16,7 @@ exports.getAllCategories = async () => {
 exports.getCategoryById = async (id) => {
   return await Category.findById(id);
 };
+
+exports.deleteCategory = async (id) => {
+  return await Category.findByIdAndDelete(id);
+};

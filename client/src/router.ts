@@ -28,6 +28,21 @@ const routes: RouteRecordRaw[] = [
         name: 'Customers',
         component: () => import('@/components/Customers.vue'),
       },
+      {
+        path: 'users',
+        name: 'Users',
+        component: () => import('@/components/Users.vue'),
+      },
+      {
+        path: 'categories',
+        name: 'Categories',
+        component: () => import('@/components/Categories.vue'),
+      },
+      {
+        path: 'expense-categories',
+        name: 'ExpenseCategories',
+        component: () => import('@/components/ExpenseCategories.vue'),
+      },
       // Add more child routes here
     ],
   },
