@@ -33,6 +33,10 @@
         <v-btn color="error" @click="openCloseDialog" :loading="actionLoading" :disabled="actionLoading">
           Close Cash Box
         </v-btn>
+        <div>
+          <v-btn icon="mdi-plus" color="success" size="small" class="mr-2" :disabled="true" />
+          <v-btn icon="mdi-minus" color="warning" size="small" @click="showExpenseDialog = true" />
+        </div>
       </template>
       <template v-else>
         <v-btn color="primary" @click="openSessionDialog" :loading="actionLoading" :disabled="actionLoading">
@@ -61,6 +65,11 @@
         <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
       </div>
     </ConfirmationDialog>
+    <ExpenseDialog
+      v-if="activeSession"
+      v-model="showExpenseDialog"
+      :session-id="activeSession._id"
+    />
   </v-card>
 </template>
 
@@ -69,6 +78,7 @@ import { ref, onMounted } from 'vue'
 import { getActiveCashBoxSession, createCashBoxSession, closeCashBoxSession } from '../services/cashBoxSessionApiService'
 import { useAuth } from '../composables/useAuth'
 import ConfirmationDialog from './ConfirmationDialog.vue'
+import ExpenseDialog from './ExpenseDialog.vue'
 
 const loading = ref(true)
 const actionLoading = ref(false)
@@ -76,6 +86,7 @@ const activeSession = ref<any | null>(null)
 const { getUser } = useAuth()
 const showOpenDialog = ref(false)
 const showCloseDialog = ref(false)
+const showExpenseDialog = ref(false)
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)

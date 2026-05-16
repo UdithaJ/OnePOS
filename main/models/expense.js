@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const expenseSchema = new mongoose.Schema({
   amount: {
     type: Number,
-    required: true
+    required: true,
+    min: 0
   },
   expenseType: {
     type: mongoose.Schema.Types.ObjectId,

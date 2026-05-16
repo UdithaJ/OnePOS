@@ -17,6 +17,7 @@ import paymentRoutes from './routes/payment.route.js';
 import cashBoxSessionRoutes from './routes/cashBoxSession.route.js';
 import categoryRoutes from './routes/category.route.js';
 import expenseCategoryRoutes from './routes/expenseCategory.route.js';
+import expenseRoutes from './routes/expense.route.js';
 
 
 const app = express();
@@ -40,6 +41,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/cashbox-sessions', cashBoxSessionRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/expense-categories', expenseCategoryRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 // __dirname replacement in ES modules
 import { fileURLToPath } from 'url';
