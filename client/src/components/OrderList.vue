@@ -1,7 +1,7 @@
 <template>
-  <div class="orders-ui-redesign">
-    <main class="main-content">
-      <header class="header">
+  <div class="orders-ui-redesign neomorphic-container">
+    <main class="main-content neomorphic-container">
+      <header class="header neomorphic-card">
         <div class="breadcrumbs">Laundromat · Orders</div>
         <div class="title-search">
           <input class="search" type="text" placeholder="Search orders..." />
@@ -10,19 +10,21 @@
         <!-- Status button filters removed as requested -->
       </header>
       <section class="orders-list">
-        <v-alert v-if="errorMsg" type="error" class="mb-4">{{ errorMsg }}</v-alert>
-        <v-skeleton-loader v-if="loading" type="table" class="mb-4" :loading="loading" />
-        <BaseList
-          v-if="!loading && !errorMsg"
-          :headers="orderHeaders"
-          :items="orders"
-          @add="handleAddOrder"
-          @edit="onEditOrder"
-        />
+        <v-alert v-if="errorMsg" type="error" class="mb-4 neomorphic-card">{{ errorMsg }}</v-alert>
+        <v-skeleton-loader v-if="loading" type="table" class="mb-4 neomorphic-card" :loading="loading" />
+        <div class="neomorphic-card">
+          <BaseList
+            v-if="!loading && !errorMsg"
+            :headers="orderHeaders"
+            :items="orders"
+            @add="handleAddOrder"
+            @edit="onEditOrder"
+          />
+        </div>
       </section>
       <v-dialog v-model="showForm" max-width="900" scrim>
         <template #default>
-          <v-card class="order-modal-card pa-6" style="background:#20194a; color:#fff;">
+          <v-card class="order-modal-card pa-6 neomorphic-card">
             <DynamicForm
               :schema="orderFormSchema"
               :form="form"

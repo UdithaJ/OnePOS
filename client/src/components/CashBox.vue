@@ -48,6 +48,14 @@
       <div>
         <div><strong>Opening Amount:</strong> $0.00</div>
         <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
+        <div class="mt-2">
+          <v-text-field
+            v-model="sessionStartDateTime"
+            label="Session Start Date & Time"
+            type="datetime-local"
+            required
+          />
+        </div>
       </div>
     </ConfirmationDialog>
     <ConfirmationDialog
@@ -74,8 +82,11 @@ const loading = ref(true)
 const actionLoading = ref(false)
 const activeSession = ref<any | null>(null)
 const { getUser } = useAuth()
+
 const showOpenDialog = ref(false)
 const showCloseDialog = ref(false)
+const sessionStartDateTime = ref<string>("");
+const maxDateTime = new Date().toISOString().slice(0, 16);
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
@@ -100,7 +111,11 @@ async function closeSession() {
 }
 
 function openSessionDialog() {
-  showOpenDialog.value = true
+  // Set default to current date-time in local format for input[type=datetime-local]
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000;
+  sessionStartDateTime.value = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+  showOpenDialog.value = true;
 }
 function openCloseDialog() {
   showCloseDialog.value = true
@@ -109,24 +124,36 @@ function openCloseDialog() {
 async function confirmStartSession() {
   actionLoading.value = true
   try {
-    const user = getUser()
-    const openingAmount = 0
-    await createCashBoxSession({ openingAmount, openedBy: user?._id })
-    await fetchSession()
+    const user = getUser();
+    const openingAmount = 0;
+    // Use selected date-time, fallback to now if empty
+    let openedAt = sessionStartDateTime.value
+      ? new Date(sessionStartDateTime.value).toISOString()
+      : new Date().toISOString();
+    await createCashBoxSession({ openingAmount, openedBy: user?._id, openedAt });
+    await fetchSession();
   } finally {
-    actionLoading.value = false
+    actionLoading.value = false;
   }
 }
 
 async function confirmCloseSession() {
   actionLoading.value = true
   try {
-    const user = getUser()
-    const closingAmount = activeSession.value.openingAmount
-    await closeCashBoxSession(activeSession.value._id, { closingAmount, closedBy: user?._id })
-    await fetchSession()
+    const user = getUser();
+    const closingAmount = activeSession.value.openingAmount;
+    const payload = {
+      closingAmount,
+      closedBy: user?._id,
+      status: 'closed',
+    };
+    console.debug('[DEBUG] closeCashBoxSession payload:', payload, 'sessionId:', activeSession.value._id);
+    await closeCashBoxSession(activeSession.value._id, payload);
+    await fetchSession();
+  } catch (err) {
+    console.error('[DEBUG] Error in confirmCloseSession:', err);
   } finally {
-    actionLoading.value = false
+    actionLoading.value = false;
   }
 }
 

@@ -10,12 +10,15 @@ export const getActiveCashBoxSession = async () => {
   return data.find((session: any) => session.status === 'open') || null;
 };
 
-export const createCashBoxSession = async (payload: { openingAmount: number, openedBy: string }) => {
+export const createCashBoxSession = async (payload: { openingAmount: number, openedBy: string, openedAt?: string }) => {
   const { data } = await axios.post(API_BASE, payload);
   return data;
 };
 
-export const closeCashBoxSession = async (id: string, payload: { closingAmount: number, closedBy: string }) => {
+export const closeCashBoxSession = async (
+  id: string,
+  payload: { closingAmount: number; closedBy: string; status?: string }
+) => {
   const { data } = await axios.patch(`${API_BASE}/${id}`, payload);
   return data;
 };

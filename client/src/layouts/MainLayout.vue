@@ -1,54 +1,77 @@
 <template>
   <v-app>
-    <v-app-bar app class="custom-app-bar" flat>
-      <v-app-bar-nav-icon @click="rail = !rail" color="#fff" />
-      <v-toolbar-title class="custom-app-bar-title">Main Layout</v-toolbar-title>
+    <v-app-bar app color="primary" dark>
+      <v-app-bar-title>OnePOS</v-app-bar-title>
       <v-spacer />
+      <v-btn icon @click="toggleTheme">
+        <v-icon>{{ isDarkTheme ? 'mdi-white-balance-sunny' : 'mdi-weather-night' }}</v-icon>
+      </v-btn>
       <v-btn icon @click="handleLogout">
-        <v-icon color="#fff">mdi-logout</v-icon>
-        <v-tooltip activator="parent">Logout</v-tooltip>
+        <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
-    <v-navigation-drawer app permanent :rail="rail" class="custom-sidebar">
-      <div class="sidebar-logo">Washly</div>
-      <v-list :active-class="'sidebar-item--active'" class="sidebar-list-bg">
+    <v-navigation-drawer
+      app
+      v-model="drawer"
+      :permanent="true"
+      class="neomorphic-sidebar"
+    >
+      <v-list nav>
         <v-list-item
           v-for="item in menuItems"
           :key="item.title"
           :to="item.to"
           :prepend-icon="item.icon"
-          class="sidebar-item"
           :active="isActive(item.to)"
-          :disabled="item.disabled"
+          class="neomorphic-sidebar-item"
         >
           <v-list-item-title>{{ item.title }}</v-list-item-title>
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
-    <v-main>
+    <v-main class="neomorphic-main-bg">
       <router-view />
     </v-main>
   </v-app>
- </template>
+</template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 
-const rail = ref(false)
+const drawer = ref(true)
 const router = useRouter()
 const route = useRoute()
 const { logout } = useAuth()
 
+
+const isDarkTheme = computed(() => document.body.classList.contains('dark-theme'))
+
+onMounted(() => {
+  // Ensure only one theme class is present, default to light
+  document.body.classList.remove('dark-theme')
+  document.body.classList.add('light-theme')
+})
+
+function toggleTheme() {
+  if (document.body.classList.contains('dark-theme')) {
+    document.body.classList.remove('dark-theme')
+    document.body.classList.add('light-theme')
+  } else {
+    document.body.classList.remove('light-theme')
+    document.body.classList.add('dark-theme')
+  }
+}
+
 const menuItems = [
-  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard', disabled: false },
-  { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list', disabled: false },
-  { title: 'Customers', to: '/customers', icon: 'mdi-account-group', disabled: false },
+  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
+  { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list' },
+  { title: 'Customers', to: '/customers', icon: 'mdi-account-group' },
 ]
 
 function isActive(to: string) {
-  return to && route.path === to
+  return !!to && route.path === to
 }
 
 function handleLogout() {
@@ -57,66 +80,68 @@ function handleLogout() {
 }
 </script>
 
-<style scoped>
-.custom-app-bar {
-  background: #20194a !important;
-  color: #fff !important;
-  box-shadow: none !important;
+<style scoped lang="scss">
+@import '../styles/neomorphic.scss';
+
+
+.neomorphic-sidebar {
+  background: var(--side-bar-color);
+  color: var(--sidebar-text);
+  min-width: 220px;
+  box-shadow: 8px 0 16px var(--neomorphic-shadow-dark), -8px 0 16px var(--neomorphic-shadow-light);
+  border-top-right-radius: 24px;
+  border-bottom-right-radius: 24px;
+  transition: background 0.3s;
 }
-.custom-app-bar-title {
-  color: #fff !important;
+
+.neomorphic-sidebar .v-list-item {
+  color: var(--sidebar-text);
 }
-.custom-sidebar {
-  background: #20194a !important;
-  color: #fff !important;
-  padding-top: 32px;
-  border-right: 1px solid #231e3a;
+
+.neomorphic-sidebar .v-icon {
+  color: var(--sidebar-icon);
 }
-.sidebar-logo {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #b18cff;
-  margin-bottom: 48px;
-  text-align: center;
+
+.neomorphic-sidebar-item {
+  border-radius: 16px;
+  margin: 4px 8px;
+  transition: background 0.2s;
 }
-</style>
-<style scoped>
-.sidebar-list-bg {
-  background: #20194a !important;
-  box-shadow: none !important;
+.neomorphic-sidebar-item.v-list-item--active {
+  background: var(--neomorphic-accent);
+  color: #fff;
 }
-</style>
-<style scoped>
-/* Sidebar item default color */
-.sidebar-item {
-  background: #20194a !important;
-  color: #bdbdbd !important;
-  border-radius: 8px 0 0 8px;
-  margin-bottom: 8px;
-  transition: background 0.2s, color 0.2s;
+.neomorphic-sidebar-item.v-list-item--active .v-icon {
+  color: #fff;
 }
-.sidebar-item .v-list-item__content,
-.sidebar-item .v-list-item-title,
-.sidebar-item .v-icon {
-  color: #bdbdbd !important;
+
+.neomorphic-sidebar .v-list-item {
+  color: var(--sidebar-text);
 }
-/* Active sidebar item: lighter background and text */
-.sidebar-item--active,
-.sidebar-item--active .v-list-item__content,
-.sidebar-item--active .v-list-item-title {
-  background: #372e6c !important;
-  color: #fff !important;
+
+.neomorphic-sidebar .v-icon {
+  color: var(--sidebar-icon);
 }
-.sidebar-item--active .v-icon {
-  color: #fff !important;
+
+.neomorphic-sidebar-item {
+  border-radius: 16px;
+  margin: 4px 8px;
+  transition: background 0.2s;
 }
-.sidebar-item:hover,
-.sidebar-item:hover .v-list-item__content,
-.sidebar-item:hover .v-list-item-title {
-  background: #372e6c !important;
-  color: #fff !important;
+.neomorphic-sidebar-item.v-list-item--active {
+  background: var(--neomorphic-accent);
+  color: #fff;
 }
-.sidebar-item:hover .v-icon {
-  color: #fff !important;
+.neomorphic-sidebar-item.v-list-item--active .v-icon {
+  color: #fff;
+}
+// ...existing code...
+.neomorphic-main-bg {
+  background: var(--neomorphic-container-bg) !important;
+  min-height: 100vh;
+  width: 100vw;
+  transition: background 0.3s;
+  position: relative;
+  z-index: 1;
 }
 </style>

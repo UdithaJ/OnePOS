@@ -18,4 +18,5 @@
 
 <script lang="ts" setup>
 import { toast, toastStyle } from './composables/useToast'
+import './styles/neomorphic.scss'
 </script>

@@ -1,0 +1,39 @@
+@import '../assets/themes/light.scss';
+@import '../assets/themes/dark.scss';
+
+.neomorphic-container {
+  background: var(--neomorphic-container-bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px !important;
+  box-sizing: border-box;
+}
+
+.neomorphic-card {
+  background: var(--neomorphic-bg);
+  border-radius: 20px;
+  box-shadow: 
+    8px 8px 16px var(--neomorphic-shadow-dark),
+    -8px -8px 16px var(--neomorphic-shadow-light);
+  transition: all 0.3s ease;
+}
+
+.neomorphic-btn {
+  background: var(--neomorphic-bg);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  color: var(--neomorphic-text);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 
+    4px 4px 8px var(--neomorphic-shadow-dark),
+    -4px -4px 8px var(--neomorphic-shadow-light);
+  &:hover {
+    box-shadow: 
+      2px 2px 4px var(--neomorphic-shadow-dark),
+      -2px -2px 4px var(--neomorphic-shadow-light);
+  }
+}

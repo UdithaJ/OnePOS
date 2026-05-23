@@ -1,0 +1,38 @@
+// Dark Theme Variables
+.dark-theme {
+  --neomorphic-bg: #1e1e2e;
+  --neomorphic-shadow-dark: rgba(0, 0, 0, 0.5);
+  --neomorphic-shadow-light: rgba(255, 255, 255, 0.05);
+  --neomorphic-accent: #8b9dff;
+  --neomorphic-text: #f0f0f0;
+  --neomorphic-text-light: #c0c0c0;
+  --neomorphic-container-bg: linear-gradient(135deg, #1e1e2e 0%, #252535 100%);
+  --body-bg: linear-gradient(135deg, #0f0f1e, #1a1a2e);
+  --btn-primary-bg: #5B93FF;
+  --btn-primary-text: white;
+  --badge-bg: linear-gradient(135deg, rgba(139, 157, 255, 0.2) 0%, rgba(159, 122, 186, 0.2) 100%);
+  --badge-text: #8b9dff;
+  --table-hover-bg: rgba(139, 157, 255, 0.1);
+  --table-header-bg: linear-gradient(135deg, #1a1625 0%, #120f1a 100%);
+  --table-header-text: #f0f0f0;
+  --modal-border: rgba(139, 157, 255, 0.15);
+  --scrollbar-track: rgba(0, 0, 0, 0.4);
+  --scrollbar-thumb: #5B93FF;
+  --scrollbar-thumb-hover: #7BA9FF;
+  --footer-bg: linear-gradient(145deg, #1a1a2a, #25252f);
+  --footer-text: #b0b0b0;
+  --footer-icon: #909090;
+  --footer-divider: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.1) 20%, rgba(255, 255, 255, 0.1) 80%, transparent);
+  --footer-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.02);
+  --dashboard-gauge-value-color: #39dde3;
+  --chip-bg: linear-gradient(135deg, rgba(139, 157, 255, 0.2) 0%, rgba(159, 122, 186, 0.2) 100%);
+  --chip-border: rgba(139, 157, 255, 0.3);
+  --chip-text: #8b9dff;
+  --chip-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --app-bar-color: linear-gradient(135deg, #1a1625 0%, #120f1a 100%);
+  --side-bar-color: linear-gradient(180deg, #1a1625 0%, #120f1a 100%);
+  --app-bar-text: #ffffff;
+  --app-bar-icon: rgba(255, 255, 255, 0.7);
+  --sidebar-text: #ffffff;
+  --sidebar-icon: rgba(255, 255, 255, 0.7);
+}
