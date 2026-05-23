@@ -9,6 +9,7 @@
           <v-select v-model="type" :items="types" label="Type" required />
         </v-form>
       </v-card-text>
+      <div v-if="errorMsg" class="error-message" style="color:red;">{{ errorMsg }}</div>
       <v-card-actions>
         <v-spacer />
         <v-btn color="primary" @click="submitPayment">Pay</v-btn>
@@ -25,6 +26,7 @@ const props = defineProps<{ show: boolean, orderId: string, dueAmount: number }>
 const emit = defineEmits(['close', 'paid', 'update:show'])
 
 const amount = ref(props.dueAmount)
+const errorMsg = ref('')
 const paymentMethod = ref('cash')
 const type = ref('settlement')
 const methods = ['cash', 'card', 'bank', 'other']
@@ -38,6 +40,11 @@ function onDialogUpdate(val: boolean) {
 }
 
 async function submitPayment() {
+  errorMsg.value = ''
+  if (Number(amount.value) > Number(props.dueAmount)) {
+    errorMsg.value = 'Payment cannot exceed due amount.'
+    return
+  }
   emit('paid', { amount: amount.value, paymentMethod: paymentMethod.value, type: type.value })
   emit('update:show', false)
   emit('close')

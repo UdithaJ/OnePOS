@@ -108,6 +108,22 @@
             </DynamicForm>
             <template v-if="editOrderId">
               <v-divider class="my-4" />
+              <div v-if="payments.length > 0" class="payment-list-section">
+                <div class="payment-list-header">Payments Made</div>
+                <v-list dense>
+                  <v-list-item v-for="(p, idx) in payments" :key="idx">
+                    <v-list-item-content>
+                      <v-list-item-title>
+                        {{ p.date ? new Date(p.date).toLocaleString() : '' }} - {{ p.amount }} ({{ p.paymentMethod }})
+                      </v-list-item-title>
+                    </v-list-item-content>
+                  </v-list-item>
+                </v-list>
+              </div>
+              <div class="due-amount-section">
+                <span class="due-label">Due Amount:</span>
+                <span class="due-value">LKR {{ dueAmount.toFixed(2) }}</span>
+              </div>
               <v-btn color="success" class="modal-form" @click="showPaymentDialog = true">Make Payment</v-btn>
             </template>
           </v-card>
@@ -145,6 +161,12 @@ const orderHeaders = [
 ]
 
 import { getAllOrders, getOrderById, updateOrder } from '@/services/orderApiService'
+import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
+const payments = ref<any[]>([])
+const dueAmount = computed(() => {
+  const paid = payments.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+  return totalAmount.value - paid
+})
 
 const orders = ref<any[]>([])
 const showForm = ref(false)
@@ -319,6 +341,8 @@ async function onEditOrder(order: any) {
       amount
     };
   });
+  // Fetch payments for this order
+  payments.value = await getPaymentsByOrder(orderId)
   showForm.value = true
 }
 
