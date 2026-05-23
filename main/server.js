@@ -10,11 +10,14 @@ import dotenv from 'dotenv';
 
 
 import authRoutes from './routes/auth.route.js';
+import userRoutes from './routes/users.route.js';
 import customerRoutes from './routes/customer.route.js';
 import orderRoutes from './routes/order.route.js';
 import paymentRoutes from './routes/payment.route.js';
 import cashBoxSessionRoutes from './routes/cashBoxSession.route.js';
 import categoryRoutes from './routes/category.route.js';
+import expenseCategoryRoutes from './routes/expenseCategory.route.js';
+import expenseRoutes from './routes/expense.route.js';
 
 
 const app = express();
@@ -31,11 +34,14 @@ app.get('/api/health', (req, res) => {
 
 // Mount routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cashbox-sessions', cashBoxSessionRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/expense-categories', expenseCategoryRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 // __dirname replacement in ES modules
 import { fileURLToPath } from 'url';

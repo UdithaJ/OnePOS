@@ -65,9 +65,12 @@ function toggleTheme() {
 }
 
 const menuItems = [
-  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
-  { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list' },
-  { title: 'Customers', to: '/customers', icon: 'mdi-account-group' },
+  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard', disabled: false },
+  { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list', disabled: false },
+  { title: 'Customers', to: '/customers', icon: 'mdi-account-group', disabled: false },
+  { title: 'Users', to: '/users', icon: 'mdi-account-cog', disabled: false },
+  { title: 'Categories', to: '/categories', icon: 'mdi-tag-multiple', disabled: false },
+  { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus', disabled: false },
 ]
 
 function isActive(to: string) {

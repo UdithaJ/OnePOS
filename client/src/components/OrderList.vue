@@ -163,7 +163,9 @@ function updateSuborderAmount(idx: number) {
   const sub = suborders.value[idx]
   const cat = categories.value.find((c: any) => c.value === sub.category)
   if (cat && sub.weight) {
-    sub.amount = Number(sub.weight) * Number(cat.unitPrice)
+    const computed = Number(sub.weight) * Number(cat.unitPrice)
+    const floor = Number(cat.minimumPrice) || 0
+    sub.amount = Math.max(computed, floor)
   } else {
     sub.amount = 0
   }
@@ -239,7 +241,12 @@ async function loadCustomersAndOrders() {
     ])
     customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id }))
     if (Array.isArray(categoryData)) {
-      categories.value = categoryData.map((cat: any) => ({ label: cat.name, value: cat._id, unitPrice: cat.unitPrice }))
+      categories.value = categoryData.map((cat: any) => ({
+        label: cat.name,
+        value: cat._id,
+        unitPrice: cat.unitPrice,
+        minimumPrice: cat.minimumPrice,
+      }))
     } else {
       categories.value = []
       console.error('Failed to load categories:', categoryData)
@@ -298,10 +305,14 @@ async function onEditOrder(order: any) {
   // Map suborders to ensure category is the ID and amount is recalculated
   suborders.value = (data.suborders || []).map((sub: any) => {
     let categoryId = sub.category?._id || sub.category;
-    // Find matching category for unitPrice
     const cat = categories.value.find((c: any) => c.value === categoryId);
     let weight = sub.weight || '';
-    let amount = (cat && weight) ? Number(weight) * Number(cat.unitPrice) : 0;
+    let amount = 0;
+    if (cat && weight) {
+      const computed = Number(weight) * Number(cat.unitPrice);
+      const floor = Number(cat.minimumPrice) || 0;
+      amount = Math.max(computed, floor);
+    }
     return {
       category: categoryId,
       weight,
