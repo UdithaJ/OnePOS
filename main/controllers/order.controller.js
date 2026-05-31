@@ -1,5 +1,6 @@
 const Order = require('../models/order');
 const orderService = require('../services/order.service');
+const capacityService = require('../services/capacity.service');
 
 // Get all orders
 exports.getAllOrders = async (req, res) => {
@@ -35,6 +36,21 @@ exports.createOrder = async (req, res) => {
 // Get order status list
 exports.getOrderStatuses = (req, res) => {
   res.json(orderService.getOrderStatuses());
+};
+
+// Capacity advisory check for a prospective order
+exports.checkCapacity = async (req, res) => {
+  try {
+    const { deliveryDate, weightKg } = req.body || {};
+    if (!deliveryDate) return res.status(400).json({ message: 'deliveryDate is required' });
+    const result = await capacityService.checkCapacity({
+      deliveryDate,
+      newOrderKg: weightKg
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // Update an order

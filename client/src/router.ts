@@ -43,6 +43,11 @@ const routes: RouteRecordRaw[] = [
         name: 'ExpenseCategories',
         component: () => import('@/components/ExpenseCategories.vue'),
       },
+      {
+        path: 'system-settings',
+        name: 'SystemSettings',
+        component: () => import('@/components/SystemSettings.vue'),
+      },
       // Add more child routes here
     ],
   },
