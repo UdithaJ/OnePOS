@@ -1,7 +1,14 @@
 const CashBoxSession = require('../models/cashBoxSession');
 
 exports.createCashBoxSession = async (data) => {
-  const session = new CashBoxSession(data);
+  // Normalize businessDate to midnight (date-only semantics).
+  const payload = { ...data };
+  if (payload.businessDate) {
+    const d = new Date(payload.businessDate);
+    d.setHours(0, 0, 0, 0);
+    payload.businessDate = d;
+  }
+  const session = new CashBoxSession(payload);
   return await session.save();
 };
 

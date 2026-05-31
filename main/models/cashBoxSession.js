@@ -6,6 +6,15 @@ const cashBoxSessionSchema = new mongoose.Schema({
     default: Date.now,
     required: true
   },
+  businessDate: {
+    type: Date,
+    required: true,
+    default: () => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+  },
   openedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

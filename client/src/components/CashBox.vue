@@ -19,6 +19,10 @@
           <v-icon class="mr-1" size="18">mdi-clock-outline</v-icon>
           Open: {{ formatDate(activeSession.openedAt) }}
         </div>
+        <div v-if="activeSession.businessDate" class="mb-1">
+          <v-icon class="mr-1" size="18">mdi-calendar</v-icon>
+          Business Date: <span class="font-weight-bold">{{ formatBusinessDate(activeSession.businessDate) }}</span>
+        </div>
         <div class="mb-1">
           <v-icon class="mr-1" size="18">mdi-checkbox-marked-circle-outline</v-icon>
           Status: <span class="font-weight-bold">{{ activeSession.status }}</span>
@@ -44,16 +48,28 @@
         </v-btn>
       </template>
     </v-card-actions>
-    <ConfirmationDialog
-      v-model="showOpenDialog"
-      title="Open Cash Box Session"
-      @confirm="confirmStartSession"
-    >
-      <div>
-        <div><strong>Opening Amount:</strong> $0.00</div>
-        <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
-      </div>
-    </ConfirmationDialog>
+    <v-dialog v-model="showOpenDialog" max-width="420">
+      <v-card>
+        <v-card-title class="text-h6">Open Cash Box Session</v-card-title>
+        <v-card-text>
+          <div class="mb-2"><strong>Opening Amount:</strong> $0.00</div>
+          <div class="mb-4"><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
+          <v-text-field
+            v-model="businessDateInput"
+            label="Business Date"
+            type="date"
+            :rules="[v => !!v || 'Business date is required']"
+            hint="The day this session represents. Defaults to today; pick tomorrow when opening late-night for the next day."
+            persistent-hint
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="grey" text @click="showOpenDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="actionLoading" @click="confirmStartSession">Open</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <ConfirmationDialog
       v-model="showCloseDialog"
       title="Close Cash Box Session"
@@ -87,10 +103,24 @@ const { getUser } = useAuth()
 const showOpenDialog = ref(false)
 const showCloseDialog = ref(false)
 const showExpenseDialog = ref(false)
+const businessDateInput = ref<string>(todayIsoDate())
+
+function todayIsoDate() {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
   return d.toLocaleString()
+}
+
+function formatBusinessDate(dateStr: string) {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString()
 }
 
 async function fetchSession() {
@@ -111,6 +141,7 @@ async function closeSession() {
 }
 
 function openSessionDialog() {
+  businessDateInput.value = todayIsoDate()
   showOpenDialog.value = true
 }
 function openCloseDialog() {
@@ -122,7 +153,12 @@ async function confirmStartSession() {
   try {
     const user = getUser()
     const openingAmount = 0
-    await createCashBoxSession({ openingAmount, openedBy: user?._id })
+    await createCashBoxSession({
+      openingAmount,
+      openedBy: user?._id,
+      businessDate: businessDateInput.value || todayIsoDate(),
+    })
+    showOpenDialog.value = false
     await fetchSession()
   } finally {
     actionLoading.value = false

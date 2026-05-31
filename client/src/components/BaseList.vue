@@ -18,6 +18,13 @@
           <v-btn icon="mdi-pencil" size="small" @click="$emit('edit', item)"></v-btn>
         </slot>
       </template>
+      <template
+        v-for="header in (headers || []).filter(h => h.key !== 'actions')"
+        :key="header.key"
+        v-slot:[`item.${header.key}`]="slotProps"
+      >
+        <slot :name="`item.${header.key}`" v-bind="slotProps">{{ slotProps.item[header.key] }}</slot>
+      </template>
       <template v-slot:no-data>
         <v-alert type="info">No records found.</v-alert>
       </template>

@@ -48,6 +48,7 @@ const menuItems = [
   { title: 'Users', to: '/users', icon: 'mdi-account-cog', disabled: false },
   { title: 'Categories', to: '/categories', icon: 'mdi-tag-multiple', disabled: false },
   { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus', disabled: false },
+  { title: 'Settings', to: '/system-settings', icon: 'mdi-cog', disabled: false },
 ]
 
 function isActive(to: string) {

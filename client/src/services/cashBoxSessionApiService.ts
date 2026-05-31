@@ -10,7 +10,7 @@ export const getActiveCashBoxSession = async () => {
   return data.find((session: any) => session.status === 'open') || null;
 };
 
-export const createCashBoxSession = async (payload: { openingAmount: number, openedBy: string }) => {
+export const createCashBoxSession = async (payload: { openingAmount: number, openedBy: string, businessDate?: string }) => {
   const { data } = await axios.post(API_BASE, payload);
   return data;
 };
