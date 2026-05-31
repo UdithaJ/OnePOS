@@ -133,7 +133,7 @@
         v-if="editOrderId"
         :show="showPaymentDialog"
         :order-id="editOrderId"
-        :due-amount="form.totalAmount"
+        :due-amount="dueAmount"
         @close="showPaymentDialog = false"
         @paid="onPaymentMade"
       />

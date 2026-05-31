@@ -32,7 +32,21 @@ const type = ref('settlement')
 const methods = ['cash', 'card', 'bank', 'other']
 const types = ['advance', 'full_payment', 'settlement']
 
-watch(() => props.dueAmount, (val) => { amount.value = val })
+watch(() => props.dueAmount, (val) => {
+  // Only reset amount for non-advance types
+  if (type.value !== 'advance') {
+    amount.value = val
+  }
+})
+
+watch(type, (val) => {
+  // For advance, clear amount; for others, set to dueAmount
+  if (val === 'advance') {
+    amount.value = ''
+  } else {
+    amount.value = props.dueAmount
+  }
+})
 
 function onDialogUpdate(val: boolean) {
   emit('update:show', val)
@@ -41,8 +55,14 @@ function onDialogUpdate(val: boolean) {
 
 async function submitPayment() {
   errorMsg.value = ''
+  // Debug log
+  console.log('amount:', amount.value, 'dueAmount:', props.dueAmount, 'type:', type.value)
   if (Number(amount.value) > Number(props.dueAmount)) {
     errorMsg.value = 'Payment cannot exceed due amount.'
+    return
+  }
+  if (Number(amount.value) <= 0) {
+    errorMsg.value = 'Payment amount must be greater than zero.'
     return
   }
   emit('paid', { amount: amount.value, paymentMethod: paymentMethod.value, type: type.value })
