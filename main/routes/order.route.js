@@ -7,6 +7,9 @@ const orderController = require('../controllers/order.controller');
 // Get all orders
 router.get('/', orderController.getAllOrders);
 
+// Capacity advisory check (must come before /:id)
+router.post('/check-capacity', orderController.checkCapacity);
+
 // Get one order
 router.get('/:id', orderController.getOrderById);
 

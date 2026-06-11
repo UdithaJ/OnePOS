@@ -11,6 +11,16 @@
       </header>
       <section class="orders-list">
         <v-alert v-if="errorMsg" type="error" class="mb-4 neomorphic-card">{{ errorMsg }}</v-alert>
+        <v-alert
+          v-if="!loading && !errorMsg && (overdueCount > 0 || dueSoonCount > 0)"
+          :type="overdueCount > 0 ? 'error' : 'warning'"
+          variant="tonal"
+          class="mb-4"
+        >
+          <span v-if="dueSoonCount > 0">{{ dueSoonCount }} due soon</span>
+          <span v-if="dueSoonCount > 0 && overdueCount > 0"> &middot; </span>
+          <span v-if="overdueCount > 0">{{ overdueCount }} overdue</span>
+        </v-alert>
         <v-skeleton-loader v-if="loading" type="table" class="mb-4 neomorphic-card" :loading="loading" />
         <div class="neomorphic-card">
           <BaseList
@@ -19,9 +29,47 @@
             :items="orders"
             @add="handleAddOrder"
             @edit="onEditOrder"
-          />
+          >
+            <template #item.status="{ item }">
+              <span>{{ item.status }}</span>
+              <v-chip
+                v-if="item.overdue"
+                color="error"
+                size="x-small"
+                class="ml-2"
+                label
+              >Overdue</v-chip>
+              <v-chip
+                v-else-if="item.dueSoon"
+                color="warning"
+                size="x-small"
+                class="ml-2"
+                label
+              >Due Soon</v-chip>
+            </template>
+          </BaseList>
         </div>
       </section>
+      <v-dialog v-model="showCapacityWarning" max-width="480">
+        <v-card>
+          <v-card-title class="text-h6">Capacity warning</v-card-title>
+          <v-card-text>
+            <p>This order may not be deliverable by the chosen date.</p>
+            <p class="mt-2">
+              Pending work: <strong>{{ capacityResult?.pendingKg ?? 0 }} kg</strong><br />
+              This order: <strong>{{ capacityResult?.newOrderKg ?? 0 }} kg</strong><br />
+              Processable by due date: <strong>{{ capacityResult?.maxProcessableKg ?? 0 }} kg</strong>
+              ({{ capacityResult?.daysUntilDue ?? 0 }} day(s) × {{ capacityResult?.capacityPerDayKg ?? 0 }} kg/day)
+            </p>
+            <p class="mt-2">Proceed anyway?</p>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn color="grey" text @click="cancelCapacityWarning">Cancel</v-btn>
+            <v-btn color="primary" @click="confirmCapacityWarning">Proceed</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
       <v-dialog v-model="showForm" max-width="900" scrim>
         <template #default>
           <v-card class="order-modal-card pa-6 neomorphic-card">
@@ -162,6 +210,7 @@ const orderHeaders = [
 
 import { getAllOrders, getOrderById, updateOrder } from '@/services/orderApiService'
 import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
+import { checkOrderCapacity, getSystemSettings, type CapacityCheckResult } from '@/services/systemSettingsApiService'
 const payments = ref<any[]>([])
 const dueAmount = computed(() => {
   const paid = payments.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
@@ -174,6 +223,11 @@ const editOrderId = ref<string|null>(null)
 const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
+const showCapacityWarning = ref(false)
+const capacityResult = ref<CapacityCheckResult | null>(null)
+const dueSoonLeadDays = ref<number>(1)
+const overdueCount = computed(() => orders.value.filter(o => o.overdue).length)
+const dueSoonCount = computed(() => orders.value.filter(o => o.dueSoon).length)
 
 function addSuborder() {
   suborders.value.push({ category: '', weight: '', amount: 0 })
@@ -256,11 +310,15 @@ async function loadCustomersAndOrders() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const [customerData, orderData, categoryData] = await Promise.all([
+    const [customerData, orderData, categoryData, settings] = await Promise.all([
       getAllCustomers(),
       getAllOrders(),
-      getAllCategories()
+      getAllCategories(),
+      getSystemSettings().catch(() => null)
     ])
+    if (settings) {
+      dueSoonLeadDays.value = Number(settings.dueSoonLeadDays) || 0
+    }
     customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id }))
     if (Array.isArray(categoryData)) {
       categories.value = categoryData.map((cat: any) => ({
@@ -282,13 +340,33 @@ async function loadCustomersAndOrders() {
   }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function deliveryState(order: any): { overdue: boolean; dueSoon: boolean } {
+  if (!order?.deliveryDate) return { overdue: false, dueSoon: false }
+  if (order.status === 'completed' || order.status === 'cancelled') return { overdue: false, dueSoon: false }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const due = new Date(order.deliveryDate)
+  due.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((due.getTime() - today.getTime()) / DAY_MS)
+  if (diffDays < 0) return { overdue: true, dueSoon: false }
+  if (diffDays <= Math.max(0, Number(dueSoonLeadDays.value) || 0)) return { overdue: false, dueSoon: true }
+  return { overdue: false, dueSoon: false }
+}
+
 function setOrdersFromData(orderData: any[]) {
-  orders.value = (orderData || []).map((order: any) => ({
-    id: order._id,
-    customer: customers.value.find(c => c.value === (order.customerID?._id || order.customerID))?.label || order.customerID,
-    status: order.status,
-    total: typeof order.totalAmount === 'number' ? `$${order.totalAmount.toFixed(2)}` : order.totalAmount
-  }))
+  orders.value = (orderData || []).map((order: any) => {
+    const state = deliveryState(order)
+    return {
+      id: order._id,
+      customer: customers.value.find(c => c.value === (order.customerID?._id || order.customerID))?.label || order.customerID,
+      status: order.status,
+      overdue: state.overdue,
+      dueSoon: state.dueSoon,
+      total: typeof order.totalAmount === 'number' ? `$${order.totalAmount.toFixed(2)}` : order.totalAmount
+    }
+  })
 }
 
 async function loadOrders() {
@@ -313,6 +391,7 @@ function resetForm() {
   form.value.status = ''
   form.value.rackNumber = ''
   suborders.value = []
+  payments.value = []
 }
 
 async function onEditOrder(order: any) {
@@ -346,28 +425,65 @@ async function onEditOrder(order: any) {
   showForm.value = true
 }
 
+async function persistOrder() {
+  const payload = {
+    customerID: form.value.customer,
+    deliveryDate: form.value.deliveryDate,
+    suborders: suborders.value,
+    totalAmount: totalAmount.value,
+  };
+  if (editOrderId.value) {
+    const editPayload = { ...payload, status: form.value.status, rackNumber: form.value.rackNumber }
+    await updateOrder(editOrderId.value, editPayload)
+    showToast('Order updated successfully!', 'success')
+  } else {
+    await createOrder(payload)
+    showToast('Order created successfully!', 'success')
+  }
+  await loadOrders();
+  showForm.value = false;
+  editOrderId.value = null;
+}
+
 async function handleSubmit() {
   try {
-    const payload = {
-      customerID: form.value.customer,
-      deliveryDate: form.value.deliveryDate,
-      suborders: suborders.value,
-      totalAmount: totalAmount.value,
-    };
-    if (editOrderId.value) {
-      const editPayload = { ...payload, status: form.value.status, rackNumber: form.value.rackNumber }
-      await updateOrder(editOrderId.value, editPayload)
-      showToast('Order updated successfully!', 'success')
-    } else {
-      await createOrder(payload)
-      showToast('Order created successfully!', 'success')
+    if (!editOrderId.value && form.value.deliveryDate) {
+      const totalKg = suborders.value.reduce((sum, s) => sum + (Number(s.weight) || 0), 0)
+      try {
+        const result = await checkOrderCapacity({
+          deliveryDate: form.value.deliveryDate,
+          weightKg: totalKg
+        })
+        if (!result.ok) {
+          capacityResult.value = result
+          showCapacityWarning.value = true
+          return
+        }
+      } catch (e) {
+        showToast('Capacity check unavailable; proceeding without it.', 'warning')
+        console.error('Capacity check failed', e)
+      }
     }
-    await loadOrders();
-    showForm.value = false;
-    editOrderId.value = null;
+    await persistOrder()
   } catch (error) {
     showToast(editOrderId.value ? 'Order update failed' : 'Order creation failed', 'error');
     console.error('Order save failed', error);
+  }
+}
+
+function cancelCapacityWarning() {
+  showCapacityWarning.value = false
+  capacityResult.value = null
+}
+
+async function confirmCapacityWarning() {
+  showCapacityWarning.value = false
+  capacityResult.value = null
+  try {
+    await persistOrder()
+  } catch (error) {
+    showToast('Order creation failed', 'error')
+    console.error('Order save failed', error)
   }
 }
 
