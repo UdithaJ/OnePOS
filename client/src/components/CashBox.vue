@@ -1,84 +1,100 @@
 <template>
-  <v-card color="secondary" dark>
-    <v-card-title class="d-flex align-center">
-      <v-icon class="mr-2">mdi-cash</v-icon>
-      Cash Box
-    </v-card-title>
-    <v-card-text>
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+    <div class="bg-[#0d3d38] px-5 py-3 flex items-center gap-2">
+      <v-icon color="white" size="20">mdi-cash</v-icon>
+      <span class="text-white text-sm font-medium">Cash Box</span>
+    </div>
+
+    <div class="px-5 py-5">
       <template v-if="loading">
-        <v-progress-circular indeterminate color="primary" />
+        <v-progress-circular indeterminate color="#0f766e" />
       </template>
       <template v-else-if="activeSession">
-        <div class="d-flex align-center mb-2">
-          <v-icon color="yellow-darken-2" class="mr-2">mdi-currency-usd</v-icon>
-          <span class="text-h4 font-weight-bold">
+        <div class="flex items-center gap-2 mb-3">
+          <v-icon color="#0f766e">mdi-currency-usd</v-icon>
+          <span class="text-3xl font-bold text-gray-900">
             ${{ activeSession.openingAmount.toFixed(2) }}
           </span>
         </div>
-        <div class="mb-1">
-          <v-icon class="mr-1" size="18">mdi-clock-outline</v-icon>
+        <div class="text-sm text-gray-500 mb-1">
+          <v-icon size="16" class="mr-1">mdi-clock-outline</v-icon>
           Open: {{ formatDate(activeSession.openedAt) }}
         </div>
-        <div class="mb-1">
-          <v-icon class="mr-1" size="18">mdi-checkbox-marked-circle-outline</v-icon>
-          Status: <span class="font-weight-bold">{{ activeSession.status }}</span>
+        <div class="text-sm text-gray-500">
+          <v-icon size="16" class="mr-1">mdi-checkbox-marked-circle-outline</v-icon>
+          Status: <span class="font-semibold text-gray-700">{{ activeSession.status }}</span>
         </div>
       </template>
       <template v-else>
-        <div>No active cash box session.</div>
+        <div class="text-gray-500 text-sm">No active cash box session.</div>
       </template>
-    </v-card-text>
-    <v-card-actions class="d-flex flex-row justify-space-between">
+    </div>
+
+    <div class="px-5 pb-5 flex items-center justify-between">
       <template v-if="activeSession">
-        <v-btn color="error" @click="openCloseDialog" :loading="actionLoading" :disabled="actionLoading">
-          Close Cash Box
-        </v-btn>
-        <div>
-          <v-btn icon="mdi-plus" color="success" size="small" class="mr-2" :disabled="true" />
-          <v-btn icon="mdi-minus" color="warning" size="small" @click="showExpenseDialog = true" />
+        <v-btn
+          color="error"
+          variant="outlined"
+          style="text-transform: none;"
+          @click="openCloseDialog"
+          :loading="actionLoading"
+          :disabled="actionLoading"
+        >Close Cash Box</v-btn>
+        <div class="flex gap-2">
+          <v-btn icon="mdi-plus" size="small" :disabled="true"
+            style="background: #f3f4f6; color: #9ca3af;" />
+          <v-btn icon="mdi-minus" size="small"
+            style="background: #0f766e; color: #ffffff;"
+            @click="showExpenseDialog = true" />
         </div>
       </template>
       <template v-else>
-        <v-btn color="primary" @click="openSessionDialog" :loading="actionLoading" :disabled="actionLoading">
-          Start New Session
-        </v-btn>
+        <v-btn
+          style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+          @click="openSessionDialog"
+          :loading="actionLoading"
+          :disabled="actionLoading"
+        >Start New Session</v-btn>
       </template>
-    </v-card-actions>
+    </div>
+
     <ConfirmationDialog
       v-model="showOpenDialog"
       title="Open Cash Box Session"
       @confirm="confirmStartSession"
     >
       <div>
-        <div><strong>Opening Amount:</strong> $0.00</div>
-        <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
-        <div class="mt-2">
-          <v-text-field
-            v-model="sessionStartDateTime"
-            label="Session Start Date & Time"
-            type="datetime-local"
-            required
-          />
-        </div>
+        <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> $0.00</div>
+        <div class="text-sm text-gray-600 mb-3"><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
+        <v-text-field
+          v-model="sessionStartDateTime"
+          label="Session Start Date & Time"
+          type="datetime-local"
+          required
+          variant="outlined"
+          density="compact"
+        />
       </div>
     </ConfirmationDialog>
+
     <ConfirmationDialog
       v-model="showCloseDialog"
       title="Close Cash Box Session"
       @confirm="confirmCloseSession"
     >
       <div>
-        <div><strong>Opening Amount:</strong> ${{ activeSession?.openingAmount?.toFixed(2) }}</div>
-        <div><strong>Opened At:</strong> {{ formatDate(activeSession?.openedAt) }}</div>
-        <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
+        <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> ${{ activeSession?.openingAmount?.toFixed(2) }}</div>
+        <div class="text-sm text-gray-600 mb-1"><strong>Opened At:</strong> {{ formatDate(activeSession?.openedAt) }}</div>
+        <div class="text-sm text-gray-600"><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
       </div>
     </ConfirmationDialog>
+
     <ExpenseDialog
       v-if="activeSession"
       v-model="showExpenseDialog"
       :session-id="activeSession._id"
     />
-  </v-card>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -95,8 +111,7 @@ const { getUser } = useAuth()
 
 const showOpenDialog = ref(false)
 const showCloseDialog = ref(false)
-const sessionStartDateTime = ref<string>("");
-const maxDateTime = new Date().toISOString().slice(0, 16);
+const sessionStartDateTime = ref<string>("")
 const showExpenseDialog = ref(false)
 
 function formatDate(dateStr: string) {
@@ -113,16 +128,7 @@ async function fetchSession() {
   }
 }
 
-async function startSession() {
-  openSessionDialog()
-}
-
-async function closeSession() {
-  openCloseDialog()
-}
-
 function openSessionDialog() {
-  // Set default to current date-time in local format for input[type=datetime-local]
   const now = new Date();
   const tzOffset = now.getTimezoneOffset() * 60000;
   sessionStartDateTime.value = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
@@ -137,7 +143,6 @@ async function confirmStartSession() {
   try {
     const user = getUser();
     const openingAmount = 0;
-    // Use selected date-time, fallback to now if empty
     let openedAt = sessionStartDateTime.value
       ? new Date(sessionStartDateTime.value).toISOString()
       : new Date().toISOString();

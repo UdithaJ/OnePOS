@@ -3,10 +3,7 @@
     <v-app-bar app color="primary" dark>
       <v-app-bar-title>OnePOS</v-app-bar-title>
       <v-spacer />
-      <v-btn icon @click="toggleTheme">
-        <v-icon>{{ isDarkTheme ? 'mdi-white-balance-sunny' : 'mdi-weather-night' }}</v-icon>
-      </v-btn>
-      <v-btn icon @click="handleLogout">
+<v-btn icon @click="handleLogout">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
@@ -36,7 +33,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 
@@ -46,23 +43,10 @@ const route = useRoute()
 const { logout } = useAuth()
 
 
-const isDarkTheme = computed(() => document.body.classList.contains('dark-theme'))
-
 onMounted(() => {
-  // Ensure only one theme class is present, default to light
   document.body.classList.remove('dark-theme')
   document.body.classList.add('light-theme')
 })
-
-function toggleTheme() {
-  if (document.body.classList.contains('dark-theme')) {
-    document.body.classList.remove('dark-theme')
-    document.body.classList.add('light-theme')
-  } else {
-    document.body.classList.remove('light-theme')
-    document.body.classList.add('dark-theme')
-  }
-}
 
 const menuItems = [
   { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard', disabled: false },
@@ -87,59 +71,42 @@ function handleLogout() {
 <style scoped lang="scss">
 @import '../styles/neomorphic.scss';
 
-
 .neomorphic-sidebar {
-  background: var(--side-bar-color);
+  background: var(--side-bar-color) !important;
   color: var(--sidebar-text);
   min-width: 220px;
-  box-shadow: 8px 0 16px var(--neomorphic-shadow-dark), -8px 0 16px var(--neomorphic-shadow-light);
-  border-top-right-radius: 24px;
-  border-bottom-right-radius: 24px;
+  box-shadow: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 1px solid #e5e7eb;
   transition: background 0.3s;
 }
 
 .neomorphic-sidebar .v-list-item {
-  color: var(--sidebar-text);
+  color: var(--sidebar-text) !important;
 }
 
 .neomorphic-sidebar .v-icon {
-  color: var(--sidebar-icon);
+  color: var(--sidebar-icon) !important;
 }
 
 .neomorphic-sidebar-item {
-  border-radius: 16px;
-  margin: 4px 8px;
-  transition: background 0.2s;
+  border-radius: 10px;
+  margin: 2px 8px;
+  transition: background 0.15s;
 }
 .neomorphic-sidebar-item.v-list-item--active {
-  background: var(--neomorphic-accent);
-  color: #fff;
+  background: #0f766e !important;
+  color: #fff !important;
 }
 .neomorphic-sidebar-item.v-list-item--active .v-icon {
-  color: #fff;
+  color: #fff !important;
+}
+.neomorphic-sidebar-item:not(.v-list-item--active):hover {
+  background: #f0fdfa !important;
+  color: #0f766e !important;
 }
 
-.neomorphic-sidebar .v-list-item {
-  color: var(--sidebar-text);
-}
-
-.neomorphic-sidebar .v-icon {
-  color: var(--sidebar-icon);
-}
-
-.neomorphic-sidebar-item {
-  border-radius: 16px;
-  margin: 4px 8px;
-  transition: background 0.2s;
-}
-.neomorphic-sidebar-item.v-list-item--active {
-  background: var(--neomorphic-accent);
-  color: #fff;
-}
-.neomorphic-sidebar-item.v-list-item--active .v-icon {
-  color: #fff;
-}
-// ...existing code...
 .neomorphic-main-bg {
   background: var(--neomorphic-container-bg) !important;
   min-height: 100vh;

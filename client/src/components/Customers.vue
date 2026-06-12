@@ -1,41 +1,59 @@
 <template>
-  <div>
-    <v-container>
-      <h2 class="mb-4">Customers</h2>
-      <BaseList
-        title="Customer List"
-        :headers="customerHeaders"
-        :items="customers"
-        @add="onAddCustomer"
-      />
-      <v-dialog v-model="showForm" max-width="600">
-        <template #default>
-          <v-card class="pa-6">
-            <h3 class="mb-4">Register Customer</h3>
-            <DynamicForm
-              :schema="customerFormSchema"
-              :form="form"
-              :isValid="isValid"
-              :onSubmit="handleSubmit"
-            />
+  <div class="p-6">
+    <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
+      <span class="w-1 h-7 bg-[#0f766e] rounded-full inline-block"></span>
+      Customers
+    </h2>
+
+    <BaseList
+      theme="teal"
+      title="Customer List"
+      :headers="customerHeaders"
+      :items="customers"
+      @add="onAddCustomer"
+    />
+
+    <v-dialog v-model="showForm" max-width="600">
+      <template #default>
+        <div class="customer-form-wrapper">
+          <v-card class="rounded-xl overflow-hidden" style="border: none;">
+            <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold">Register Customer</h3>
+              <v-btn
+                icon="mdi-close"
+                size="small"
+                variant="text"
+                style="color: rgba(255,255,255,0.8);"
+                @click="showForm = false"
+              />
+            </div>
+            <div class="bg-white px-6 pt-6 pb-4">
+              <DynamicForm
+                :schema="customerFormSchema"
+                :form="form"
+                :isValid="isValid"
+                :onSubmit="handleSubmit"
+              />
+              <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <v-btn
+                  variant="outlined"
+                  style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+                  @click="showForm = false"
+                >Cancel</v-btn>
+              </div>
+            </div>
           </v-card>
-        </template>
-      </v-dialog>
-    </v-container>
-    <div v-if="toast.show" :style="toastStyle">
-      {{ toast.message }}
-    </div>
+        </div>
+      </template>
+    </v-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
-
-
 import { ref, onMounted } from 'vue'
 import { useToast, toastStyle } from '@/composables/useToast'
 import { useDynamicForm } from '@/composables/useDynamicForm'
 import { getAllCustomers, createCustomer } from '@/services/customerApiService'
-
 import { defineAsyncComponent } from 'vue'
 
 const BaseList = defineAsyncComponent(() => import('./BaseList.vue'))
@@ -53,7 +71,6 @@ const customers = ref([])
 onMounted(async () => {
   try {
     const data = await getAllCustomers()
-    // Map backend data to table format
     customers.value = data.map((c: any) => ({
       name: c.firstName + ' ' + c.lastName,
       mobileNumber: c.mobileNumber,
@@ -61,7 +78,7 @@ onMounted(async () => {
       state: c.state,
     }))
   } catch (err) {
-    // Optionally handle error
+    // handle error
   }
 })
 
@@ -89,19 +106,15 @@ function onAddCustomer() {
 
 async function handleSubmit() {
   try {
-    // Call backend API to register customer
     const payload = { ...form.value }
     const saved = await createCustomer(payload)
-    // Add to local list (merge first/last name for display)
     customers.value.push({
       name: saved.firstName + ' ' + saved.lastName,
       mobileNumber: saved.mobileNumber,
       city: saved.city,
       state: saved.state,
-      // Optionally add more fields as needed
     })
     showForm.value = false
-    // Reset form fields
     Object.keys(form.value).forEach(key => form.value[key] = '')
     showToast('Customer registered successfully!', 'success')
   } catch (err) {
@@ -109,4 +122,3 @@ async function handleSubmit() {
   }
 }
 </script>
-

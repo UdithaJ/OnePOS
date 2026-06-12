@@ -22,9 +22,10 @@
           <span v-if="overdueCount > 0">{{ overdueCount }} overdue</span>
         </v-alert>
         <v-skeleton-loader v-if="loading" type="table" class="mb-4 neomorphic-card" :loading="loading" />
-        <div class="neomorphic-card">
+        <div>
           <BaseList
             v-if="!loading && !errorMsg"
+            theme="teal"
             :headers="orderHeaders"
             :items="orders"
             @add="handleAddOrder"
@@ -51,9 +52,11 @@
         </div>
       </section>
       <v-dialog v-model="showCapacityWarning" max-width="480">
-        <v-card>
-          <v-card-title class="text-h6">Capacity warning</v-card-title>
-          <v-card-text>
+        <v-card class="rounded-xl overflow-hidden" style="border: none;">
+          <div class="bg-[#0d3d38] text-white px-6 py-4">
+            <span class="text-base font-semibold">Capacity warning</span>
+          </div>
+          <div class="bg-white px-6 pt-4 pb-2 text-gray-700 text-sm">
             <p>This order may not be deliverable by the chosen date.</p>
             <p class="mt-2">
               Pending work: <strong>{{ capacityResult?.pendingKg ?? 0 }} kg</strong><br />
@@ -62,17 +65,26 @@
               ({{ capacityResult?.daysUntilDue ?? 0 }} day(s) × {{ capacityResult?.capacityPerDayKg ?? 0 }} kg/day)
             </p>
             <p class="mt-2">Proceed anyway?</p>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer />
-            <v-btn color="grey" text @click="cancelCapacityWarning">Cancel</v-btn>
-            <v-btn color="primary" @click="confirmCapacityWarning">Proceed</v-btn>
-          </v-card-actions>
+          </div>
+          <div class="bg-white flex justify-end gap-3 px-6 pb-4">
+            <v-btn variant="outlined"
+              style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+              @click="cancelCapacityWarning">Cancel</v-btn>
+            <v-btn
+              style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+              @click="confirmCapacityWarning">Proceed</v-btn>
+          </div>
         </v-card>
       </v-dialog>
       <v-dialog v-model="showForm" max-width="900" scrim>
         <template #default>
-          <v-card class="order-modal-card pa-6 neomorphic-card">
+          <v-card class="rounded-xl overflow-hidden" style="border: none;">
+            <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold">{{ editOrderId ? 'Edit Order' : 'New Order' }}</h3>
+              <v-btn icon="mdi-close" size="small" variant="text"
+                style="color: rgba(255,255,255,0.8);" @click="showForm = false" />
+            </div>
+            <div class="bg-white px-6 pt-6 pb-4">
             <DynamicForm
               :schema="orderFormSchema"
               :form="form"
@@ -111,7 +123,8 @@
                       <span>Suborders</span>
                       <span class="suborders-badge">{{ suborders.length }}</span>
                     </div>
-                    <v-btn color="primary" class="add-suborder-btn" @click="addSuborder" variant="outlined">+ Add suborder</v-btn>
+                    <v-btn class="add-suborder-btn" @click="addSuborder" variant="outlined"
+                      style="border-color: #0f766e; color: #0f766e; text-transform: none;">+ Add suborder</v-btn>
                   </div>
                   <div class="suborder-table">
                     <div v-for="(sub, idx) in suborders" :key="idx" class="suborder-row">
@@ -172,8 +185,11 @@
                 <span class="due-label">Due Amount:</span>
                 <span class="due-value">LKR {{ dueAmount.toFixed(2) }}</span>
               </div>
-              <v-btn color="success" class="modal-form" @click="showPaymentDialog = true">Make Payment</v-btn>
+              <v-btn
+                style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+                @click="showPaymentDialog = true">Make Payment</v-btn>
             </template>
+            </div>
           </v-card>
         </template>
       </v-dialog>

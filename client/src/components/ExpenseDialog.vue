@@ -1,38 +1,54 @@
 <template>
   <v-dialog v-model="dialogValue" max-width="500" @update:model-value="onDialogToggle">
-    <v-card class="pa-6">
-      <h3 class="mb-4">Add Expense</h3>
-      <v-form ref="formRef" v-model="isValid">
-        <v-select
-          v-model="expenseCategoryId"
-          :items="categories"
-          item-title="displayName"
-          item-value="_id"
-          label="Expense Category"
-          :rules="[(v) => !!v || 'Category is required']"
-          :loading="loadingCategories"
-          required
-        />
-        <v-text-field
-          v-model.number="amount"
-          label="Amount"
-          type="number"
-          min="0"
-          step="0.01"
-          :rules="[
-            (v) => (v !== null && v !== '' && !isNaN(Number(v))) || 'Amount is required',
-            (v) => Number(v) > 0 || 'Amount must be greater than 0'
-          ]"
-          required
-        />
-      </v-form>
-      <v-card-actions class="px-0">
-        <v-spacer />
-        <v-btn variant="text" :disabled="saving" @click="close">Cancel</v-btn>
-        <v-btn color="primary" :loading="saving" :disabled="!isValid || saving" @click="onSave">
-          Save
-        </v-btn>
-      </v-card-actions>
+    <v-card class="rounded-xl overflow-hidden" style="border: none;">
+      <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
+        <span class="text-base font-semibold">Add Expense</span>
+        <v-btn icon="mdi-close" size="small" variant="text"
+          style="color: rgba(255,255,255,0.8);" @click="close" />
+      </div>
+      <div class="bg-white px-6 pt-6 pb-4">
+        <v-form ref="formRef" v-model="isValid">
+          <v-select
+            v-model="expenseCategoryId"
+            :items="categories"
+            item-title="displayName"
+            item-value="_id"
+            label="Expense Category"
+            :rules="[(v) => !!v || 'Category is required']"
+            :loading="loadingCategories"
+            required
+            variant="outlined"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model.number="amount"
+            label="Amount"
+            type="number"
+            min="0"
+            step="0.01"
+            :rules="[
+              (v) => (v !== null && v !== '' && !isNaN(Number(v))) || 'Amount is required',
+              (v) => Number(v) > 0 || 'Amount must be greater than 0'
+            ]"
+            required
+            variant="outlined"
+          />
+        </v-form>
+        <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+          <v-btn
+            variant="outlined"
+            :disabled="saving"
+            style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+            @click="close"
+          >Cancel</v-btn>
+          <v-btn
+            :loading="saving"
+            :disabled="!isValid || saving"
+            style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+            @click="onSave"
+          >Save</v-btn>
+        </div>
+      </div>
     </v-card>
   </v-dialog>
 </template>

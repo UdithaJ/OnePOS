@@ -13,7 +13,7 @@ const toast = ref<Toast>({ message: '', type: 'success', show: false })
 import { computed } from 'vue'
 
 export const toastStyle = computed(() => ({
-  position: 'fixed',
+  position: 'fixed' as const,
   top: '24px',
   right: '24px',
   zIndex: 9999,
