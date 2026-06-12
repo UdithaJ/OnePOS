@@ -67,8 +67,13 @@
   border-bottom: 1px solid #e5e7eb !important;
   color: #111827 !important;
 }
-.base-list-card--teal .v-data-table tr:hover td {
+.base-list-card--teal .v-data-table tbody tr:hover,
+.base-list-card--teal .v-data-table tbody tr:hover td {
   background: #f0fdfa !important;
+  --v-hover-opacity: 0 !important;
+}
+.base-list-card--teal .v-data-table tbody tr:hover > td::before {
+  background: transparent !important;
 }
 .base-list-card--teal .v-data-table .v-btn {
   color: #0f766e !important;
