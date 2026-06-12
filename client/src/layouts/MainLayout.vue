@@ -1,11 +1,22 @@
 <template>
   <v-app>
-    <v-app-bar app color="primary" dark>
-      <v-app-bar-title>OnePOS</v-app-bar-title>
+    <v-app-bar app style="background: #292929;">
+      <v-app-bar-title style="color: #ffffff; font-weight: 600;">Softwash</v-app-bar-title>
       <v-spacer />
-<v-btn icon @click="handleLogout">
-        <v-icon>mdi-logout</v-icon>
-      </v-btn>
+      <v-menu location="bottom end" :offset="8">
+        <template #activator="{ props: menuProps }">
+          <v-btn v-bind="menuProps" variant="text" class="user-menu-btn" rounded="pill">
+            <v-avatar size="32" color="#0f766e" class="mr-2">
+              <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
+            </v-avatar>
+            <span class="user-name">{{ userName }}</span>
+            <v-icon size="18" class="ml-1">mdi-chevron-down</v-icon>
+          </v-btn>
+        </template>
+        <v-list rounded="lg" elevation="3" density="compact" class="pa-0">
+          <v-list-item title="Logout" @click="handleLogout" class="text-center px-6 py-1" style="min-height: unset;" />
+        </v-list>
+      </v-menu>
     </v-app-bar>
     <v-navigation-drawer
       app
@@ -33,14 +44,26 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 
 const drawer = ref(true)
 const router = useRouter()
 const route = useRoute()
-const { logout } = useAuth()
+const { logout, getUser } = useAuth()
+
+const userName = computed(() => {
+  const user = getUser()
+  return [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'
+})
+
+const userInitials = computed(() => {
+  const user = getUser()
+  const first = user?.firstName?.[0] ?? ''
+  const last = user?.lastName?.[0] ?? ''
+  return (first + last).toUpperCase() || 'U'
+})
 
 
 onMounted(() => {
@@ -105,6 +128,17 @@ function handleLogout() {
 .neomorphic-sidebar-item:not(.v-list-item--active):hover {
   background: #f0fdfa !important;
   color: #0f766e !important;
+}
+
+.user-menu-btn {
+  color: #ffffff !important;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.user-name {
+  font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .neomorphic-main-bg {
