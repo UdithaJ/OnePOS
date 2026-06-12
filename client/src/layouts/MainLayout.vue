@@ -22,20 +22,56 @@
       app
       v-model="drawer"
       :permanent="true"
+      :width="260"
       class="neomorphic-sidebar"
     >
-      <v-list nav>
-        <v-list-item
-          v-for="item in menuItems"
-          :key="item.title"
-          :to="item.to"
-          :prepend-icon="item.icon"
-          :active="isActive(item.to)"
-          class="neomorphic-sidebar-item"
-        >
-          <v-list-item-title>{{ item.title }}</v-list-item-title>
-        </v-list-item>
-      </v-list>
+      <div class="sidebar-content">
+        <v-list nav>
+          <template v-for="item in menuItems" :key="item.title">
+            <v-list-group v-if="item.children" :value="item.title">
+              <template #activator="{ props: groupProps }">
+                <v-list-item
+                  v-bind="groupProps"
+                  :prepend-icon="item.icon"
+                  :title="item.title"
+                  class="neomorphic-sidebar-item"
+                />
+              </template>
+              <v-list-item
+                v-for="child in item.children"
+                :key="child.title"
+                :to="child.to"
+                :prepend-icon="child.icon"
+                :active="isActive(child.to)"
+                class="neomorphic-sidebar-item neomorphic-sidebar-child"
+              >
+                <v-list-item-title>{{ child.title }}</v-list-item-title>
+              </v-list-item>
+            </v-list-group>
+
+            <v-list-item
+              v-else
+              :to="item.to"
+              :prepend-icon="item.icon"
+              :active="isActive(item.to)"
+              class="neomorphic-sidebar-item"
+            >
+              <v-list-item-title>{{ item.title }}</v-list-item-title>
+            </v-list-item>
+          </template>
+        </v-list>
+
+        <v-list nav class="sidebar-bottom">
+          <v-list-item
+            to="/system-settings"
+            prepend-icon="mdi-cog"
+            :active="isActive('/system-settings')"
+            class="neomorphic-sidebar-item"
+          >
+            <v-list-item-title>Settings</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </div>
     </v-navigation-drawer>
     <v-main class="neomorphic-main-bg">
       <router-view />
@@ -71,17 +107,36 @@ onMounted(() => {
   document.body.classList.add('light-theme')
 })
 
-const menuItems = [
-  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard', disabled: false },
-  { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list', disabled: false },
-  { title: 'Customers', to: '/customers', icon: 'mdi-account-group', disabled: false },
-  { title: 'Users', to: '/users', icon: 'mdi-account-cog', disabled: false },
-  { title: 'Categories', to: '/categories', icon: 'mdi-tag-multiple', disabled: false },
-  { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus', disabled: false },
-  { title: 'Settings', to: '/system-settings', icon: 'mdi-cog', disabled: false },
+interface MenuItem {
+  title: string
+  to?: string
+  icon: string
+  disabled?: boolean
+  children?: MenuItem[]
+}
+
+const menuItems: MenuItem[] = [
+  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
+  { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list' },
+  { title: 'Customers', to: '/customers', icon: 'mdi-account-group' },
+  {
+    title: 'Administration',
+    icon: 'mdi-shield-account-outline',
+    children: [
+      { title: 'Users', to: '/users', icon: 'mdi-account-cog' },
+    ],
+  },
+  {
+    title: 'Configuration',
+    icon: 'mdi-cog-outline',
+    children: [
+      { title: 'Laundry Categories', to: '/categories', icon: 'mdi-tag-multiple' },
+      { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus' },
+    ],
+  },
 ]
 
-function isActive(to: string) {
+function isActive(to?: string) {
   return !!to && route.path === to
 }
 
@@ -97,7 +152,7 @@ function handleLogout() {
 .neomorphic-sidebar {
   background: var(--side-bar-color) !important;
   color: var(--sidebar-text);
-  min-width: 220px;
+  min-width: 260px;
   box-shadow: none;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
@@ -117,6 +172,24 @@ function handleLogout() {
   border-radius: 10px;
   margin: 2px 8px;
   transition: background 0.15s;
+}
+
+:deep(.neomorphic-sidebar-item .v-list-item__prepend) {
+  margin-inline-end: 4px !important;
+  width: auto !important;
+}
+
+:deep(.v-list-group__items .neomorphic-sidebar-child) {
+  padding-inline-start: 24px !important;
+}
+
+:deep(.neomorphic-sidebar-child .v-list-item__prepend) {
+  margin-inline-end: 2px !important;
+  width: auto !important;
+}
+
+:deep(.neomorphic-sidebar-child .v-list-item-title) {
+  font-size: 0.85rem !important;
 }
 .neomorphic-sidebar-item.v-list-item--active {
   background: #0f766e !important;
@@ -148,5 +221,17 @@ function handleLogout() {
   transition: background 0.3s;
   position: relative;
   z-index: 1;
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 4px;
 }
 </style>
