@@ -9,11 +9,11 @@
       <!-- Total Sales -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         <div class="bg-[#0d3d38] px-5 py-3 flex items-center gap-2">
-          <v-icon color="white" size="20">mdi-currency-usd</v-icon>
+          <v-icon color="white" size="20">mdi-currency-inr</v-icon>
           <span class="text-white text-sm font-medium">Total Sales</span>
         </div>
         <div class="px-5 py-5">
-          <div class="text-3xl font-bold text-gray-900">$2,350.00</div>
+          <div class="text-3xl font-bold text-gray-900">Rs 2,350.00</div>
           <div class="text-sm text-gray-500 mt-1">This month</div>
         </div>
       </div>
