@@ -49,18 +49,30 @@
       <!-- Quick Actions -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         <div class="bg-[#0d3d38] px-5 py-3">
-          <span class="text-white text-sm font-medium">Quick Actions</span>
+          <span class="text-white text-sm font-medium">Quick Access</span>
         </div>
-        <div class="px-5 py-5 flex flex-col gap-3">
+        <div class="px-5 py-5 grid grid-cols-2 gap-3">
           <v-btn
             block
+            height="80"
+            stacked
             style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-          >New Sale</v-btn>
+            @click="router.push('/order-list')"
+          >
+            <v-icon size="24" class="mb-1">mdi-clipboard-plus-outline</v-icon>
+            New Order
+          </v-btn>
           <v-btn
             block
+            height="80"
+            stacked
             variant="outlined"
             style="border-color: #0f766e; color: #0f766e; text-transform: none; font-weight: 600;"
-          >View Reports</v-btn>
+            @click="router.push('/customers')"
+          >
+            <v-icon size="24" class="mb-1">mdi-account-plus-outline</v-icon>
+            New Customer
+          </v-btn>
         </div>
       </div>
     </div>
@@ -68,5 +80,8 @@
 </template>
 
 <script lang="ts" setup>
+import { useRouter } from 'vue-router'
 import CashBox from './CashBox.vue'
+
+const router = useRouter()
 </script>
