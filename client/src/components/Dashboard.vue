@@ -36,9 +36,16 @@
           <v-icon color="white" size="20">mdi-timer-sand</v-icon>
           <span class="text-white text-sm font-medium">Pending Orders</span>
         </div>
-        <div class="px-5 py-5">
-          <div class="text-3xl font-bold text-gray-900">5</div>
-          <div class="text-sm text-gray-500 mt-1">Awaiting processing</div>
+        <div class="px-5 py-5 flex items-center justify-between">
+          <div>
+            <div class="text-3xl font-bold text-gray-900">{{ pendingCount }}</div>
+            <div class="text-sm text-gray-500 mt-1">Awaiting processing</div>
+          </div>
+          <div class="w-px h-10 bg-gray-200"></div>
+          <div>
+            <div class="text-3xl font-bold text-gray-900">{{ pendingWeightKg }} <span class="text-lg font-medium text-gray-500">kg</span></div>
+            <div class="text-sm text-gray-500 mt-1">Total weight</div>
+          </div>
         </div>
       </div>
     </div>
@@ -80,8 +87,23 @@
 </template>
 
 <script lang="ts" setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import CashBox from './CashBox.vue'
+import { getAllOrders } from '@/services/orderApiService'
 
 const router = useRouter()
+
+const pendingCount = ref(0)
+const pendingWeightKg = ref(0)
+
+onMounted(async () => {
+  const orders = await getAllOrders()
+  const pending = (orders || []).filter((o: any) => o.status === 'todo' || o.status === 'in_progress')
+  pendingCount.value = pending.length
+  pendingWeightKg.value = pending.reduce((sum: number, o: any) => {
+    const w = (o.suborders || []).reduce((s: number, sub: any) => s + (Number(sub.weight) || 0), 0)
+    return sum + w
+  }, 0)
+})
 </script>
