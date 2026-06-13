@@ -41,6 +41,7 @@
                 :form="form"
                 :isValid="true"
                 :onSubmit="handleSubmit"
+                :hideDefaultSubmit="true"
               />
               <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <v-btn
@@ -48,6 +49,10 @@
                   style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
                   @click="showForm = false"
                 >Cancel</v-btn>
+                <v-btn
+                  style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
+                  @click="handleSubmit"
+                >Submit</v-btn>
               </div>
             </div>
           </v-card>

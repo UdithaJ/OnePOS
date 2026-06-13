@@ -95,24 +95,33 @@
               <template #default>
                 <div class="order-form-row">
                   <div class="order-form-field">
-                    <v-autocomplete
-                      v-model="form.customer"
-                      :items="orderFormSchema.fields[0].options"
-                      label="Customer"
-                      :rules="[v => !!v || 'Customer is required']"
-                      required
-                      class="modal-form"
-                    />
+                    <div class="field-group">
+                      <label class="field-label">Customer <span class="required-star">*</span></label>
+                      <v-autocomplete
+                        v-model="form.customer"
+                        :items="orderFormSchema.fields[0].options"
+                        placeholder="Select customer"
+                        :rules="[v => !!v || 'Customer is required']"
+                        required
+                        variant="outlined"
+                        density="compact"
+                        hide-details="auto"
+                      />
+                    </div>
                   </div>
                   <div class="order-form-field">
-                    <v-text-field
-                      v-model="form.deliveryDate"
-                      label="Delivery date"
-                      type="date"
-                      :rules="[v => !!v || 'Delivery date is required']"
-                      required
-                      class="modal-form"
-                    />
+                    <div class="field-group">
+                      <label class="field-label">Delivery Date <span class="required-star">*</span></label>
+                      <v-text-field
+                        v-model="form.deliveryDate"
+                        type="date"
+                        :rules="[v => !!v || 'Delivery date is required']"
+                        required
+                        variant="outlined"
+                        density="compact"
+                        hide-details="auto"
+                      />
+                    </div>
                   </div>
                 </div>
               </template>
@@ -128,34 +137,52 @@
                   </div>
                   <div class="suborder-table">
                     <div v-for="(sub, idx) in suborders" :key="idx" class="suborder-row">
-                      <v-select
-                        v-model="sub.category"
-                        :items="categories"
-                        item-title="label"
-                        item-value="value"
-                        label="Category"
-                        :rules="[v => !!v || 'Category is required']"
-                        class="modal-form suborder-field small-field"
-                        @change="() => updateSuborderAmount(idx)"
-                        required
-                      />
-                      <v-text-field
-                        v-model="sub.weight"
-                        label="Weight (kg)"
-                        type="number"
-                        :rules="[v => !!v || 'Weight is required']"
-                        class="modal-form suborder-field small-field"
-                        @input="() => updateSuborderAmount(idx)"
-                        required
-                      />
-                      <v-text-field
-                        :value="sub.amount"
-                        label="Amount"
-                        type="number"
-                        readonly
-                        class="modal-form suborder-field small-field"
-                      />
-                      <v-btn icon color="error" class="modal-form delete-btn" @click="removeSuborder(idx)"><v-icon>mdi-delete</v-icon></v-btn>
+                      <div class="field-group suborder-field small-field">
+                        <label class="field-label">Category <span class="required-star">*</span></label>
+                        <v-select
+                          v-model="sub.category"
+                          :items="categories"
+                          item-title="label"
+                          item-value="value"
+                          placeholder="Select"
+                          :rules="[v => !!v || 'Category is required']"
+                          variant="outlined"
+                          density="compact"
+                          hide-details="auto"
+                          @change="() => updateSuborderAmount(idx)"
+                          required
+                        />
+                      </div>
+                      <div class="field-group suborder-field small-field">
+                        <label class="field-label">Weight (kg) <span class="required-star">*</span></label>
+                        <v-text-field
+                          v-model="sub.weight"
+                          placeholder="0"
+                          type="number"
+                          :rules="[v => !!v || 'Weight is required']"
+                          variant="outlined"
+                          density="compact"
+                          hide-details="auto"
+                          @input="() => updateSuborderAmount(idx)"
+                          required
+                        />
+                      </div>
+                      <div class="field-group suborder-field small-field">
+                        <label class="field-label">Amount</label>
+                        <v-text-field
+                          :value="sub.amount"
+                          placeholder="0"
+                          type="number"
+                          readonly
+                          variant="outlined"
+                          density="compact"
+                          hide-details="auto"
+                        />
+                      </div>
+                      <div class="delete-btn-wrapper">
+                        <span class="delete-btn-spacer"></span>
+                        <v-btn icon color="error" size="small" @click="removeSuborder(idx)"><v-icon size="18">mdi-delete</v-icon></v-btn>
+                      </div>
                     </div>
                   </div>
                   <v-divider class="order-divider" />
@@ -163,31 +190,33 @@
                     <span class="order-total-label">Total Amount</span>
                     <span class="order-total-amount">LKR {{ totalAmount.toFixed(2) }}</span>
                   </div>
-                  <v-btn color="primary" class="submit-order-btn" type="submit" block variant="outlined">Submit order</v-btn>
+                  <v-btn type="submit" block
+                    style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600; height: 44px;">Submit order</v-btn>
                 </div>
               </template>
             </DynamicForm>
             <template v-if="editOrderId">
-              <v-divider class="my-4" />
-              <div v-if="payments.length > 0" class="payment-list-section">
-                <div class="payment-list-header">Payments Made</div>
-                <v-list dense>
-                  <v-list-item v-for="(p, idx) in payments" :key="idx">
-                    <v-list-item-content>
-                      <v-list-item-title>
-                        {{ p.date ? new Date(p.date).toLocaleString() : '' }} - {{ p.amount }} ({{ p.paymentMethod }})
-                      </v-list-item-title>
-                    </v-list-item-content>
-                  </v-list-item>
-                </v-list>
+              <v-divider class="mt-4 mb-3" />
+              <div class="payments-section">
+                <div v-if="payments.length > 0">
+                  <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Payments Made</div>
+                  <div v-for="(p, idx) in payments" :key="idx" class="payment-row">
+                    <span class="payment-date">{{ p.date ? new Date(p.date).toLocaleString() : '' }}</span>
+                    <span class="payment-method">{{ p.paymentMethod }}</span>
+                    <span class="payment-amount">LKR {{ Number(p.amount).toFixed(2) }}</span>
+                  </div>
+                  <v-divider class="my-3" />
+                </div>
+                <div class="due-row">
+                  <span class="text-sm font-medium text-gray-600">Due Amount</span>
+                  <span class="text-base font-bold" :style="{ color: dueAmount > 0 ? '#b45309' : '#0f766e' }">
+                    LKR {{ dueAmount.toFixed(2) }}
+                  </span>
+                </div>
+                <v-btn block class="mt-3"
+                  style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600; height: 40px;"
+                  @click="showPaymentDialog = true">Make Payment</v-btn>
               </div>
-              <div class="due-amount-section">
-                <span class="due-label">Due Amount:</span>
-                <span class="due-value">LKR {{ dueAmount.toFixed(2) }}</span>
-              </div>
-              <v-btn
-                style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-                @click="showPaymentDialog = true">Make Payment</v-btn>
             </template>
             </div>
           </v-card>
