@@ -5,8 +5,9 @@
       System Settings
     </h2>
 
+    <div class="flex gap-6 items-start">
     <!-- Configuration -->
-    <v-card class="rounded-xl overflow-hidden max-w-lg" style="border: 1px solid #e5e7eb;">
+    <v-card class="rounded-xl overflow-hidden" style="border: 1px solid #e5e7eb; min-width: 380px; width: 420px; flex-shrink: 0;">
       <div class="bg-[#0d3d38] text-white px-6 py-4">
         <span class="text-base font-semibold">Configuration</span>
       </div>
@@ -45,7 +46,7 @@
     </v-card>
 
     <!-- Bulk SMS -->
-    <v-card class="rounded-xl overflow-hidden mt-8" style="border: 1px solid #e5e7eb;">
+    <v-card class="rounded-xl overflow-hidden flex-1" style="border: 1px solid #e5e7eb;">
       <div class="bg-[#0d3d38] text-white px-6 py-4">
         <span class="text-base font-semibold">Bulk SMS</span>
       </div>
@@ -97,6 +98,7 @@
         </div>
       </div>
     </v-card>
+    </div>
 
     <!-- Confirmation dialog -->
     <v-dialog v-model="confirmDialog" max-width="420">
