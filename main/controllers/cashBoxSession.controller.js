@@ -37,3 +37,13 @@ exports.getCashBoxSessionById = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.getCashBoxSessionBalance = async (req, res) => {
+  try {
+    const balance = await cashBoxSessionService.getCashBoxSessionBalance(req.params.id);
+    if (!balance) return res.status(404).json({ error: 'Session not found' });
+    res.json(balance);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

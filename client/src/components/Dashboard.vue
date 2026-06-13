@@ -5,11 +5,11 @@
       <v-col cols="12" md="4">
         <v-card color="primary" dark>
           <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-currency-usd</v-icon>
+            <v-icon class="mr-2">mdi-currency-inr</v-icon>
             Total Sales
           </v-card-title>
           <v-card-text>
-            <div class="text-h4 font-weight-bold">$2,350.00</div>
+            <div class="text-h4 font-weight-bold">Rs 2,350.00</div>
           </v-card-text>
         </v-card>
       </v-col>

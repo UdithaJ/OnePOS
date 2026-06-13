@@ -4,6 +4,16 @@ import axios from 'axios';
 const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
 const API_BASE = `${baseUrl}/api/cashbox-sessions`;
 
+export interface CashBoxSessionBalance {
+  sessionId: string;
+  openingAmount: number;
+  totalPayments: number;
+  totalExpenses: number;
+  totalDeposits: number;
+  totalWithdrawals: number;
+  currentAmount: number;
+}
+
 export const getActiveCashBoxSession = async () => {
   // Fetch all sessions and return the open one (if any)
   const { data } = await axios.get(API_BASE);
@@ -20,5 +30,10 @@ export const closeCashBoxSession = async (
   payload: { closingAmount: number; closedBy: string; status?: string }
 ) => {
   const { data } = await axios.patch(`${API_BASE}/${id}`, payload);
+  return data;
+};
+
+export const getCashBoxSessionBalance = async (id: string): Promise<CashBoxSessionBalance> => {
+  const { data } = await axios.get(`${API_BASE}/${id}/balance`);
   return data;
 };

@@ -11,6 +11,9 @@ router.patch('/:id', cashBoxSessionController.updateCashBoxSession);
 // Get all cash box sessions
 router.get('/', cashBoxSessionController.getAllCashBoxSessions);
 
+// Get calculated balance for a session
+router.get('/:id/balance', cashBoxSessionController.getCashBoxSessionBalance);
+
 // Get one cash box session
 router.get('/:id', cashBoxSessionController.getCashBoxSessionById);
 

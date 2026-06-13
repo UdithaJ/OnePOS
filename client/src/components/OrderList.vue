@@ -157,6 +157,7 @@ const orderHeaders = [
   { title: 'Customer', key: 'customer', align: 'start' },
   { title: 'Status', key: 'status', align: 'start' },
   { title: 'Total', key: 'total', align: 'end' },
+  { title: 'Payment Status', key: 'paymentStatus', align: 'end' },
   { title: 'Actions', key: 'actions', align: 'end', sortable: false },
 ]
 
@@ -204,17 +205,45 @@ async function onPaymentMade(payment: any) {
   try {
     const activeSession = await getActiveCashBoxSession();
     const user = getUser();
+    
+    // Validate that both session and user exist before allowing payment
+    if (!activeSession) {
+      showToast('No active cash box session. Please open one first.', 'warning');
+      return;
+    }
+    if (!user) {
+      showToast('User information not found. Please log in again.', 'warning');
+      return;
+    }
+    
     await makePayment({
       orderId: editOrderId.value || '',
       amount: payment.amount,
       paymentMethod: payment.paymentMethod,
       type: payment.type,
-      sessionId: activeSession?._id,
-      userId: user?._id
+      sessionId: activeSession._id,
+      userId: user._id
     })
+    
     showToast('Payment successful!', 'success')
-    await loadOrders()
-    showPaymentDialog.value = false
+    
+    // Reload payments to update due amount
+    payments.value = await getPaymentsByOrder(editOrderId.value || '')
+    
+    // Check if order is fully paid
+    if (dueAmount.value <= 0) {
+      // Auto-update order status to completed when fully paid
+      await updateOrder(editOrderId.value || '', {
+        status: 'completed'
+      })
+      showToast('Order marked as completed!', 'success')
+      await loadOrders()
+      showForm.value = false
+      editOrderId.value = null
+      showPaymentDialog.value = false
+    } else {
+      showPaymentDialog.value = false
+    }
   } catch (e) {
     showToast('Payment failed', 'error')
   }
@@ -283,12 +312,20 @@ async function loadCustomersAndOrders() {
 }
 
 function setOrdersFromData(orderData: any[]) {
-  orders.value = (orderData || []).map((order: any) => ({
-    id: order._id,
-    customer: customers.value.find(c => c.value === (order.customerID?._id || order.customerID))?.label || order.customerID,
-    status: order.status,
-    total: typeof order.totalAmount === 'number' ? `$${order.totalAmount.toFixed(2)}` : order.totalAmount
-  }))
+  orders.value = (orderData || []).map((order: any) => {
+    // Determine payment status based on order status
+    let paymentStatus = 'Not Paid'
+    if (order.status === 'completed') {
+      paymentStatus = 'Paid'
+    }
+    return {
+      id: order._id,
+      customer: customers.value.find(c => c.value === (order.customerID?._id || order.customerID))?.label || order.customerID,
+      status: order.status,
+      total: typeof order.totalAmount === 'number' ? `LKR ${order.totalAmount.toFixed(2)}` : order.totalAmount,
+      paymentStatus
+    }
+  })
 }
 
 async function loadOrders() {

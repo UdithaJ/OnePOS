@@ -10,10 +10,13 @@
       </template>
       <template v-else-if="activeSession">
         <div class="d-flex align-center mb-2">
-          <v-icon color="yellow-darken-2" class="mr-2">mdi-currency-usd</v-icon>
+          <v-icon color="yellow-darken-2" class="mr-2">mdi-currency-inr</v-icon>
           <span class="text-h4 font-weight-bold">
-            ${{ activeSession.openingAmount.toFixed(2) }}
+            Rs {{ displayAmount.toFixed(2) }}
           </span>
+        </div>
+        <div class="mb-1 text-caption">
+          Current cashbox amount
         </div>
         <div class="mb-1">
           <v-icon class="mr-1" size="18">mdi-clock-outline</v-icon>
@@ -50,7 +53,7 @@
       @confirm="confirmStartSession"
     >
       <div>
-        <div><strong>Opening Amount:</strong> $0.00</div>
+        <div><strong>Opening Amount:</strong> Rs 0.00</div>
         <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
         <div class="mt-2">
           <v-text-field
@@ -68,7 +71,7 @@
       @confirm="confirmCloseSession"
     >
       <div>
-        <div><strong>Opening Amount:</strong> ${{ activeSession?.openingAmount?.toFixed(2) }}</div>
+        <div><strong>Opening Amount:</strong> Rs {{ activeSession?.openingAmount?.toFixed(2) }}</div>
         <div><strong>Opened At:</strong> {{ formatDate(activeSession?.openedAt) }}</div>
         <div><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
       </div>
@@ -77,13 +80,19 @@
       v-if="activeSession"
       v-model="showExpenseDialog"
       :session-id="activeSession._id"
+      @saved="fetchSession"
     />
   </v-card>
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
-import { getActiveCashBoxSession, createCashBoxSession, closeCashBoxSession } from '../services/cashBoxSessionApiService'
+import { ref, onMounted, computed } from 'vue'
+import {
+  getActiveCashBoxSession,
+  createCashBoxSession,
+  closeCashBoxSession,
+  getCashBoxSessionBalance,
+} from '../services/cashBoxSessionApiService'
 import { useAuth } from '../composables/useAuth'
 import ConfirmationDialog from './ConfirmationDialog.vue'
 import ExpenseDialog from './ExpenseDialog.vue'
@@ -91,6 +100,7 @@ import ExpenseDialog from './ExpenseDialog.vue'
 const loading = ref(true)
 const actionLoading = ref(false)
 const activeSession = ref<any | null>(null)
+const currentAmount = ref<number | null>(null)
 const { getUser } = useAuth()
 
 const showOpenDialog = ref(false)
@@ -98,6 +108,11 @@ const showCloseDialog = ref(false)
 const sessionStartDateTime = ref<string>("");
 const maxDateTime = new Date().toISOString().slice(0, 16);
 const showExpenseDialog = ref(false)
+
+const displayAmount = computed(() => {
+  if (typeof currentAmount.value === 'number') return currentAmount.value
+  return Number(activeSession.value?.openingAmount || 0)
+})
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
@@ -108,6 +123,12 @@ async function fetchSession() {
   loading.value = true
   try {
     activeSession.value = await getActiveCashBoxSession()
+    if (activeSession.value?._id) {
+      const balance = await getCashBoxSessionBalance(activeSession.value._id)
+      currentAmount.value = Number(balance.currentAmount || 0)
+    } else {
+      currentAmount.value = null
+    }
   } finally {
     loading.value = false
   }
@@ -152,7 +173,7 @@ async function confirmCloseSession() {
   actionLoading.value = true
   try {
     const user = getUser();
-    const closingAmount = activeSession.value.openingAmount;
+    const closingAmount = displayAmount.value;
     const payload = {
       closingAmount,
       closedBy: user?._id,
