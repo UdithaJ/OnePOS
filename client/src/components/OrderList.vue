@@ -120,11 +120,11 @@
                 <div class="order-suborders-section">
                   <div class="order-suborders-header">
                     <div class="suborders-label">
-                      <span>Suborders</span>
+                      <span>Order Items</span>
                       <span class="suborders-badge">{{ suborders.length }}</span>
                     </div>
                     <v-btn class="add-suborder-btn" @click="addSuborder" variant="outlined"
-                      style="border-color: #0f766e; color: #0f766e; text-transform: none;">+ Add suborder</v-btn>
+                      style="border-color: #0f766e; color: #0f766e; text-transform: none;">+ Add Item</v-btn>
                   </div>
                   <div class="suborder-table">
                     <div v-for="(sub, idx) in suborders" :key="idx" class="suborder-row">
@@ -160,7 +160,7 @@
                   </div>
                   <v-divider class="order-divider" />
                   <div class="order-total-row">
-                    <span class="order-total-label">Order total</span>
+                    <span class="order-total-label">Total Amount</span>
                     <span class="order-total-amount">LKR {{ totalAmount.toFixed(2) }}</span>
                   </div>
                   <v-btn color="primary" class="submit-order-btn" type="submit" block variant="outlined">Submit order</v-btn>
