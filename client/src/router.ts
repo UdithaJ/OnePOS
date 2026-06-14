@@ -73,6 +73,11 @@ const routes: RouteRecordRaw[] = [
         name: 'ReturningCustomersReport',
         component: () => import('@/components/reports/ReturningCustomersReport.vue'),
       },
+      {
+        path: 'reports/cash-box-summary',
+        name: 'CashBoxSummaryReport',
+        component: () => import('@/components/reports/CashBoxSummaryReport.vue'),
+      },
       // Add more child routes here
     ],
   },

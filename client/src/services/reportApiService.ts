@@ -110,3 +110,25 @@ export async function getReturningCustomersReport(params: ReturningCustomersPara
   const response = await axios.get(`${baseUrl()}/api/reports/returning-customers`, { params })
   return response.data
 }
+
+export interface CashBoxSummaryRow {
+  orderId: string
+  orderNo: number
+  createdDate: string
+  businessDate: string | null
+  customerName: string
+  totalAmount: number
+  dueAmount: number
+  paymentMethod: string | null
+  paymentReceived: number | null
+}
+
+export interface CashBoxSummaryParams {
+  fromDate: string
+  toDate: string
+}
+
+export async function getCashBoxSummaryReport(params: CashBoxSummaryParams): Promise<CashBoxSummaryRow[]> {
+  const response = await axios.get(`${baseUrl()}/api/reports/cash-box-summary`, { params })
+  return response.data
+}
