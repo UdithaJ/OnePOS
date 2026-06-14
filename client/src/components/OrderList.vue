@@ -425,6 +425,7 @@ const ORDER_STATUSES = [
   { label: 'In Progress', value: 'in_progress' },
   { label: 'Completed', value: 'completed' },
   { label: 'Cancelled', value: 'cancelled' },
+  { label: 'Delivered', value: 'delivered' },
 ]
 
 const orderFormSchema = computed(() => ({
