@@ -53,6 +53,16 @@ const routes: RouteRecordRaw[] = [
         name: 'DailySalesReport',
         component: () => import('@/components/reports/DailySalesReport.vue'),
       },
+      {
+        path: 'reports/pending-orders',
+        name: 'PendingOrdersReport',
+        component: () => import('@/components/reports/PendingOrdersReport.vue'),
+      },
+      {
+        path: 'reports/bank-reconciliation',
+        name: 'BankReconciliationReport',
+        component: () => import('@/components/reports/BankReconciliationReport.vue'),
+      },
       // Add more child routes here
     ],
   },

@@ -24,3 +24,43 @@ export async function getDailySalesReport(params: DailySalesReportParams): Promi
   const response = await axios.get(`${baseUrl()}/api/reports/daily-sales`, { params })
   return response.data
 }
+
+export interface PendingOrdersRow {
+  orderId: string
+  orderNo: number
+  deliveryDate: string
+  status: string
+  rackNumber: string | null
+  customerName: string
+  mobileNumber: string
+  categoryName: string
+  weight: number
+}
+
+export interface PendingOrdersReportParams {
+  fromDate: string
+  toDate: string
+  status?: string
+}
+
+export async function getPendingOrdersReport(params: PendingOrdersReportParams): Promise<PendingOrdersRow[]> {
+  const response = await axios.get(`${baseUrl()}/api/reports/pending-orders`, { params })
+  return response.data
+}
+
+export interface BankReconciliationRow {
+  expenseId: string
+  date: string
+  description: string
+  amount: number
+}
+
+export interface BankReconciliationParams {
+  fromDate: string
+  toDate: string
+}
+
+export async function getBankReconciliationReport(params: BankReconciliationParams): Promise<BankReconciliationRow[]> {
+  const response = await axios.get(`${baseUrl()}/api/reports/bank-reconciliation`, { params })
+  return response.data
+}

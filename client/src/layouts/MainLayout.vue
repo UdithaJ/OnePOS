@@ -139,6 +139,8 @@ const menuItems: MenuItem[] = [
     icon: 'mdi-chart-bar',
     children: [
       { title: 'Daily Sales', to: '/reports/daily-sales', icon: 'mdi-chart-timeline-variant' },
+      { title: 'Pending Orders', to: '/reports/pending-orders', icon: 'mdi-clock-alert-outline' },
+      { title: 'Bank Reconciliation', to: '/reports/bank-reconciliation', icon: 'mdi-bank-transfer' },
     ],
   },
 ]
