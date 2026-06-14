@@ -84,7 +84,7 @@
               <v-btn icon="mdi-close" size="small" variant="text"
                 style="color: rgba(255,255,255,0.8);" @click="showForm = false" />
             </div>
-            <div class="bg-white px-6 pt-6 pb-4">
+            <div class="bg-white px-6 pt-6 pb-4" style="max-height: 75vh; overflow-y: auto;">
             <DynamicForm
               :schema="orderFormSchema"
               :form="form"
@@ -190,6 +190,15 @@
                     <span class="order-total-label">Total Amount</span>
                     <span class="order-total-amount">LKR {{ totalAmount.toFixed(2) }}</span>
                   </div>
+                  <div v-if="!editOrderId" class="mb-3">
+                    <v-checkbox
+                      v-model="printBillOnCreate"
+                      label="Print bill after placing order"
+                      color="teal"
+                      density="compact"
+                      hide-details
+                    />
+                  </div>
                   <v-btn type="submit" block
                     style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600; height: 44px;">Submit order</v-btn>
                 </div>
@@ -209,13 +218,27 @@
                 </div>
                 <div class="due-row">
                   <span class="text-sm font-medium text-gray-600">Due Amount</span>
-                  <span class="text-base font-bold" :style="{ color: dueAmount > 0 ? '#b45309' : '#0f766e' }">
-                    LKR {{ dueAmount.toFixed(2) }}
+                  <span class="text-base font-bold" :style="{ color: effectiveDueAmount > 0 ? '#b45309' : '#0f766e' }">
+                    LKR {{ effectiveDueAmount.toFixed(2) }}
                   </span>
                 </div>
-                <v-btn block class="mt-3"
+                <v-btn
+                  v-if="canMakePayment"
+                  block
+                  class="mt-3"
                   style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600; height: 40px;"
-                  @click="showPaymentDialog = true">Make Payment</v-btn>
+                  @click="showPaymentDialog = true"
+                >
+                  Make Payment
+                </v-btn>
+                <v-alert
+                  v-else
+                  type="success"
+                  variant="tonal"
+                  class="mt-3"
+                >
+                  Payment completed
+                </v-alert>
               </div>
             </template>
             </div>
@@ -226,7 +249,7 @@
         v-if="editOrderId"
         :show="showPaymentDialog"
         :order-id="editOrderId"
-        :due-amount="dueAmount"
+        :due-amount="effectiveDueAmount"
         @close="showPaymentDialog = false"
         @paid="onPaymentMade"
       />
@@ -262,6 +285,17 @@ const dueAmount = computed(() => {
   const paid = payments.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
   return totalAmount.value - paid
 })
+const currentOrderDueAmount = ref(0)
+const currentOrderPaymentStatus = ref('unpaid')
+const effectiveDueAmount = computed(() => {
+  if (!editOrderId.value) return Math.max(dueAmount.value, 0)
+  return Math.max(Number(currentOrderDueAmount.value || 0), 0)
+})
+const canMakePayment = computed(() => {
+  if (!editOrderId.value) return false
+  if (String(currentOrderPaymentStatus.value || '').toLowerCase() === 'paid') return false
+  return effectiveDueAmount.value > 0
+})
 
 const orders = ref<any[]>([])
 const showForm = ref(false)
@@ -269,6 +303,7 @@ const editOrderId = ref<string|null>(null)
 const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
+const printBillOnCreate = ref(true)
 const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
 const dueSoonLeadDays = ref<number>(1)
@@ -328,19 +363,17 @@ async function onPaymentMade(payment: any) {
     
     // Reload payments to update due amount
     payments.value = await getPaymentsByOrder(editOrderId.value || '')
+    const latestOrder = await getOrderById(editOrderId.value || '')
+    currentOrderDueAmount.value = Number(latestOrder?.dueAmount || 0)
+    currentOrderPaymentStatus.value = String(latestOrder?.paymentStatus || 'unpaid')
     
     // Check if order is fully paid
-    if (dueAmount.value <= 0) {
-      // Auto-update order status to completed when fully paid
-      await updateOrder(editOrderId.value || '', {
-        status: 'completed'
-      })
-      showToast('Order marked as completed!', 'success')
+    if (effectiveDueAmount.value <= 0) {
+      showToast('Payment status updated to paid.', 'success')
       await loadOrders()
-      showForm.value = false
-      editOrderId.value = null
       showPaymentDialog.value = false
     } else {
+      await loadOrders()
       showPaymentDialog.value = false
     }
   } catch (e) {
@@ -472,6 +505,127 @@ function resetForm() {
   form.value.rackNumber = ''
   suborders.value = []
   payments.value = []
+  currentOrderDueAmount.value = 0
+  currentOrderPaymentStatus.value = 'unpaid'
+  printBillOnCreate.value = true
+}
+
+function escapeHtml(value: any) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function formatMoney(value: number) {
+  return `LKR ${Number(value || 0).toFixed(2)}`
+}
+
+function resolveCustomerName(customerId: any) {
+  const id = typeof customerId === 'string' ? customerId : customerId?._id
+  const selected = customers.value.find((c: any) => c.value === id)
+  return selected?.label || 'Walk-in Customer'
+}
+
+function buildPrintBillHtml(order: any) {
+  const created = order?.createdDate ? new Date(order.createdDate) : new Date()
+  const delivery = order?.deliveryDate ? new Date(order.deliveryDate) : null
+  const orderItems = Array.isArray(order?.suborders) ? order.suborders : []
+  const orderId = order?._id || 'N/A'
+  const customerName = resolveCustomerName(order?.customerID)
+  const total = Number(order?.totalAmount ?? totalAmount.value ?? 0)
+
+  const rows = orderItems.map((item: any, index: number) => {
+    const categoryName = item?.category?.name || categories.value.find((c: any) => c.value === item?.category)?.label || 'Item'
+    const weight = Number(item?.weight || 0)
+    const amount = Number(item?.amount || 0)
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(categoryName)}</td>
+        <td style="text-align:right;">${weight.toFixed(2)}</td>
+        <td style="text-align:right;">${amount.toFixed(2)}</td>
+      </tr>
+    `
+  }).join('')
+
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Order Bill ${escapeHtml(orderId)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111827; }
+          .bill { width: 80mm; margin: 0 auto; padding: 10px; }
+          .center { text-align: center; }
+          .muted { color: #6b7280; font-size: 12px; }
+          .title { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+          .section { margin-top: 10px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th, td { padding: 4px 0; border-bottom: 1px dashed #d1d5db; }
+          th { text-align: left; font-weight: 600; }
+          .total { margin-top: 8px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; }
+          .footer { margin-top: 10px; text-align: center; font-size: 11px; color: #6b7280; }
+        </style>
+      </head>
+      <body>
+        <div class="bill">
+          <div class="center">
+            <div class="title">OnePOS Bill</div>
+            <div class="muted">Laundry Order Receipt</div>
+          </div>
+
+          <div class="section muted">Order: ${escapeHtml(orderId)}</div>
+          <div class="muted">Date: ${escapeHtml(created.toLocaleString())}</div>
+          <div class="muted">Customer: ${escapeHtml(customerName)}</div>
+          <div class="muted">Delivery: ${escapeHtml(delivery ? delivery.toLocaleDateString() : '-')}</div>
+
+          <div class="section">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Item</th>
+                  <th style="text-align:right;">Kg</th>
+                  <th style="text-align:right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows || '<tr><td colspan="4" class="muted">No items</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="total">
+            <span>Total</span>
+            <span>${escapeHtml(formatMoney(total))}</span>
+          </div>
+
+          <div class="footer">Thank you for your order</div>
+        </div>
+      </body>
+    </html>
+  `
+}
+
+function printBill(order: any) {
+  const billWindow = window.open('', '_blank', 'width=420,height=720')
+  if (!billWindow) {
+    showToast('Unable to open print preview. Please check pop-up settings.', 'warning')
+    return
+  }
+
+  billWindow.document.open()
+  billWindow.document.write(buildPrintBillHtml(order))
+  billWindow.document.close()
+  billWindow.focus()
+  billWindow.onload = () => {
+    billWindow.print()
+    billWindow.onafterprint = () => billWindow.close()
+  }
 }
 
 async function onEditOrder(order: any) {
@@ -483,6 +637,8 @@ async function onEditOrder(order: any) {
   form.value.deliveryDate = data.deliveryDate?.substring(0, 10)
   form.value.status = data.status || 'todo'
   form.value.rackNumber = data.rackNumber || ''
+  currentOrderDueAmount.value = Number(data.dueAmount || 0)
+  currentOrderPaymentStatus.value = String(data.paymentStatus || 'unpaid')
   // Map suborders to ensure category is the ID and amount is recalculated
   suborders.value = (data.suborders || []).map((sub: any) => {
     let categoryId = sub.category?._id || sub.category;
@@ -516,13 +672,21 @@ async function persistOrder() {
     const editPayload = { ...payload, status: form.value.status, rackNumber: form.value.rackNumber }
     await updateOrder(editOrderId.value, editPayload)
     showToast('Order updated successfully!', 'success')
+    return
   } else {
-    await createOrder(payload)
+    const createdOrder = await createOrder(payload)
     showToast('Order created successfully!', 'success')
+    if (printBillOnCreate.value) {
+      printBill(createdOrder)
+    }
+    return
   }
-  await loadOrders();
-  showForm.value = false;
-  editOrderId.value = null;
+}
+
+async function afterOrderPersist() {
+  await loadOrders()
+  showForm.value = false
+  editOrderId.value = null
 }
 
 async function handleSubmit() {
@@ -545,6 +709,7 @@ async function handleSubmit() {
       }
     }
     await persistOrder()
+    await afterOrderPersist()
   } catch (error) {
     showToast(editOrderId.value ? 'Order update failed' : 'Order creation failed', 'error');
     console.error('Order save failed', error);
@@ -561,6 +726,7 @@ async function confirmCapacityWarning() {
   capacityResult.value = null
   try {
     await persistOrder()
+    await afterOrderPersist()
   } catch (error) {
     showToast('Order creation failed', 'error')
     console.error('Order save failed', error)

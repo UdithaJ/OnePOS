@@ -19,6 +19,19 @@ exports.createPayment = async (req, res) => {
     const payment = new Payment(req.body);
     await payment.save();
 
+    // Keep order-level payment state in sync after every payment.
+    const newPaid = paid + Number(payment.amount || 0);
+    const newDue = Math.max(Number(order.totalAmount || 0) - newPaid, 0);
+    let newPaymentStatus = 'unpaid';
+    if (newDue <= 0) {
+      newPaymentStatus = 'paid';
+    } else if (newPaid > 0) {
+      newPaymentStatus = 'partial';
+    }
+    order.dueAmount = newDue;
+    order.paymentStatus = newPaymentStatus;
+    await order.save();
+
     // Create cash ledger record
     if (req.body.sessionId && req.body.userId) {
       await createCashLedger({
