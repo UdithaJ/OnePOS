@@ -191,4 +191,57 @@ async function getExpensesReport(fromDate, toDate, expenseTypeId) {
   return rows;
 }
 
-module.exports = { getDailySalesReport, getPendingOrdersByDueDate, getBankTransferReconciliation, getExpensesReport };
+async function getReturningCustomers(minOrderCount) {
+  const threshold = parseInt(minOrderCount, 10);
+  const min = isNaN(threshold) || threshold < 0 ? 0 : threshold;
+
+  const rows = await Order.aggregate([
+    {
+      $group: {
+        _id: '$customerID',
+        orderCount: { $sum: 1 },
+        orderIds: { $push: '$_id' },
+      },
+    },
+    { $match: { orderCount: { $gt: min } } },
+    {
+      $lookup: {
+        from: 'ordercategories',
+        localField: 'orderIds',
+        foreignField: 'order',
+        as: 'orderCategories',
+      },
+    },
+    {
+      $addFields: {
+        totalWeight: { $sum: '$orderCategories.weight' },
+      },
+    },
+    {
+      $lookup: {
+        from: 'customers',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'customer',
+      },
+    },
+    { $unwind: '$customer' },
+    {
+      $project: {
+        _id: 0,
+        customerId: '$_id',
+        customerName: {
+          $concat: ['$customer.firstName', ' ', '$customer.lastName'],
+        },
+        mobileNumber: '$customer.mobileNumber',
+        orderCount: 1,
+        totalWeight: 1,
+      },
+    },
+    { $sort: { orderCount: -1, customerName: 1 } },
+  ]);
+
+  return rows;
+}
+
+module.exports = { getDailySalesReport, getPendingOrdersByDueDate, getBankTransferReconciliation, getExpensesReport, getReturningCustomers };

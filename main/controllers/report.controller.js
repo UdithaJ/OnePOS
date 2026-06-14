@@ -51,3 +51,13 @@ exports.getExpensesReport = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getReturningCustomers = async (req, res) => {
+  try {
+    const { minOrderCount } = req.query;
+    const rows = await reportService.getReturningCustomers(minOrderCount ?? '0');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

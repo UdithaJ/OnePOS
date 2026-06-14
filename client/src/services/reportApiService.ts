@@ -93,3 +93,20 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
   const response = await axios.get(`${baseUrl()}/api/expense-categories`)
   return response.data
 }
+
+export interface ReturningCustomerRow {
+  customerId: string
+  customerName: string
+  mobileNumber: string
+  orderCount: number
+  totalWeight: number
+}
+
+export interface ReturningCustomersParams {
+  minOrderCount?: number
+}
+
+export async function getReturningCustomersReport(params: ReturningCustomersParams): Promise<ReturningCustomerRow[]> {
+  const response = await axios.get(`${baseUrl()}/api/reports/returning-customers`, { params })
+  return response.data
+}

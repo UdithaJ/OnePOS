@@ -142,6 +142,7 @@ const menuItems: MenuItem[] = [
       { title: 'Pending Orders', to: '/reports/pending-orders', icon: 'mdi-clock-alert-outline' },
       { title: 'Bank Reconciliation', to: '/reports/bank-reconciliation', icon: 'mdi-bank-transfer' },
       { title: 'Expenses', to: '/reports/expenses', icon: 'mdi-cash-minus' },
+      { title: 'Returning Customers', to: '/reports/returning-customers', icon: 'mdi-account-reactivate' },
     ],
   },
 ]
