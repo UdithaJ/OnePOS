@@ -134,6 +134,18 @@ const menuItems: MenuItem[] = [
       { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus' },
     ],
   },
+  {
+    title: 'Reports',
+    icon: 'mdi-chart-bar',
+    children: [
+      { title: 'Daily Sales', to: '/reports/daily-sales', icon: 'mdi-chart-timeline-variant' },
+      { title: 'Pending Orders', to: '/reports/pending-orders', icon: 'mdi-clock-alert-outline' },
+      { title: 'Bank Reconciliation', to: '/reports/bank-reconciliation', icon: 'mdi-bank-transfer' },
+      { title: 'Expenses', to: '/reports/expenses', icon: 'mdi-cash-minus' },
+      { title: 'Returning Customers', to: '/reports/returning-customers', icon: 'mdi-account-reactivate' },
+      { title: 'Cash Box Summary', to: '/reports/cash-box-summary', icon: 'mdi-cash-register' },
+    ],
+  },
 ]
 
 function isActive(to?: string) {

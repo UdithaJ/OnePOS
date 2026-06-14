@@ -48,6 +48,36 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemSettings',
         component: () => import('@/components/SystemSettings.vue'),
       },
+      {
+        path: 'reports/daily-sales',
+        name: 'DailySalesReport',
+        component: () => import('@/components/reports/DailySalesReport.vue'),
+      },
+      {
+        path: 'reports/pending-orders',
+        name: 'PendingOrdersReport',
+        component: () => import('@/components/reports/PendingOrdersReport.vue'),
+      },
+      {
+        path: 'reports/bank-reconciliation',
+        name: 'BankReconciliationReport',
+        component: () => import('@/components/reports/BankReconciliationReport.vue'),
+      },
+      {
+        path: 'reports/expenses',
+        name: 'ExpensesReport',
+        component: () => import('@/components/reports/ExpensesReport.vue'),
+      },
+      {
+        path: 'reports/returning-customers',
+        name: 'ReturningCustomersReport',
+        component: () => import('@/components/reports/ReturningCustomersReport.vue'),
+      },
+      {
+        path: 'reports/cash-box-summary',
+        name: 'CashBoxSummaryReport',
+        component: () => import('@/components/reports/CashBoxSummaryReport.vue'),
+      },
       // Add more child routes here
     ],
   },
