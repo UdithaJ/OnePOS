@@ -1,7 +1,12 @@
 <template>
-  <v-container>
-    <h2 class="mb-4">Users</h2>
+  <div class="p-6">
+    <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
+      <span class="w-1 h-7 bg-[#0f766e] rounded-full inline-block"></span>
+      Users
+    </h2>
+
     <BaseList
+      theme="teal"
       title="User List"
       :headers="userHeaders"
       :items="users"
@@ -16,16 +21,42 @@
 
     <v-dialog v-model="showForm" max-width="700">
       <template #default>
-        <v-card class="pa-6">
-          <h3 class="mb-4">{{ editUserId ? 'Edit User' : 'Register User' }}</h3>
-          <DynamicForm
-            :schema="userFormSchema"
-            :form="form"
-            :isValid="true"
-            :onSubmit="handleSubmit"
-          />
-          <v-btn variant="text" class="mt-2" @click="showForm = false">Cancel</v-btn>
-        </v-card>
+        <div class="user-form-wrapper">
+          <v-card class="rounded-xl overflow-hidden" style="border: none;">
+            <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold">
+                {{ editUserId ? 'Edit User' : 'Register User' }}
+              </h3>
+              <v-btn
+                icon="mdi-close"
+                size="small"
+                variant="text"
+                style="color: rgba(255,255,255,0.8);"
+                @click="showForm = false"
+              />
+            </div>
+            <div class="bg-white px-6 pt-6 pb-4">
+              <DynamicForm
+                :schema="userFormSchema"
+                :form="form"
+                :isValid="true"
+                :onSubmit="handleSubmit"
+                :hideDefaultSubmit="true"
+              />
+              <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <v-btn
+                  variant="outlined"
+                  style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+                  @click="showForm = false"
+                >Cancel</v-btn>
+                <v-btn
+                  style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
+                  @click="handleSubmit"
+                >Submit</v-btn>
+              </div>
+            </div>
+          </v-card>
+        </div>
       </template>
     </v-dialog>
 
@@ -37,7 +68,7 @@
       Are you sure you want to delete
       <strong>{{ userToDelete ? userToDelete.firstName + ' ' + userToDelete.lastName : '' }}</strong>?
     </ConfirmationDialog>
-  </v-container>
+  </div>
 </template>
 
 <script lang="ts" setup>

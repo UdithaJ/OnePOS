@@ -1,33 +1,77 @@
 <template>
   <v-app>
-    <v-app-bar app color="primary" dark>
-      <v-app-bar-title>OnePOS</v-app-bar-title>
+    <v-app-bar app style="background: #292929;">
+      <v-app-bar-title style="color: #ffffff; font-weight: 600;">Softwash</v-app-bar-title>
       <v-spacer />
-      <v-btn icon @click="toggleTheme">
-        <v-icon>{{ isDarkTheme ? 'mdi-white-balance-sunny' : 'mdi-weather-night' }}</v-icon>
-      </v-btn>
-      <v-btn icon @click="handleLogout">
-        <v-icon>mdi-logout</v-icon>
-      </v-btn>
+      <v-menu location="bottom end" :offset="8">
+        <template #activator="{ props: menuProps }">
+          <v-btn v-bind="menuProps" variant="text" class="user-menu-btn" rounded="pill">
+            <v-avatar size="32" color="#0f766e" class="mr-2">
+              <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
+            </v-avatar>
+            <span class="user-name">{{ userName }}</span>
+            <v-icon size="18" class="ml-1">mdi-chevron-down</v-icon>
+          </v-btn>
+        </template>
+        <v-list rounded="lg" elevation="3" density="compact" class="pa-0">
+          <v-list-item title="Logout" @click="handleLogout" class="text-center px-6 py-1" style="min-height: unset;" />
+        </v-list>
+      </v-menu>
     </v-app-bar>
     <v-navigation-drawer
       app
       v-model="drawer"
       :permanent="true"
+      :width="260"
       class="neomorphic-sidebar"
     >
-      <v-list nav>
-        <v-list-item
-          v-for="item in menuItems"
-          :key="item.title"
-          :to="item.to"
-          :prepend-icon="item.icon"
-          :active="isActive(item.to)"
-          class="neomorphic-sidebar-item"
-        >
-          <v-list-item-title>{{ item.title }}</v-list-item-title>
-        </v-list-item>
-      </v-list>
+      <div class="sidebar-content">
+        <v-list nav>
+          <template v-for="item in menuItems" :key="item.title">
+            <v-list-group v-if="item.children" :value="item.title">
+              <template #activator="{ props: groupProps }">
+                <v-list-item
+                  v-bind="groupProps"
+                  :prepend-icon="item.icon"
+                  :title="item.title"
+                  class="neomorphic-sidebar-item"
+                />
+              </template>
+              <v-list-item
+                v-for="child in item.children"
+                :key="child.title"
+                :to="child.to"
+                :prepend-icon="child.icon"
+                :active="isActive(child.to)"
+                class="neomorphic-sidebar-item neomorphic-sidebar-child"
+              >
+                <v-list-item-title>{{ child.title }}</v-list-item-title>
+              </v-list-item>
+            </v-list-group>
+
+            <v-list-item
+              v-else
+              :to="item.to"
+              :prepend-icon="item.icon"
+              :active="isActive(item.to)"
+              class="neomorphic-sidebar-item"
+            >
+              <v-list-item-title>{{ item.title }}</v-list-item-title>
+            </v-list-item>
+          </template>
+        </v-list>
+
+        <v-list nav class="sidebar-bottom">
+          <v-list-item
+            to="/system-settings"
+            prepend-icon="mdi-cog"
+            :active="isActive('/system-settings')"
+            class="neomorphic-sidebar-item"
+          >
+            <v-list-item-title>Settings</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </div>
     </v-navigation-drawer>
     <v-main class="neomorphic-main-bg">
       <router-view />
@@ -43,38 +87,56 @@ import { useAuth } from '../composables/useAuth'
 const drawer = ref(true)
 const router = useRouter()
 const route = useRoute()
-const { logout } = useAuth()
+const { logout, getUser } = useAuth()
 
+const userName = computed(() => {
+  const user = getUser()
+  return [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'
+})
 
-const isDarkTheme = computed(() => document.body.classList.contains('dark-theme'))
+const userInitials = computed(() => {
+  const user = getUser()
+  const first = user?.firstName?.[0] ?? ''
+  const last = user?.lastName?.[0] ?? ''
+  return (first + last).toUpperCase() || 'U'
+})
+
 
 onMounted(() => {
-  // Ensure only one theme class is present, default to light
   document.body.classList.remove('dark-theme')
   document.body.classList.add('light-theme')
 })
 
-function toggleTheme() {
-  if (document.body.classList.contains('dark-theme')) {
-    document.body.classList.remove('dark-theme')
-    document.body.classList.add('light-theme')
-  } else {
-    document.body.classList.remove('light-theme')
-    document.body.classList.add('dark-theme')
-  }
+interface MenuItem {
+  title: string
+  to?: string
+  icon: string
+  disabled?: boolean
+  children?: MenuItem[]
 }
 
-const menuItems = [
-  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard', disabled: false },
-  { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list', disabled: false },
-  { title: 'Customers', to: '/customers', icon: 'mdi-account-group', disabled: false },
-  { title: 'Users', to: '/users', icon: 'mdi-account-cog', disabled: false },
-  { title: 'Categories', to: '/categories', icon: 'mdi-tag-multiple', disabled: false },
-  { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus', disabled: false },
-  { title: 'Settings', to: '/system-settings', icon: 'mdi-cog', disabled: false },
+const menuItems: MenuItem[] = [
+  { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
+  { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list' },
+  { title: 'Customers', to: '/customers', icon: 'mdi-account-group' },
+  {
+    title: 'Administration',
+    icon: 'mdi-shield-account-outline',
+    children: [
+      { title: 'Users', to: '/users', icon: 'mdi-account-cog' },
+    ],
+  },
+  {
+    title: 'Configuration',
+    icon: 'mdi-cog-outline',
+    children: [
+      { title: 'Laundry Categories', to: '/categories', icon: 'mdi-tag-multiple' },
+      { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus' },
+    ],
+  },
 ]
 
-function isActive(to: string) {
+function isActive(to?: string) {
   return !!to && route.path === to
 }
 
@@ -87,59 +149,71 @@ function handleLogout() {
 <style scoped lang="scss">
 @import '../styles/neomorphic.scss';
 
-
 .neomorphic-sidebar {
-  background: var(--side-bar-color);
+  background: var(--side-bar-color) !important;
   color: var(--sidebar-text);
-  min-width: 220px;
-  box-shadow: 8px 0 16px var(--neomorphic-shadow-dark), -8px 0 16px var(--neomorphic-shadow-light);
-  border-top-right-radius: 24px;
-  border-bottom-right-radius: 24px;
+  min-width: 260px;
+  box-shadow: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 1px solid #e5e7eb;
   transition: background 0.3s;
 }
 
 .neomorphic-sidebar .v-list-item {
-  color: var(--sidebar-text);
+  color: var(--sidebar-text) !important;
 }
 
 .neomorphic-sidebar .v-icon {
-  color: var(--sidebar-icon);
+  color: var(--sidebar-icon) !important;
 }
 
 .neomorphic-sidebar-item {
-  border-radius: 16px;
-  margin: 4px 8px;
-  transition: background 0.2s;
+  border-radius: 10px;
+  margin: 2px 8px;
+  transition: background 0.15s;
+}
+
+:deep(.neomorphic-sidebar-item .v-list-item__prepend) {
+  margin-inline-end: 4px !important;
+  width: auto !important;
+}
+
+:deep(.v-list-group__items .neomorphic-sidebar-child) {
+  padding-inline-start: 24px !important;
+}
+
+:deep(.neomorphic-sidebar-child .v-list-item__prepend) {
+  margin-inline-end: 2px !important;
+  width: auto !important;
+}
+
+:deep(.neomorphic-sidebar-child .v-list-item-title) {
+  font-size: 0.85rem !important;
 }
 .neomorphic-sidebar-item.v-list-item--active {
-  background: var(--neomorphic-accent);
-  color: #fff;
+  background: #0f766e !important;
+  color: #fff !important;
 }
 .neomorphic-sidebar-item.v-list-item--active .v-icon {
-  color: #fff;
+  color: #fff !important;
+}
+.neomorphic-sidebar-item:not(.v-list-item--active):hover {
+  background: #f0fdfa !important;
+  color: #0f766e !important;
 }
 
-.neomorphic-sidebar .v-list-item {
-  color: var(--sidebar-text);
+.user-menu-btn {
+  color: #ffffff !important;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.user-name {
+  font-size: 0.875rem;
+  white-space: nowrap;
 }
 
-.neomorphic-sidebar .v-icon {
-  color: var(--sidebar-icon);
-}
-
-.neomorphic-sidebar-item {
-  border-radius: 16px;
-  margin: 4px 8px;
-  transition: background 0.2s;
-}
-.neomorphic-sidebar-item.v-list-item--active {
-  background: var(--neomorphic-accent);
-  color: #fff;
-}
-.neomorphic-sidebar-item.v-list-item--active .v-icon {
-  color: #fff;
-}
-// ...existing code...
 .neomorphic-main-bg {
   background: var(--neomorphic-container-bg) !important;
   min-height: 100vh;
@@ -147,5 +221,17 @@ function handleLogout() {
   transition: background 0.3s;
   position: relative;
   z-index: 1;
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 4px;
 }
 </style>

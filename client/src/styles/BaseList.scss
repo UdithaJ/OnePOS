@@ -35,3 +35,53 @@
 .base-list-card .v-data-table .v-btn {
   color: #b18cff !important;
 }
+
+/* Teal (light) theme variant */
+.base-list-card--teal {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.08) !important;
+  border: 1px solid #e5e7eb !important;
+  overflow: hidden !important;
+}
+.base-list-card--teal .v-card-title {
+  background: #0d3d38 !important;
+  color: #ffffff !important;
+}
+.base-list-card--teal .v-card-title .v-btn {
+  background: #0f766e !important;
+  color: #ffffff !important;
+}
+.base-list-card--teal .v-data-table {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+.base-list-card--teal .v-data-table th {
+  background: #f9fafb !important;
+  color: #6b7280 !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+.base-list-card--teal .v-data-table td {
+  border-bottom: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+}
+.base-list-card--teal .v-data-table tbody tr:hover,
+.base-list-card--teal .v-data-table tbody tr:hover td {
+  background: #f0fdfa !important;
+  --v-hover-opacity: 0 !important;
+}
+.base-list-card--teal .v-data-table tbody tr:hover > td::before {
+  background: transparent !important;
+}
+.base-list-card--teal .v-data-table .v-btn {
+  color: #0f766e !important;
+}
+.base-list-card--teal .v-data-table .text-error {
+  color: #f87171 !important;
+}
+.base-list-card--teal .v-alert {
+  background: #f0fdfa !important;
+  color: #0f766e !important;
+}

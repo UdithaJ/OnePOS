@@ -1,5 +1,5 @@
 <template>
-  <v-card class="base-list-card">
+  <v-card :class="['base-list-card', theme === 'teal' ? 'base-list-card--teal' : '']">
     <v-card-title class="d-flex justify-space-between align-center">
       <span>{{ title }}</span>
       <v-btn color="primary" icon="mdi-plus" @click="$emit('add')" size="small" class="ml-2" title="Add">
@@ -45,6 +45,7 @@ const props = defineProps<{
   title?: string
   headers: Header[]
   items: any[]
+  theme?: 'dark' | 'teal'
 }>()
 
 const emit = defineEmits(['add', 'sort', 'edit'])
