@@ -64,3 +64,32 @@ export async function getBankReconciliationReport(params: BankReconciliationPara
   const response = await axios.get(`${baseUrl()}/api/reports/bank-reconciliation`, { params })
   return response.data
 }
+
+export interface ExpensesReportRow {
+  expenseId: string
+  date: string
+  description: string
+  amount: number
+}
+
+export interface ExpensesReportParams {
+  fromDate: string
+  toDate: string
+  expenseTypeId?: string
+}
+
+export interface ExpenseCategory {
+  _id: string
+  name: string
+  displayName: string
+}
+
+export async function getExpensesReport(params: ExpensesReportParams): Promise<ExpensesReportRow[]> {
+  const response = await axios.get(`${baseUrl()}/api/reports/expenses`, { params })
+  return response.data
+}
+
+export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
+  const response = await axios.get(`${baseUrl()}/api/expense-categories`)
+  return response.data
+}

@@ -63,6 +63,11 @@ const routes: RouteRecordRaw[] = [
         name: 'BankReconciliationReport',
         component: () => import('@/components/reports/BankReconciliationReport.vue'),
       },
+      {
+        path: 'reports/expenses',
+        name: 'ExpensesReport',
+        component: () => import('@/components/reports/ExpensesReport.vue'),
+      },
       // Add more child routes here
     ],
   },

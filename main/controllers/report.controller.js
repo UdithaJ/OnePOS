@@ -38,3 +38,16 @@ exports.getBankTransferReconciliation = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getExpensesReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, expenseTypeId } = req.query;
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: 'fromDate and toDate are required (YYYY-MM-DD)' });
+    }
+    const rows = await reportService.getExpensesReport(fromDate, toDate, expenseTypeId);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

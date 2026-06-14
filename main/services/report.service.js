@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/order.js');
 const Expense = require('../models/expense.js');
 
@@ -154,4 +155,40 @@ async function getBankTransferReconciliation(fromDate, toDate) {
   return rows;
 }
 
-module.exports = { getDailySalesReport, getPendingOrdersByDueDate, getBankTransferReconciliation };
+async function getExpensesReport(fromDate, toDate, expenseTypeId) {
+  const start = new Date(fromDate + 'T00:00:00.000Z');
+  const end = new Date(toDate + 'T23:59:59.999Z');
+
+  const matchStage = { date: { $gte: start, $lte: end } };
+  if (expenseTypeId && expenseTypeId !== 'all') {
+    matchStage.expenseType = mongoose.Types.ObjectId.createFromHexString(expenseTypeId);
+  }
+
+  const rows = await Expense.aggregate([
+    { $match: matchStage },
+    {
+      $lookup: {
+        from: 'expensecategories',
+        localField: 'expenseType',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    { $unwind: '$category' },
+    { $match: { 'category.displayName': { $not: { $regex: /^bank deposite$/i } } } },
+    {
+      $project: {
+        _id: 0,
+        expenseId: '$_id',
+        date: 1,
+        description: '$category.displayName',
+        amount: 1,
+      },
+    },
+    { $sort: { date: 1 } },
+  ]);
+
+  return rows;
+}
+
+module.exports = { getDailySalesReport, getPendingOrdersByDueDate, getBankTransferReconciliation, getExpensesReport };
