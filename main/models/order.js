@@ -15,6 +15,13 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  // Sequential order number for display and sorting. Auto-incremented at create time.
+  orderNo: {
+    type: Number,
+    required: true,
+    unique: true,
+    index: true
+  },
   deliveryDate: {
     type: Date,
     required: true

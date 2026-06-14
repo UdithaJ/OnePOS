@@ -287,7 +287,7 @@ import { useAuth } from '../composables/useAuth'
 const { getUser } = useAuth()
 
 const orderHeaders = [
-  { title: 'Order #', key: 'id', align: 'start' },
+  { title: 'Order #', key: 'orderNo', align: 'start' },
   { title: 'Customer', key: 'customer', align: 'start' },
   { title: 'Status', key: 'status', align: 'start' },
   { title: 'Total', key: 'total', align: 'end' },
@@ -501,6 +501,7 @@ function setOrdersFromData(orderData: any[]) {
 
     return {
       id: order._id,
+      orderNo: order.orderNo || order._id,
       customer: customers.value.find(c => c.value === (order.customerID?._id || order.customerID))?.label || order.customerID,
       status: order.status,
       total: typeof order.totalAmount === 'number' ? `Rs ${order.totalAmount.toFixed(2)}` : order.totalAmount,

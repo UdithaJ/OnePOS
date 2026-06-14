@@ -39,15 +39,18 @@ async function createOrder(orderData) {
 
   const catMap = await loadCategoryMap(orderData.suborders);
 
-  // Step 1: Create the order without suborders. totalAmount/dueAmount are
-  // recomputed below from the floored suborder amounts.
+  // Step 1: Determine next sequential orderNo, then create the order without suborders.
+  const last = await Order.findOne().sort({ orderNo: -1 }).select('orderNo').lean()
+  const nextOrderNo = last && last.orderNo ? Number(last.orderNo) + 1 : 1
+
   const order = new Order({
     ...orderData,
     suborders: [],
     totalAmount: 0,
     dueAmount: 0,
     createdUser,
-    status: 'todo'
+    status: 'todo',
+    orderNo: nextOrderNo
   });
   await order.save();
 
