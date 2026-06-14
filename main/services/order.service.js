@@ -9,7 +9,8 @@ const ORDER_STATUSES = [
   { name: 'todo', displayName: 'To Do' },
   { name: 'in_progress', displayName: 'In Progress' },
   { name: 'completed', displayName: 'Completed' },
-  { name: 'cancelled', displayName: 'Cancelled' }
+  { name: 'cancelled', displayName: 'Cancelled' },
+  { name: 'delivered', displayName: 'Delivered' }
 ];
 
 // Authoritative suborder amount: max(weight * unitPrice, minimumPrice).
