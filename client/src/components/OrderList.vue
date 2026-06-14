@@ -85,7 +85,14 @@
                 style="color: rgba(255,255,255,0.8);" @click="showForm = false" />
             </div>
             <div class="bg-white px-6 pt-6 pb-4" style="max-height: 75vh; overflow-y: auto;">
+            <div v-if="editOrderId" class="mb-4">
+              <v-tabs v-model="activeOrderModalTab" color="#0f766e" density="comfortable">
+                <v-tab value="order" style="text-transform: none;">Order</v-tab>
+                <v-tab value="payments" style="text-transform: none;">Payments</v-tab>
+              </v-tabs>
+            </div>
             <DynamicForm
+              v-show="!editOrderId || activeOrderModalTab === 'order'"
               :schema="orderFormSchema"
               :form="form"
               :isValid="isValid"
@@ -198,13 +205,23 @@
                       density="compact"
                       hide-details
                     />
+                    <v-checkbox
+                      v-model="makePaymentOnCreate"
+                      label="Make payment now"
+                      color="teal"
+                      density="compact"
+                      hide-details
+                    />
                   </div>
                   <v-btn type="submit" block
-                    style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600; height: 44px;">Submit order</v-btn>
+                    style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600; height: 44px;">
+                    {{ submitButtonLabel }}
+                  </v-btn>
                 </div>
               </template>
             </DynamicForm>
             <template v-if="editOrderId">
+              <div v-show="activeOrderModalTab === 'payments'">
               <v-divider class="mt-4 mb-3" />
               <div class="payments-section">
                 <div v-if="payments.length > 0">
@@ -229,7 +246,7 @@
                   style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600; height: 40px;"
                   @click="showPaymentDialog = true"
                 >
-                  Make Payment
+                  {{ paymentButtonLabel }}
                 </v-btn>
                 <v-alert
                   v-else
@@ -239,6 +256,7 @@
                 >
                   Payment completed
                 </v-alert>
+              </div>
               </div>
             </template>
             </div>
@@ -300,10 +318,12 @@ const canMakePayment = computed(() => {
 const orders = ref<any[]>([])
 const showForm = ref(false)
 const editOrderId = ref<string|null>(null)
+const activeOrderModalTab = ref<'order' | 'payments'>('order')
 const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
 const printBillOnCreate = ref(true)
+const makePaymentOnCreate = ref(false)
 const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
 const dueSoonLeadDays = ref<number>(1)
@@ -367,15 +387,24 @@ async function onPaymentMade(payment: any) {
     currentOrderDueAmount.value = Number(latestOrder?.dueAmount || 0)
     currentOrderPaymentStatus.value = String(latestOrder?.paymentStatus || 'unpaid')
     
-    // Check if order is fully paid
+    // If this payment was initiated as part of a create+pay flow, print the bill now
+    if (makePaymentOnCreate.value) {
+      try {
+        // Use authoritative order returned from server to render bill
+        printBill(latestOrder)
+      } catch (e) {
+        console.error('Print after payment failed', e)
+      }
+      // clear the flag so subsequent payments don't auto-print
+      makePaymentOnCreate.value = false
+    }
+
+    // Check if order is fully paid and refresh orders
     if (effectiveDueAmount.value <= 0) {
       showToast('Payment status updated to paid.', 'success')
-      await loadOrders()
-      showPaymentDialog.value = false
-    } else {
-      await loadOrders()
-      showPaymentDialog.value = false
     }
+    await loadOrders()
+    showPaymentDialog.value = false
   } catch (e) {
     showToast('Payment failed', 'error')
   }
@@ -507,8 +536,20 @@ function resetForm() {
   payments.value = []
   currentOrderDueAmount.value = 0
   currentOrderPaymentStatus.value = 'unpaid'
+  activeOrderModalTab.value = 'order'
   printBillOnCreate.value = true
+  makePaymentOnCreate.value = false
 }
+
+const submitButtonLabel = computed(() => {
+  if (!editOrderId.value && makePaymentOnCreate.value) return 'Next'
+  if (editOrderId.value) return 'Update order'
+  return 'Submit order'
+})
+
+const paymentButtonLabel = computed(() => {
+  return makePaymentOnCreate.value ? 'Submit Payment' : 'Make Payment'
+})
 
 function escapeHtml(value: any) {
   return String(value ?? '')
@@ -633,6 +674,7 @@ async function onEditOrder(order: any) {
   if (!orderId) return
   const data = await getOrderById(orderId)
   editOrderId.value = orderId
+  activeOrderModalTab.value = 'order'
   form.value.customer = data.customerID?._id || data.customerID
   form.value.deliveryDate = data.deliveryDate?.substring(0, 10)
   form.value.status = data.status || 'todo'
@@ -677,13 +719,28 @@ async function persistOrder() {
     const createdOrder = await createOrder(payload)
     showToast('Order created successfully!', 'success')
     if (printBillOnCreate.value) {
-      printBill(createdOrder)
+      // If the user requested to make payment now, defer printing until after payment completes
+      if (!makePaymentOnCreate.value) {
+        printBill(createdOrder)
+      }
     }
-    return
+    return createdOrder
   }
 }
 
-async function afterOrderPersist() {
+async function afterOrderPersist(createdOrder?: any) {
+  if (createdOrder && makePaymentOnCreate.value) {
+    editOrderId.value = createdOrder._id
+    currentOrderDueAmount.value = Number(createdOrder.dueAmount ?? createdOrder.totalAmount ?? totalAmount.value ?? 0)
+    currentOrderPaymentStatus.value = String(createdOrder.paymentStatus || 'unpaid')
+    payments.value = []
+    activeOrderModalTab.value = 'payments'
+    showForm.value = true
+    showPaymentDialog.value = true
+    await loadOrders()
+    return
+  }
+
   await loadOrders()
   showForm.value = false
   editOrderId.value = null
@@ -708,8 +765,8 @@ async function handleSubmit() {
         console.error('Capacity check failed', e)
       }
     }
-    await persistOrder()
-    await afterOrderPersist()
+    const createdOrder = await persistOrder()
+    await afterOrderPersist(createdOrder)
   } catch (error) {
     showToast(editOrderId.value ? 'Order update failed' : 'Order creation failed', 'error');
     console.error('Order save failed', error);
@@ -725,8 +782,8 @@ async function confirmCapacityWarning() {
   showCapacityWarning.value = false
   capacityResult.value = null
   try {
-    await persistOrder()
-    await afterOrderPersist()
+    const createdOrder = await persistOrder()
+    await afterOrderPersist(createdOrder)
   } catch (error) {
     showToast('Order creation failed', 'error')
     console.error('Order save failed', error)
