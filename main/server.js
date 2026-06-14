@@ -20,6 +20,7 @@ import expenseCategoryRoutes from './routes/expenseCategory.route.js';
 import expenseRoutes from './routes/expense.route.js';
 import systemSettingsRoutes from './routes/systemSettings.route.js';
 import smsRoutes from './routes/sms.route.js';
+import reportRoutes from './routes/report.route.js';
 
 
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api/expense-categories', expenseCategoryRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/sms', smsRoutes);
+app.use('/api/reports', reportRoutes);
 
 // __dirname replacement in ES modules
 import { fileURLToPath } from 'url';

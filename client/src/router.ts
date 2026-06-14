@@ -48,6 +48,11 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemSettings',
         component: () => import('@/components/SystemSettings.vue'),
       },
+      {
+        path: 'reports/daily-sales',
+        name: 'DailySalesReport',
+        component: () => import('@/components/reports/DailySalesReport.vue'),
+      },
       // Add more child routes here
     ],
   },
