@@ -24,6 +24,15 @@
             variant="outlined"
             class="mb-3"
           />
+          <v-text-field
+            v-if="paymentMethod === 'bank'"
+            v-model="transactionId"
+            label="Transaction ID"
+            placeholder="Bank reference / transaction number"
+            required
+            variant="outlined"
+            class="mb-3"
+          />
           <v-select
             v-model="type"
             :items="types"
@@ -58,6 +67,7 @@ const emit = defineEmits(['close', 'paid', 'update:show'])
 const amount = ref(props.dueAmount)
 const errorMsg = ref('')
 const paymentMethod = ref('cash')
+const transactionId = ref('')
 const type = ref('settlement')
 const methods = ['cash', 'card', 'bank', 'other']
 const types = ['advance', 'full_payment', 'settlement']
@@ -76,6 +86,10 @@ watch(type, (val) => {
   }
 })
 
+watch(paymentMethod, (val) => {
+  if (val !== 'bank') transactionId.value = ''
+})
+
 function onDialogUpdate(val: boolean) {
   emit('update:show', val)
   if (!val) emit('close')
@@ -83,7 +97,6 @@ function onDialogUpdate(val: boolean) {
 
 async function submitPayment() {
   errorMsg.value = ''
-  console.log('amount:', amount.value, 'dueAmount:', props.dueAmount, 'type:', type.value)
   if (Number(amount.value) > Number(props.dueAmount)) {
     errorMsg.value = 'Payment cannot exceed due amount.'
     return
@@ -92,7 +105,16 @@ async function submitPayment() {
     errorMsg.value = 'Payment amount must be greater than zero.'
     return
   }
-  emit('paid', { amount: amount.value, paymentMethod: paymentMethod.value, type: type.value })
+  if (paymentMethod.value === 'bank' && !transactionId.value.trim()) {
+    errorMsg.value = 'Transaction ID is required for bank transfers.'
+    return
+  }
+  emit('paid', {
+    amount: amount.value,
+    paymentMethod: paymentMethod.value,
+    type: type.value,
+    transactionId: paymentMethod.value === 'bank' ? transactionId.value.trim() : undefined,
+  })
   emit('update:show', false)
   emit('close')
 }

@@ -606,7 +606,8 @@ async function onPaymentMade(payment: any) {
       paymentMethod: payment.paymentMethod,
       type: payment.type,
       sessionId: activeSession._id,
-      userId: user._id
+      userId: user._id,
+      transactionId: payment.transactionId,
     })
     
     showToast('Payment successful!', 'success')

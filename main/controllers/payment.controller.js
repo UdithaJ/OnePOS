@@ -1,4 +1,5 @@
 const Payment = require('../models/payment');
+const BankTransfer = require('../models/bankTransfer');
 
 const { createCashLedger } = require('../services/cashLedger.service');
 
@@ -9,15 +10,25 @@ exports.createPayment = async (req, res) => {
     const orderId = req.body.orderId;
     const order = await Order.findById(orderId);
     if (!order) return res.status(400).json({ message: 'Order not found' });
-    const Payment = require('../models/payment');
     const payments = await Payment.find({ orderId });
     const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     const due = order.totalAmount - paid;
     if (Number(req.body.amount) > due) {
       return res.status(400).json({ message: 'Payment exceeds due amount.' });
     }
+    if (req.body.paymentMethod === 'bank' && !req.body.transactionId) {
+      return res.status(400).json({ message: 'Transaction ID is required for bank transfers.' });
+    }
     const payment = new Payment(req.body);
     await payment.save();
+
+    // Record bank transfer details in a separate collection
+    if (req.body.paymentMethod === 'bank') {
+      await new BankTransfer({
+        paymentId: payment._id,
+        transactionId: req.body.transactionId
+      }).save();
+    }
 
     // Keep order-level payment state in sync after every payment.
     const newPaid = paid + Number(payment.amount || 0);
