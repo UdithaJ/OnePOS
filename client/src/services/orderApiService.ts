@@ -27,8 +27,29 @@ export async function createOrder(payload: OrderPayload) {
   return response.data
 }
 
+export interface OrdersParams {
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}
+
+export interface OrdersPage {
+  orders: any[]
+  total: number
+  page: number
+  limit: number
+}
+
+export async function getOrders(params: OrdersParams = {}): Promise<OrdersPage> {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.get(`${baseUrl}/api/orders`, { params })
+  return response.data
+}
+
+/** @deprecated use getOrders() */
 export async function getAllOrders() {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
-  const response = await axios.get(`${baseUrl}/api/orders`)
-  return response.data
+  const response = await axios.get(`${baseUrl}/api/orders`, { params: { page: 1, limit: 999 } })
+  return (response.data as OrdersPage).orders
 }

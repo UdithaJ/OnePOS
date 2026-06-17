@@ -22,33 +22,32 @@
           <span v-if="overdueCount > 0">{{ overdueCount }} overdue</span>
         </v-alert>
         <v-skeleton-loader v-if="loading" type="table" class="mb-4 neomorphic-card" :loading="loading" />
-        <div>
-          <BaseList
-            v-if="!loading && !errorMsg"
-            theme="teal"
-            :headers="orderHeaders"
-            :items="orders"
-            @add="handleAddOrder"
-            @edit="onEditOrder"
-          >
-            <template #item.status="{ item }">
-              <span>{{ item.status }}</span>
-              <v-chip
-                v-if="item.overdue"
-                color="error"
-                size="x-small"
-                class="ml-2"
-                label
-              >Overdue</v-chip>
-              <v-chip
-                v-else-if="item.dueSoon"
-                color="warning"
-                size="x-small"
-                class="ml-2"
-                label
-              >Due Soon</v-chip>
-            </template>
-          </BaseList>
+        <div v-if="!loading && !errorMsg">
+          <v-card class="base-list-card base-list-card--teal">
+            <v-card-title class="d-flex justify-space-between align-center">
+              <span>Order List</span>
+              <v-btn color="primary" icon="mdi-plus" size="small" class="ml-2" @click="handleAddOrder">
+                <v-icon>mdi-plus</v-icon>
+              </v-btn>
+            </v-card-title>
+            <v-data-table-server
+              :headers="orderHeaders"
+              :items="orders"
+              :items-length="totalOrders"
+              :loading="tableLoading"
+              class="elevation-1"
+              @update:options="handleTableOptions"
+            >
+              <template #item.status="{ item }">
+                <span>{{ item.status }}</span>
+                <v-chip v-if="item.overdue" color="error" size="x-small" class="ml-2" label>Overdue</v-chip>
+                <v-chip v-else-if="item.dueSoon" color="warning" size="x-small" class="ml-2" label>Due Soon</v-chip>
+              </template>
+              <template #item.actions="{ item }">
+                <v-btn icon="mdi-pencil" size="small" @click="onEditOrder(item)" />
+              </template>
+            </v-data-table-server>
+          </v-card>
         </div>
       </section>
       <v-dialog v-model="showCapacityWarning" max-width="480">
@@ -85,14 +84,15 @@
                 style="color: rgba(255,255,255,0.8);" @click="showForm = false" />
             </div>
             <div class="bg-white px-6 pt-6 pb-4" style="max-height: 75vh; overflow-y: auto;">
-            <div v-if="editOrderId" class="mb-4">
+            <div class="mb-4">
               <v-tabs v-model="activeOrderModalTab" color="#0f766e" density="comfortable">
                 <v-tab value="order" style="text-transform: none;">Order</v-tab>
-                <v-tab value="payments" style="text-transform: none;">Payments</v-tab>
+                <v-tab v-if="!editOrderId" value="new-customer" style="text-transform: none;">New Customer</v-tab>
+                <v-tab v-if="editOrderId" value="payments" style="text-transform: none;">Payments</v-tab>
               </v-tabs>
             </div>
             <DynamicForm
-              v-show="!editOrderId || activeOrderModalTab === 'order'"
+              v-show="activeOrderModalTab === 'order'"
               :schema="orderFormSchema"
               :form="form"
               :isValid="isValid"
@@ -100,40 +100,54 @@
               :hideDefaultSubmit="true"
             >
               <template #default>
-                <div class="order-form-row">
-                  <div class="order-form-field">
-                    <div class="field-group">
-                      <label class="field-label">Customer <span class="required-star">*</span></label>
-                      <v-autocomplete
-                        v-model="form.customer"
-                        :items="orderFormSchema.fields[0].options"
-                        placeholder="Select customer"
-                        :rules="[v => !!v || 'Customer is required']"
-                        required
-                        variant="outlined"
-                        density="compact"
-                        hide-details="auto"
+                <div class="field-group mb-4">
+                  <label class="field-label">Customer <span class="required-star">*</span></label>
+                  <v-autocomplete
+                    v-model="form.customer"
+                    v-model:search="customerSearchQuery"
+                    :items="editOrderId ? customers : customerSearchItems"
+                    item-title="label"
+                    item-value="value"
+                    :custom-filter="customerFilter"
+                    placeholder="Search by name or phone number..."
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    clearable
+                    required
+                    :rules="[v => !!v || 'Customer is required']"
+                    @update:model-value="onCustomerSelect"
+                  >
+                    <template #item="{ item, props: itemProps }">
+                      <v-list-item
+                        v-if="item.raw?.isAction"
+                        v-bind="itemProps"
+                        title="+ Add New Customer"
+                        style="color: #0f766e; font-weight: 600; border-top: 1px solid #f3f4f6;"
                       />
-                    </div>
-                  </div>
-                  <div class="order-form-field">
-                    <div class="field-group">
-                      <label class="field-label">Delivery Date <span class="required-star">*</span></label>
-                      <v-text-field
-                        v-model="form.deliveryDate"
-                        type="date"
-                        :rules="[v => !!v || 'Delivery date is required']"
-                        required
-                        variant="outlined"
-                        density="compact"
-                        hide-details="auto"
-                      />
-                    </div>
-                  </div>
+                      <v-list-item v-else v-bind="itemProps">
+                        <template #subtitle>
+                          <span style="font-size: 12px; color: #6b7280;">{{ item.raw?.mobileNumber }}</span>
+                        </template>
+                      </v-list-item>
+                    </template>
+                  </v-autocomplete>
+                </div>
+                <div v-if="form.customer || editOrderId" class="field-group mb-2">
+                  <label class="field-label">Delivery Date <span class="required-star">*</span></label>
+                  <v-text-field
+                    v-model="form.deliveryDate"
+                    type="date"
+                    :rules="[v => !!v || 'Delivery date is required']"
+                    required
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                  />
                 </div>
               </template>
               <template #suborders>
-                <div class="order-suborders-section">
+                <div v-if="form.customer || editOrderId" class="order-suborders-section">
                   <div class="order-suborders-header">
                     <div class="suborders-label">
                       <span>Order Items</span>
@@ -220,6 +234,74 @@
                 </div>
               </template>
             </DynamicForm>
+            <div v-if="!editOrderId && activeOrderModalTab === 'new-customer'" class="pa-2">
+              <div style="font-size: 13px; color: #6b7280; margin-bottom: 16px;">
+                Enter customer details to register and continue with the order.
+              </div>
+              <div class="order-form-row" style="margin-bottom: 12px;">
+                <div class="order-form-field">
+                  <div class="field-group">
+                    <label class="field-label">First Name <span class="required-star">*</span></label>
+                    <v-text-field v-model="newCustomerForm.firstName" variant="outlined" density="compact" hide-details="auto" placeholder="First name" />
+                  </div>
+                </div>
+                <div class="order-form-field">
+                  <div class="field-group">
+                    <label class="field-label">Last Name <span class="required-star">*</span></label>
+                    <v-text-field v-model="newCustomerForm.lastName" variant="outlined" density="compact" hide-details="auto" placeholder="Last name" />
+                  </div>
+                </div>
+              </div>
+              <div class="order-form-row" style="margin-bottom: 12px;">
+                <div class="order-form-field">
+                  <div class="field-group">
+                    <label class="field-label">Mobile Number <span class="required-star">*</span></label>
+                    <v-text-field v-model="newCustomerForm.mobileNumber" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" />
+                  </div>
+                </div>
+                <div class="order-form-field">
+                  <div class="field-group">
+                    <label class="field-label">Postal Code <span class="required-star">*</span></label>
+                    <v-text-field v-model="newCustomerForm.postalCode" variant="outlined" density="compact" hide-details="auto" placeholder="Postal code" />
+                  </div>
+                </div>
+              </div>
+              <div class="field-group" style="margin-bottom: 12px;">
+                <label class="field-label">Address Line 1 <span class="required-star">*</span></label>
+                <v-text-field v-model="newCustomerForm.addressLine1" variant="outlined" density="compact" hide-details="auto" placeholder="Address line 1" />
+              </div>
+              <div class="field-group" style="margin-bottom: 12px;">
+                <label class="field-label">Address Line 2</label>
+                <v-text-field v-model="newCustomerForm.addressLine2" variant="outlined" density="compact" hide-details="auto" placeholder="Address line 2 (optional)" />
+              </div>
+              <div class="order-form-row" style="margin-bottom: 16px;">
+                <div class="order-form-field">
+                  <div class="field-group">
+                    <label class="field-label">City <span class="required-star">*</span></label>
+                    <v-text-field v-model="newCustomerForm.city" variant="outlined" density="compact" hide-details="auto" placeholder="City" />
+                  </div>
+                </div>
+                <div class="order-form-field">
+                  <div class="field-group">
+                    <label class="field-label">State <span class="required-star">*</span></label>
+                    <v-text-field v-model="newCustomerForm.state" variant="outlined" density="compact" hide-details="auto" placeholder="State" />
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #f3f4f6; padding-top: 16px;">
+                <v-btn
+                  variant="outlined"
+                  style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+                  @click="activeOrderModalTab = 'order'"
+                >Back to Order</v-btn>
+                <v-btn
+                  :disabled="!newCustomerFormValid"
+                  :loading="savingNewCustomer"
+                  style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
+                  @click="handleAddNewCustomer"
+                >Add Customer</v-btn>
+              </div>
+            </div>
             <template v-if="editOrderId">
               <div v-show="activeOrderModalTab === 'payments'">
               <v-divider class="mt-4 mb-3" />
@@ -295,7 +377,7 @@ const orderHeaders = [
   { title: 'Actions', key: 'actions', align: 'end', sortable: false },
 ]
 
-import { getAllOrders, getOrderById, updateOrder } from '@/services/orderApiService'
+import { getOrders, getOrderById, updateOrder } from '@/services/orderApiService'
 import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
 import { checkOrderCapacity, getSystemSettings, type CapacityCheckResult } from '@/services/systemSettingsApiService'
 const payments = ref<any[]>([])
@@ -316,9 +398,54 @@ const canMakePayment = computed(() => {
 })
 
 const orders = ref<any[]>([])
+const totalOrders = ref(0)
+const page = ref(1)
+const itemsPerPage = ref(10)
+const sortKey = ref('orderNo')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+const tableLoading = ref(false)
 const showForm = ref(false)
 const editOrderId = ref<string|null>(null)
-const activeOrderModalTab = ref<'order' | 'payments'>('order')
+const activeOrderModalTab = ref<'order' | 'payments' | 'new-customer'>('order')
+
+const customerSearchQuery = ref('')
+
+const newCustomerForm = ref({
+  firstName: '',
+  lastName: '',
+  mobileNumber: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  state: '',
+  postalCode: '',
+})
+const savingNewCustomer = ref(false)
+const newCustomerFormValid = computed(() => {
+  const f = newCustomerForm.value
+  return !!(f.firstName && f.lastName && f.mobileNumber && f.addressLine1 && f.city && f.state && f.postalCode)
+})
+
+const customerSearchItems = computed(() => [
+  ...customers.value,
+  { label: '+ Add New Customer', value: '__add_new__', mobileNumber: '', isAction: true }
+])
+
+function customerFilter(_value: string, query: string, item?: any): boolean {
+  if (item?.raw?.isAction) return true
+  if (!query) return true
+  const q = query.toLowerCase()
+  const label = (item?.raw?.label || '').toLowerCase()
+  const phone = (item?.raw?.mobileNumber || '').toLowerCase()
+  return label.includes(q) || phone.includes(q)
+}
+
+function onCustomerSelect(val: any) {
+  if (val === '__add_new__') {
+    form.value.customer = ''
+    goToNewCustomerTab()
+  }
+}
 const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
@@ -411,7 +538,7 @@ async function onPaymentMade(payment: any) {
 }
 
 import { onMounted } from 'vue'
-import { getAllCustomers } from '@/services/customerApiService'
+import { getAllCustomers, createCustomer } from '@/services/customerApiService'
 import { createOrder } from '@/services/orderApiService'
 import { useToast, toastStyle } from '@/composables/useToast'
 const { toast, showToast } = useToast()
@@ -430,8 +557,6 @@ const ORDER_STATUSES = [
 
 const orderFormSchema = computed(() => ({
   fields: [
-    { name: 'customer', label: 'Customer', type: 'autoselect', required: true, options: customers.value, allowFreeText: false },
-    { name: 'deliveryDate', label: 'Delivery Date', type: 'date', required: true },
     ...(editOrderId.value ? [
       { name: 'status', label: 'Status', type: 'select', required: true, options: ORDER_STATUSES },
       { name: 'rackNumber', label: 'Rack Number', type: 'text' },
@@ -447,16 +572,16 @@ async function loadCustomersAndOrders() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const [customerData, orderData, categoryData, settings] = await Promise.all([
+    const [customerData, orderResult, categoryData, settings] = await Promise.all([
       getAllCustomers(),
-      getAllOrders(),
+      getOrders({ page: page.value, limit: itemsPerPage.value, sortBy: sortKey.value, sortOrder: sortOrder.value }),
       getAllCategories(),
       getSystemSettings().catch(() => null)
     ])
     if (settings) {
       dueSoonLeadDays.value = Number(settings.dueSoonLeadDays) || 0
     }
-    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id }))
+    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id, mobileNumber: c.mobileNumber }))
     if (Array.isArray(categoryData)) {
       categories.value = categoryData.map((cat: any) => ({
         label: cat.name,
@@ -468,7 +593,10 @@ async function loadCustomersAndOrders() {
       categories.value = []
       console.error('Failed to load categories:', categoryData)
     }
-    setOrdersFromData(orderData)
+    console.log('[OrderList] orderResult:', orderResult)
+    totalOrders.value = orderResult.total
+    setOrdersFromData(orderResult.orders)
+    console.log('[OrderList] orders after set:', orders.value.length)
   } catch (err) {
     errorMsg.value = 'Failed to load orders or related data. Please try again.'
     console.error('Data load error:', err)
@@ -514,8 +642,39 @@ function setOrdersFromData(orderData: any[]) {
 }
 
 async function loadOrders() {
-  const orderData = await getAllOrders()
-  setOrdersFromData(orderData)
+  if (tableLoading.value) return
+  tableLoading.value = true
+  try {
+    const result = await getOrders({ page: page.value, limit: itemsPerPage.value, sortBy: sortKey.value, sortOrder: sortOrder.value })
+    totalOrders.value = result.total
+    setOrdersFromData(result.orders)
+  } catch (err) {
+    errorMsg.value = 'Failed to load orders. Please try again.'
+    console.error('loadOrders error:', err)
+  } finally {
+    tableLoading.value = false
+  }
+}
+
+function handleTableOptions(options: any) {
+  const newPage: number = options.page ?? page.value
+  const newLimit: number = options.itemsPerPage ?? itemsPerPage.value
+  const sort = options.sortBy?.[0]
+  const newSortKey: string = sort?.key ?? sortKey.value
+  const newSortOrder: 'asc' | 'desc' = sort?.order ?? sortOrder.value
+
+  if (
+    newPage === page.value &&
+    newLimit === itemsPerPage.value &&
+    newSortKey === sortKey.value &&
+    newSortOrder === sortOrder.value
+  ) return
+
+  page.value = newPage
+  itemsPerPage.value = newLimit
+  sortKey.value = newSortKey
+  sortOrder.value = newSortOrder
+  loadOrders()
 }
 
 onMounted(loadCustomersAndOrders)
@@ -541,6 +700,17 @@ function resetForm() {
   activeOrderModalTab.value = 'order'
   printBillOnCreate.value = true
   makePaymentOnCreate.value = false
+  customerSearchQuery.value = ''
+  newCustomerForm.value = {
+    firstName: '',
+    lastName: '',
+    mobileNumber: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+  }
 }
 
 const submitButtonLabel = computed(() => {
@@ -789,6 +959,38 @@ async function confirmCapacityWarning() {
   } catch (error) {
     showToast('Order creation failed', 'error')
     console.error('Order save failed', error)
+  }
+}
+
+
+function goToNewCustomerTab() {
+  const searchVal = customerSearchQuery.value.trim()
+  newCustomerForm.value = {
+    firstName: '',
+    lastName: '',
+    mobileNumber: /^\d+$/.test(searchVal) ? searchVal : '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+  }
+  activeOrderModalTab.value = 'new-customer'
+}
+
+async function handleAddNewCustomer() {
+  if (!newCustomerFormValid.value) return
+  savingNewCustomer.value = true
+  try {
+    const saved = await createCustomer(newCustomerForm.value)
+    customers.value = [...customers.value, { label: saved.firstName + ' ' + saved.lastName, value: saved._id, mobileNumber: saved.mobileNumber }]
+    form.value.customer = saved._id
+    activeOrderModalTab.value = 'order'
+    showToast('Customer added successfully!', 'success')
+  } catch (e) {
+    showToast('Failed to add customer. Please try again.', 'error')
+  } finally {
+    savingNewCustomer.value = false
   }
 }
 

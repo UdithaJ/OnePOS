@@ -131,7 +131,7 @@ const menuItems: MenuItem[] = [
     icon: 'mdi-cog-outline',
     children: [
       { title: 'Laundry Categories', to: '/categories', icon: 'mdi-tag-multiple' },
-      { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus' },
+      { title: 'Cashflow Categories', to: '/expense-categories', icon: 'mdi-cash-sync' },
     ],
   },
   {

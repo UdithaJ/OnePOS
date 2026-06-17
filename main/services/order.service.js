@@ -90,12 +90,29 @@ async function createOrder(orderData) {
   return order;
 }
 
-// Get all orders
+// Get all orders (kept for internal/report use)
 async function getAllOrders() {
   return await Order.find().populate({
     path: 'suborders',
     populate: { path: 'category' }
   });
+}
+
+const SORTABLE_FIELDS = new Set(['orderNo', 'deliveryDate', 'status', 'totalAmount', 'createdDate'])
+
+async function getOrdersPaginated({ page = 1, limit = 10, sortBy = 'orderNo', sortOrder = 'desc' } = {}) {
+  const skip = (page - 1) * limit
+  const field = SORTABLE_FIELDS.has(sortBy) ? sortBy : 'orderNo'
+  const dir = sortOrder === 'asc' ? 1 : -1
+  const [orders, total] = await Promise.all([
+    Order.find()
+      .sort({ [field]: dir })
+      .skip(skip)
+      .limit(limit)
+      .populate({ path: 'suborders', populate: { path: 'category' } }),
+    Order.countDocuments()
+  ])
+  return { orders, total, page, limit }
 }
 
 // Get order by ID
@@ -154,6 +171,7 @@ module.exports = {
   getOrderStatuses,
   createOrder,
   getAllOrders,
+  getOrdersPaginated,
   getOrderById,
   updateOrder,
   deleteOrder,

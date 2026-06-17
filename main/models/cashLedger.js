@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cashLedgerSchema = new mongoose.Schema({
   event_type: {
     type: String,
-    enum: ['PAYMENT', 'EXPENSE', 'DEPOSIT', 'WITHDRAWAL'],
+    enum: ['PAYMENT', 'EXPENSE', 'DEPOSIT', 'WITHDRAWAL', 'INFLOW'],
     required: true
   },
   date: {
