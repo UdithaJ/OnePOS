@@ -59,12 +59,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, defineProps, defineEmits, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps<{ show: boolean, orderId: string, dueAmount: number }>()
 const emit = defineEmits(['close', 'paid', 'update:show'])
 
-const amount = ref(props.dueAmount)
+const amount = ref<number | string>(props.dueAmount)
 const errorMsg = ref('')
 const paymentMethod = ref('cash')
 const transactionId = ref('')

@@ -199,14 +199,14 @@
                   >
                     <template #item="{ item, props: itemProps }">
                       <v-list-item
-                        v-if="item.raw?.isAction"
+                        v-if="(item as any).raw?.isAction"
                         v-bind="itemProps"
                         title="+ Add New Customer"
                         style="color: #0f766e; font-weight: 600; border-top: 1px solid #f3f4f6;"
                       />
                       <v-list-item v-else v-bind="itemProps">
                         <template #subtitle>
-                          <span style="font-size: 12px; color: #6b7280;">{{ item.raw?.mobileNumber }}</span>
+                          <span style="font-size: 12px; color: #6b7280;">{{ (item as any).raw?.mobileNumber }}</span>
                         </template>
                       </v-list-item>
                     </template>
@@ -468,14 +468,14 @@ import { useAuth } from '../composables/useAuth'
 const { getUser } = useAuth()
 
 const orderHeaders = [
-  { title: 'Order #',       key: 'orderNo',      align: 'start', sortable: true },
-  { title: 'Customer',      key: 'customer',     align: 'start', sortable: true },
-  { title: 'Status',        key: 'status',       align: 'start', sortable: true },
-  { title: 'Delivery Date', key: 'deliveryDate', align: 'start', sortable: true },
-  { title: 'Created Date',  key: 'createdDate',  align: 'start', sortable: true },
-  { title: 'Total',         key: 'totalAmount',  align: 'end',   sortable: true },
-  { title: 'Payment Status',key: 'paymentStatus',align: 'end',   sortable: true },
-  { title: 'Actions',       key: 'actions',      align: 'end',   sortable: false },
+  { title: 'Order #',       key: 'orderNo',      align: 'start' as const, sortable: true },
+  { title: 'Customer',      key: 'customer',     align: 'start' as const, sortable: true },
+  { title: 'Status',        key: 'status',       align: 'start' as const, sortable: true },
+  { title: 'Delivery Date', key: 'deliveryDate', align: 'start' as const, sortable: true },
+  { title: 'Created Date',  key: 'createdDate',  align: 'start' as const, sortable: true },
+  { title: 'Total',         key: 'totalAmount',  align: 'end'   as const, sortable: true },
+  { title: 'Payment Status',key: 'paymentStatus',align: 'end'   as const, sortable: true },
+  { title: 'Actions',       key: 'actions',      align: 'end'   as const, sortable: false },
 ]
 
 import { getOrders, getOrderById, updateOrder } from '@/services/orderApiService'
@@ -509,7 +509,7 @@ const tableLoading = ref(false)
 const filterStatus = ref<string[]>([])
 const filterDeliveryDateFrom = ref('')
 const filterDeliveryDateTo = ref('')
-const filterCustomerID = ref('')
+const filterCustomerID = ref<string | null>('')
 const filterCreatedDateFrom = ref('')
 const filterCreatedDateTo = ref('')
 const showFilterDialog = ref(false)
@@ -671,10 +671,11 @@ async function onPaymentMade(payment: any) {
 import { onMounted } from 'vue'
 import { getAllCustomers, createCustomer } from '@/services/customerApiService'
 import { createOrder } from '@/services/orderApiService'
-import { useToast, toastStyle } from '@/composables/useToast'
+import { useToast } from '@/composables/useToast'
 const { toast, showToast } = useToast()
 
-const customers = ref([])
+const customers = ref<Array<{ label: string; value: string; mobileNumber: string }>>([])
+
 const loading = ref(false)
 const errorMsg = ref('')
 

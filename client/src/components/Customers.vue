@@ -81,11 +81,11 @@ const DynamicForm = defineAsyncComponent(() => import('./DynamicForm.vue'))
 const ConfirmationDialog = defineAsyncComponent(() => import('./ConfirmationDialog.vue'))
 
 const customerHeaders = [
-  { title: 'Name', key: 'name', align: 'start' },
-  { title: 'Mobile', key: 'mobileNumber', align: 'start' },
-  { title: 'City', key: 'city', align: 'start' },
-  { title: 'State', key: 'state', align: 'start' },
-  { title: 'Actions', key: 'actions', align: 'end', sortable: false },
+  { title: 'Name',    key: 'name',         align: 'start' as const },
+  { title: 'Mobile',  key: 'mobileNumber', align: 'start' as const },
+  { title: 'City',    key: 'city',         align: 'start' as const },
+  { title: 'State',   key: 'state',        align: 'start' as const },
+  { title: 'Actions', key: 'actions',      align: 'end'   as const, sortable: false },
 ]
 
 const customers = ref<any[]>([])
@@ -158,7 +158,7 @@ function onEditCustomer(customer: any) {
 
 async function handleSubmit() {
   try {
-    const payload = { ...form.value }
+    const payload = { ...form.value } as any
     if (editId.value) {
       const saved = await updateCustomer(editId.value, payload)
       const idx = customers.value.findIndex(c => c._id === editId.value)

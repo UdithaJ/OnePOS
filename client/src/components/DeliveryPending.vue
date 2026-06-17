@@ -137,9 +137,10 @@ async function loadData() {
       .map((o: any) => ({
         id: String(o._id),
         orderNo: o.orderNo || o._id,
-        customerName:
+        customerName: (
           customerMap.get(String(o.customerID?._id ?? o.customerID)) ||
-          String(o.customerID ?? '—'),
+          String(o.customerID ?? '—')
+        ) as string,
         deliveryDate: o.deliveryDate,
         checked: false,
       }))

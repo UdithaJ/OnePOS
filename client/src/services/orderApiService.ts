@@ -14,10 +14,12 @@ import axios from 'axios'
 
 export interface OrderPayload {
   customerID: string
-  weight: number
   deliveryDate: string
-  totalAmount: number
-  // Add other fields as needed
+  totalAmount?: number
+  discount?: number
+  suborders?: any[]
+  status?: string
+  rackNumber?: string
 }
 
 

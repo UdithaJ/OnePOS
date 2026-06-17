@@ -36,7 +36,7 @@ import { ref } from 'vue'
 interface Header {
   title: string
   key: string
-  align?: string
+  align?: 'start' | 'end' | 'center'
   sortable?: boolean
 }
 
