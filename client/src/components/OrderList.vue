@@ -26,15 +26,25 @@
           <v-card class="base-list-card base-list-card--teal">
             <v-card-title class="d-flex justify-space-between align-center">
               <span>Order List</span>
-              <v-btn color="primary" icon="mdi-plus" size="small" class="ml-2" @click="handleAddOrder">
-                <v-icon>mdi-plus</v-icon>
-              </v-btn>
+              <div class="d-flex align-center gap-2">
+                <v-btn variant="tonal" size="small" @click="showFilterDialog = true">
+                  <v-icon start size="18">mdi-filter-variant</v-icon>
+                  Filters
+                  <v-chip v-if="activeFilterCount" size="x-small" color="teal-darken-3" class="ml-1">{{ activeFilterCount }}</v-chip>
+                </v-btn>
+                <v-btn color="primary" icon size="small" @click="handleAddOrder">
+                  <v-icon>mdi-plus</v-icon>
+                </v-btn>
+              </div>
             </v-card-title>
             <v-data-table-server
               :headers="orderHeaders"
               :items="orders"
               :items-length="totalOrders"
               :loading="tableLoading"
+              :sort-by="tableSortBy"
+              :page="page"
+              :items-per-page="itemsPerPage"
               class="elevation-1"
               @update:options="handleTableOptions"
             >
@@ -48,6 +58,75 @@
               </template>
             </v-data-table-server>
           </v-card>
+
+          <!-- Filter modal -->
+          <v-dialog v-model="showFilterDialog" max-width="480">
+            <v-card class="rounded-xl overflow-hidden">
+              <div style="background: #0d3d38;" class="d-flex align-center justify-space-between px-6 py-4">
+                <span class="text-base font-semibold text-white">Filter Orders</span>
+                <v-btn icon="mdi-close" size="small" variant="text" style="color: rgba(255,255,255,0.8);" @click="showFilterDialog = false" />
+              </div>
+              <v-card-text class="pt-5 pb-2">
+                <div class="mb-4">
+                  <div class="text-subtitle-2 mb-1 text-medium-emphasis">Status</div>
+                  <v-select
+                    v-model="filterStatus"
+                    :items="ORDER_STATUSES"
+                    item-title="label"
+                    item-value="value"
+                    placeholder="All statuses"
+                    multiple
+                    clearable
+                    chips
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  />
+                </div>
+                <div class="mb-4">
+                  <div class="text-subtitle-2 mb-1 text-medium-emphasis">Customer</div>
+                  <v-autocomplete
+                    v-model="filterCustomerID"
+                    :items="customers"
+                    item-title="label"
+                    item-value="value"
+                    placeholder="All customers"
+                    clearable
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  />
+                </div>
+                <div class="mb-4">
+                  <div class="text-subtitle-2 mb-1 text-medium-emphasis">Delivery Date</div>
+                  <v-row dense>
+                    <v-col cols="6">
+                      <v-text-field v-model="filterDeliveryDateFrom" type="date" label="From" variant="outlined" density="compact" hide-details />
+                    </v-col>
+                    <v-col cols="6">
+                      <v-text-field v-model="filterDeliveryDateTo" type="date" label="To" variant="outlined" density="compact" hide-details />
+                    </v-col>
+                  </v-row>
+                </div>
+                <div class="mb-2">
+                  <div class="text-subtitle-2 mb-1 text-medium-emphasis">Created Date</div>
+                  <v-row dense>
+                    <v-col cols="6">
+                      <v-text-field v-model="filterCreatedDateFrom" type="date" label="From" variant="outlined" density="compact" hide-details />
+                    </v-col>
+                    <v-col cols="6">
+                      <v-text-field v-model="filterCreatedDateTo" type="date" label="To" variant="outlined" density="compact" hide-details />
+                    </v-col>
+                  </v-row>
+                </div>
+              </v-card-text>
+              <v-card-actions class="px-6 pb-5 pt-2">
+                <v-btn variant="outlined" @click="clearFilters">Clear all</v-btn>
+                <v-spacer />
+                <v-btn variant="flat" style="background: #0f766e; color: #fff;" @click="applyFilters">Apply filters</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
         </div>
       </section>
       <v-dialog v-model="showCapacityWarning" max-width="480">
@@ -369,12 +448,14 @@ import { useAuth } from '../composables/useAuth'
 const { getUser } = useAuth()
 
 const orderHeaders = [
-  { title: 'Order #', key: 'orderNo', align: 'start' },
-  { title: 'Customer', key: 'customer', align: 'start' },
-  { title: 'Status', key: 'status', align: 'start' },
-  { title: 'Total', key: 'total', align: 'end' },
-  { title: 'Payment Status', key: 'paymentStatus', align: 'end' },
-  { title: 'Actions', key: 'actions', align: 'end', sortable: false },
+  { title: 'Order #',       key: 'orderNo',      align: 'start', sortable: true },
+  { title: 'Customer',      key: 'customer',     align: 'start', sortable: true },
+  { title: 'Status',        key: 'status',       align: 'start', sortable: true },
+  { title: 'Delivery Date', key: 'deliveryDate', align: 'start', sortable: true },
+  { title: 'Created Date',  key: 'createdDate',  align: 'start', sortable: true },
+  { title: 'Total',         key: 'totalAmount',  align: 'end',   sortable: true },
+  { title: 'Payment Status',key: 'paymentStatus',align: 'end',   sortable: true },
+  { title: 'Actions',       key: 'actions',      align: 'end',   sortable: false },
 ]
 
 import { getOrders, getOrderById, updateOrder } from '@/services/orderApiService'
@@ -404,6 +485,28 @@ const itemsPerPage = ref(10)
 const sortKey = ref('orderNo')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 const tableLoading = ref(false)
+
+const filterStatus = ref<string[]>([])
+const filterDeliveryDateFrom = ref('')
+const filterDeliveryDateTo = ref('')
+const filterCustomerID = ref('')
+const filterCreatedDateFrom = ref('')
+const filterCreatedDateTo = ref('')
+const showFilterDialog = ref(false)
+
+const activeFilterCount = computed(() => {
+  let n = 0
+  if (filterStatus.value.length) n++
+  if (filterCustomerID.value) n++
+  if (filterDeliveryDateFrom.value || filterDeliveryDateTo.value) n++
+  if (filterCreatedDateFrom.value || filterCreatedDateTo.value) n++
+  return n
+})
+
+const tableSortBy = computed(() =>
+  sortKey.value ? [{ key: sortKey.value, order: sortOrder.value }] : []
+)
+
 const showForm = ref(false)
 const editOrderId = ref<string|null>(null)
 const activeOrderModalTab = ref<'order' | 'payments' | 'new-customer'>('order')
@@ -633,7 +736,9 @@ function setOrdersFromData(orderData: any[]) {
       orderNo: order.orderNo || order._id,
       customer: customers.value.find(c => c.value === (order.customerID?._id || order.customerID))?.label || order.customerID,
       status: order.status,
-      total: typeof order.totalAmount === 'number' ? `Rs ${order.totalAmount.toFixed(2)}` : order.totalAmount,
+      deliveryDate: order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : '—',
+      createdDate: order.createdDate ? new Date(order.createdDate).toLocaleDateString() : '—',
+      totalAmount: typeof order.totalAmount === 'number' ? `Rs ${order.totalAmount.toFixed(2)}` : order.totalAmount,
       paymentStatus,
       overdue,
       dueSoon,
@@ -645,7 +750,18 @@ async function loadOrders() {
   if (tableLoading.value) return
   tableLoading.value = true
   try {
-    const result = await getOrders({ page: page.value, limit: itemsPerPage.value, sortBy: sortKey.value, sortOrder: sortOrder.value })
+    const result = await getOrders({
+      page: page.value,
+      limit: itemsPerPage.value,
+      sortBy: sortKey.value,
+      sortOrder: sortOrder.value,
+      status: filterStatus.value.length ? filterStatus.value.join(',') : undefined,
+      deliveryDateFrom: filterDeliveryDateFrom.value || undefined,
+      deliveryDateTo: filterDeliveryDateTo.value || undefined,
+      customerID: filterCustomerID.value || undefined,
+      createdDateFrom: filterCreatedDateFrom.value || undefined,
+      createdDateTo: filterCreatedDateTo.value || undefined,
+    })
     totalOrders.value = result.total
     setOrdersFromData(result.orders)
   } catch (err) {
@@ -654,6 +770,23 @@ async function loadOrders() {
   } finally {
     tableLoading.value = false
   }
+}
+
+function applyFilters() {
+  showFilterDialog.value = false
+  page.value = 1
+  loadOrders()
+}
+
+function clearFilters() {
+  filterStatus.value = []
+  filterDeliveryDateFrom.value = ''
+  filterDeliveryDateTo.value = ''
+  filterCustomerID.value = ''
+  filterCreatedDateFrom.value = ''
+  filterCreatedDateTo.value = ''
+  page.value = 1
+  loadOrders()
 }
 
 function handleTableOptions(options: any) {
@@ -1009,3 +1142,20 @@ async function handleAddOrder() {
   await handleNewOrderClick();
 }
 </script>
+
+<style scoped>
+/* Sort icon always on the right of the column title */
+:deep(.v-data-table-header__content) {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+/* Always show the sort icon on sortable columns (not just on hover) */
+:deep(.v-data-table__th--sortable .v-data-table-header__sort-icon) {
+  opacity: 0.38;
+}
+:deep(.v-data-table__th--sorted .v-data-table-header__sort-icon) {
+  opacity: 1;
+}
+</style>

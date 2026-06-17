@@ -98,19 +98,91 @@ async function getAllOrders() {
   });
 }
 
-const SORTABLE_FIELDS = new Set(['orderNo', 'deliveryDate', 'status', 'totalAmount', 'createdDate'])
+const SORTABLE_FIELDS = new Set(['orderNo', 'deliveryDate', 'status', 'totalAmount', 'createdDate', 'paymentStatus', 'customer'])
 
-async function getOrdersPaginated({ page = 1, limit = 10, sortBy = 'orderNo', sortOrder = 'desc' } = {}) {
+async function getOrdersPaginated({
+  page = 1, limit = 10, sortBy = 'orderNo', sortOrder = 'desc',
+  status = [], deliveryDateFrom = '', deliveryDateTo = '', customerID = '',
+  createdDateFrom = '', createdDateTo = ''
+} = {}) {
   const skip = (page - 1) * limit
   const field = SORTABLE_FIELDS.has(sortBy) ? sortBy : 'orderNo'
   const dir = sortOrder === 'asc' ? 1 : -1
+
+  const filter = {}
+  if (status && status.length) filter.status = { $in: status }
+  if (deliveryDateFrom || deliveryDateTo) {
+    filter.deliveryDate = {}
+    if (deliveryDateFrom) filter.deliveryDate.$gte = new Date(deliveryDateFrom)
+    if (deliveryDateTo) {
+      const end = new Date(deliveryDateTo)
+      end.setHours(23, 59, 59, 999)
+      filter.deliveryDate.$lte = end
+    }
+  }
+  if (customerID) filter.customerID = new mongoose.Types.ObjectId(customerID)
+  if (createdDateFrom || createdDateTo) {
+    filter.createdDate = {}
+    if (createdDateFrom) filter.createdDate.$gte = new Date(createdDateFrom)
+    if (createdDateTo) {
+      const end = new Date(createdDateTo)
+      end.setHours(23, 59, 59, 999)
+      filter.createdDate.$lte = end
+    }
+  }
+
+  // Customer sort — lookup customer name from the customers collection
+  if (field === 'customer') {
+    const [orders, total] = await Promise.all([
+      Order.aggregate([
+        { $match: filter },
+        { $lookup: { from: 'customers', localField: 'customerID', foreignField: '_id', as: '_cust' } },
+        { $addFields: { _sortName: { $concat: [
+          { $ifNull: [{ $arrayElemAt: ['$_cust.firstName', 0] }, ''] },
+          ' ',
+          { $ifNull: [{ $arrayElemAt: ['$_cust.lastName', 0] }, ''] }
+        ] } } },
+        { $sort: { _sortName: dir } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _cust: 0, _sortName: 0 } }
+      ]),
+      Order.countDocuments(filter)
+    ])
+    return { orders, total, page, limit }
+  }
+
+  // paymentStatus sort — alphabetical order is wrong (paid < partial < unpaid),
+  // so use a numeric proxy: unpaid=0, partial=1, paid=2
+  if (field === 'paymentStatus') {
+    const [orders, total] = await Promise.all([
+      Order.aggregate([
+        { $match: filter },
+        { $addFields: { _ps: { $switch: {
+          branches: [
+            { case: { $eq: ['$paymentStatus', 'unpaid']  }, then: 0 },
+            { case: { $eq: ['$paymentStatus', 'partial'] }, then: 1 },
+            { case: { $eq: ['$paymentStatus', 'paid']    }, then: 2 }
+          ],
+          default: -1
+        } } } },
+        { $sort: { _ps: dir } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _ps: 0 } }
+      ]),
+      Order.countDocuments(filter)
+    ])
+    return { orders, total, page, limit }
+  }
+
   const [orders, total] = await Promise.all([
-    Order.find()
+    Order.find(filter)
       .sort({ [field]: dir })
       .skip(skip)
       .limit(limit)
       .populate({ path: 'suborders', populate: { path: 'category' } }),
-    Order.countDocuments()
+    Order.countDocuments(filter)
   ])
   return { orders, total, page, limit }
 }

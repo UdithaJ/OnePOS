@@ -2,14 +2,27 @@ const Order = require('../models/order');
 const orderService = require('../services/order.service');
 const capacityService = require('../services/capacity.service');
 
-// Get orders (paginated)
+// Get orders (paginated + filtered)
 exports.getAllOrders = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1)
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10))
     const sortBy = req.query.sortBy || 'orderNo'
     const sortOrder = req.query.sortOrder === 'asc' ? 'asc' : 'desc'
-    const result = await orderService.getOrdersPaginated({ page, limit, sortBy, sortOrder })
+
+    const rawStatus = req.query.status || ''
+    const status = rawStatus ? rawStatus.split(',').map(s => s.trim()).filter(Boolean) : []
+    const deliveryDateFrom = req.query.deliveryDateFrom || ''
+    const deliveryDateTo = req.query.deliveryDateTo || ''
+    const customerID = req.query.customerID || ''
+    const createdDateFrom = req.query.createdDateFrom || ''
+    const createdDateTo = req.query.createdDateTo || ''
+
+    const result = await orderService.getOrdersPaginated({
+      page, limit, sortBy, sortOrder,
+      status, deliveryDateFrom, deliveryDateTo, customerID,
+      createdDateFrom, createdDateTo
+    })
     res.json(result)
   } catch (err) {
     res.status(500).json({ message: err.message });

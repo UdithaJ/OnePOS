@@ -32,6 +32,12 @@ export interface OrdersParams {
   limit?: number
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+  status?: string
+  deliveryDateFrom?: string
+  deliveryDateTo?: string
+  customerID?: string
+  createdDateFrom?: string
+  createdDateTo?: string
 }
 
 export interface OrdersPage {
