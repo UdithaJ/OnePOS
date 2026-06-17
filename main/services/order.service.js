@@ -77,9 +77,11 @@ async function createOrder(orderData) {
   }
 
   // Step 3: Persist suborder IDs and the authoritative totals.
+  const discount = Math.min(Math.max(Number(orderData.discount) || 0, 0), recomputedTotal)
   order.suborders = suborderIds;
   order.totalAmount = recomputedTotal;
-  order.dueAmount = recomputedTotal;
+  order.discount = discount;
+  order.dueAmount = Math.max(recomputedTotal - discount, 0);
   await order.save();
 
   // Step 4: Populate suborders for return
@@ -196,13 +198,16 @@ async function getOrderById(id) {
 }
 
 // Update order
+const Payment = require('../models/payment')
 async function updateOrder(id, updateData) {
+  const order = await Order.findById(id);
+  if (!order) throw new Error('Order not found');
+
   if (Array.isArray(updateData.suborders)) {
     const catMap = await loadCategoryMap(updateData.suborders);
 
     // Remove old suborders
-    const order = await Order.findById(id);
-    if (order && Array.isArray(order.suborders)) {
+    if (Array.isArray(order.suborders)) {
       await OrderCategory.deleteMany({ _id: { $in: order.suborders } });
     }
 
@@ -226,8 +231,18 @@ async function updateOrder(id, updateData) {
     }
     updateData.suborders = suborderIds;
     updateData.totalAmount = recomputedTotal;
-    // dueAmount intentionally left alone — payments may already exist.
   }
+
+  // Recalculate dueAmount whenever total or discount changes
+  const newTotal = updateData.totalAmount ?? order.totalAmount
+  const newDiscount = 'discount' in updateData
+    ? Math.min(Math.max(Number(updateData.discount) || 0, 0), newTotal)
+    : Number(order.discount || 0)
+  updateData.discount = newDiscount
+  const payments = await Payment.find({ orderId: id })
+  const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+  updateData.dueAmount = Math.max(newTotal - newDiscount - paid, 0)
+
   return await Order.findByIdAndUpdate(id, updateData, { new: true }).populate({
     path: 'suborders',
     populate: { path: 'category' }

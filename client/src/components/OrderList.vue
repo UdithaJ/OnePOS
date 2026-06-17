@@ -287,8 +287,28 @@
                   </div>
                   <v-divider class="order-divider" />
                   <div class="order-total-row">
-                    <span class="order-total-label">Total Amount</span>
+                    <span class="order-total-label">Subtotal</span>
                     <span class="order-total-amount">LKR {{ totalAmount.toFixed(2) }}</span>
+                  </div>
+                  <div class="order-discount-row">
+                    <span class="order-total-label">Discount</span>
+                    <v-text-field
+                      v-model="form.discount"
+                      type="number"
+                      min="0"
+                      :max="totalAmount"
+                      placeholder="0.00"
+                      prefix="LKR"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      style="max-width: 180px;"
+                      @input="clampDiscount"
+                    />
+                  </div>
+                  <div v-if="Number(form.discount) > 0" class="order-total-row" style="border-top: 2px solid #0f766e; margin-top: 4px; padding-top: 6px;">
+                    <span class="order-total-label" style="font-weight: 700;">Total After Discount</span>
+                    <span class="order-total-amount" style="color: #0f766e;">LKR {{ finalAmount.toFixed(2) }}</span>
                   </div>
                   <div v-if="!editOrderId" class="mb-3">
                     <v-checkbox
@@ -578,6 +598,13 @@ function updateSuborderAmount(idx: number) {
   }
 }
 const totalAmount = computed(() => suborders.value.reduce((sum, s) => sum + Number(s.amount || 0), 0))
+const finalAmount = computed(() => Math.max(totalAmount.value - Number(form.value.discount || 0), 0))
+
+function clampDiscount() {
+  const d = Number(form.value.discount)
+  if (isNaN(d) || d < 0) { form.value.discount = 0; return }
+  if (d > totalAmount.value) form.value.discount = totalAmount.value
+}
 
 // Watch suborders for changes to recalculate amounts
 watch(suborders, (subs) => {
@@ -819,12 +846,14 @@ form.value.customer = ''
 form.value.weight = ''
 form.value.deliveryDate = ''
 form.value.totalAmount = ''
+form.value.discount = 0
 form.value.status = ''
 form.value.rackNumber = ''
 
 function resetForm() {
   form.value.customer = ''
   form.value.deliveryDate = ''
+  form.value.discount = 0
   form.value.status = ''
   form.value.rackNumber = ''
   suborders.value = []
@@ -882,7 +911,9 @@ function buildPrintBillHtml(order: any) {
   const orderItems = Array.isArray(order?.suborders) ? order.suborders : []
   const orderId = order?._id || 'N/A'
   const customerName = resolveCustomerName(order?.customerID)
-  const total = Number(order?.totalAmount ?? totalAmount.value ?? 0)
+  const subtotal = Number(order?.totalAmount ?? totalAmount.value ?? 0)
+  const discount = Number(order?.discount ?? form.value.discount ?? 0)
+  const netTotal = Math.max(subtotal - discount, 0)
 
   const rows = orderItems.map((item: any, index: number) => {
     const categoryName = item?.category?.name || categories.value.find((c: any) => c.value === item?.category)?.label || 'Item'
@@ -897,6 +928,18 @@ function buildPrintBillHtml(order: any) {
       </tr>
     `
   }).join('')
+
+  const discountRow = discount > 0 ? `
+    <div class="summary-row">
+      <span>Subtotal</span>
+      <span>${escapeHtml(formatMoney(subtotal))}</span>
+    </div>
+    <div class="summary-row discount">
+      <span>Discount</span>
+      <span>- ${escapeHtml(formatMoney(discount))}</span>
+    </div>
+    <div class="divider"></div>
+  ` : ''
 
   return `
     <!doctype html>
@@ -914,7 +957,10 @@ function buildPrintBillHtml(order: any) {
           table { width: 100%; border-collapse: collapse; font-size: 12px; }
           th, td { padding: 4px 0; border-bottom: 1px dashed #d1d5db; }
           th { text-align: left; font-weight: 600; }
-          .total { margin-top: 8px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; }
+          .summary-row { margin-top: 4px; font-size: 13px; display: flex; justify-content: space-between; }
+          .summary-row.discount { color: #b45309; }
+          .divider { border-top: 1px dashed #d1d5db; margin: 4px 0; }
+          .total { margin-top: 4px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; }
           .footer { margin-top: 10px; text-align: center; font-size: 11px; color: #6b7280; }
         </style>
       </head>
@@ -946,9 +992,10 @@ function buildPrintBillHtml(order: any) {
             </table>
           </div>
 
+          ${discountRow}
           <div class="total">
             <span>Total</span>
-            <span>${escapeHtml(formatMoney(total))}</span>
+            <span>${escapeHtml(formatMoney(netTotal))}</span>
           </div>
 
           <div class="footer">Thank you for your order</div>
@@ -983,6 +1030,7 @@ async function onEditOrder(order: any) {
   activeOrderModalTab.value = 'order'
   form.value.customer = data.customerID?._id || data.customerID
   form.value.deliveryDate = data.deliveryDate?.substring(0, 10)
+  form.value.discount = Number(data.discount || 0)
   form.value.status = data.status || 'todo'
   form.value.rackNumber = data.rackNumber || ''
   currentOrderDueAmount.value = Number(data.dueAmount || 0)
@@ -1015,6 +1063,7 @@ async function persistOrder() {
     deliveryDate: form.value.deliveryDate,
     suborders: suborders.value,
     totalAmount: totalAmount.value,
+    discount: Number(form.value.discount || 0),
   };
   if (editOrderId.value) {
     const editPayload = { ...payload, status: form.value.status, rackNumber: form.value.rackNumber }
@@ -1145,6 +1194,14 @@ async function handleAddOrder() {
 </script>
 
 <style scoped>
+.order-discount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  gap: 12px;
+}
+
 /* Sort icon always on the right of the column title */
 :deep(.v-data-table-header__content) {
   flex-direction: row-reverse;

@@ -12,7 +12,7 @@ exports.createPayment = async (req, res) => {
     if (!order) return res.status(400).json({ message: 'Order not found' });
     const payments = await Payment.find({ orderId });
     const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const due = order.totalAmount - paid;
+    const due = order.totalAmount - Number(order.discount || 0) - paid;
     if (Number(req.body.amount) > due) {
       return res.status(400).json({ message: 'Payment exceeds due amount.' });
     }
@@ -32,7 +32,7 @@ exports.createPayment = async (req, res) => {
 
     // Keep order-level payment state in sync after every payment.
     const newPaid = paid + Number(payment.amount || 0);
-    const newDue = Math.max(Number(order.totalAmount || 0) - newPaid, 0);
+    const newDue = Math.max(Number(order.totalAmount || 0) - Number(order.discount || 0) - newPaid, 0);
     let newPaymentStatus = 'unpaid';
     if (newDue <= 0) {
       newPaymentStatus = 'paid';
