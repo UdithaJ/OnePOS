@@ -7,7 +7,6 @@ const HEADERS = ['Due Date', 'Order No', 'Customer', 'Mobile No', 'Status', 'Rac
 
 const STATUS_DISPLAY: Record<string, string> = {
   todo: 'To Do',
-  in_progress: 'In Progress',
   completed: 'Completed',
   cancelled: 'Cancelled',
 }

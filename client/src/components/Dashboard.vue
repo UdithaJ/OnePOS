@@ -162,7 +162,7 @@ onMounted(async () => {
   const orders = await getAllOrders()
   const all = orders || []
 
-  const pending = all.filter((o: any) => o.status === 'todo' || o.status === 'in_progress')
+  const pending = all.filter((o: any) => o.status === 'todo')
   pendingCount.value = pending.length
   pendingWeightKg.value = pending.reduce((sum: number, o: any) => {
     return sum + (o.suborders || []).reduce((s: number, sub: any) => s + (Number(sub.weight) || 0), 0)

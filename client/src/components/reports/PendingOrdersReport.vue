@@ -156,7 +156,6 @@ function formatDate(isoString: string): string {
 function statusClass(status: string): string {
   const map: Record<string, string> = {
     todo: 'status-todo',
-    in_progress: 'status-inprogress',
     completed: 'status-completed',
     cancelled: 'status-cancelled',
   }

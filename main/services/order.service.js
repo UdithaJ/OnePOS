@@ -7,7 +7,6 @@ const Category = require('../models/category');
 // Hardcoded status list
 const ORDER_STATUSES = [
   { name: 'todo', displayName: 'To Do' },
-  { name: 'in_progress', displayName: 'In Progress' },
   { name: 'completed', displayName: 'Completed' },
   { name: 'cancelled', displayName: 'Cancelled' },
   { name: 'delivered', displayName: 'Delivered' }

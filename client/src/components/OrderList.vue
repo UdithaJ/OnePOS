@@ -681,7 +681,6 @@ const errorMsg = ref('')
 
 const ORDER_STATUSES = [
   { label: 'To Do', value: 'todo' },
-  { label: 'In Progress', value: 'in_progress' },
   { label: 'Completed', value: 'completed' },
   { label: 'Cancelled', value: 'cancelled' },
   { label: 'Delivered', value: 'delivered' },
