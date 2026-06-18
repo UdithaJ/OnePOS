@@ -69,7 +69,10 @@ const errorMsg = ref('')
 const paymentMethod = ref('cash')
 const transactionId = ref('')
 const type = ref('settlement')
-const methods = ['cash', 'card', 'bank', 'other']
+const methods = [
+  { title: 'Cash', value: 'cash' },
+  { title: 'Bank Transfer', value: 'bank' },
+]
 const types = ['advance', 'full_payment', 'settlement']
 
 watch(() => props.dueAmount, (val) => {

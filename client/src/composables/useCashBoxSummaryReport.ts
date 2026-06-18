@@ -3,9 +3,7 @@ import { getCashBoxSummaryReport, type CashBoxSummaryRow } from '@/services/repo
 
 export const PAYMENT_METHOD_DISPLAY: Record<string, string> = {
   cash: 'Cash',
-  card: 'Card',
   bank: 'Bank Transfer',
-  other: 'Other',
 }
 
 export function useCashBoxSummaryReport() {

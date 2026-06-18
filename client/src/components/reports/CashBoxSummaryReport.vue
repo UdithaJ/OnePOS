@@ -139,9 +139,7 @@ function displayMethod(method: string): string {
 function methodClass(method: string): string {
   const map: Record<string, string> = {
     cash: 'method-cash',
-    card: 'method-card',
     bank: 'method-bank',
-    other: 'method-other',
   }
   return map[method] ?? ''
 }
@@ -290,9 +288,7 @@ function methodClass(method: string): string {
   font-weight: 600;
 
   &.method-cash  { background: #dcfce7; color: #15803d; }
-  &.method-card  { background: #dbeafe; color: #1d4ed8; }
   &.method-bank  { background: #ede9fe; color: #6d28d9; }
-  &.method-other { background: #f3f4f6; color: #374151; }
 }
 
 .grand-total-row {

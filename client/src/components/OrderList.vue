@@ -409,7 +409,7 @@
                   <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Payments Made</div>
                   <div v-for="(p, idx) in payments" :key="idx" class="payment-row">
                     <span class="payment-date">{{ p.date ? new Date(p.date).toLocaleString() : '' }}</span>
-                    <span class="payment-method">{{ p.paymentMethod }}</span>
+                    <span class="payment-method">{{ PAYMENT_METHOD_LABELS[p.paymentMethod] || p.paymentMethod }}</span>
                     <span class="payment-amount">LKR {{ Number(p.amount).toFixed(2) }}</span>
                   </div>
                   <v-divider class="my-3" />
@@ -678,6 +678,11 @@ const customers = ref<Array<{ label: string; value: string; mobileNumber: string
 
 const loading = ref(false)
 const errorMsg = ref('')
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  bank: 'Bank Transfer',
+}
 
 const ORDER_STATUSES = [
   { label: 'To Do', value: 'todo' },
