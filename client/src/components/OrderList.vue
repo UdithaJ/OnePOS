@@ -910,15 +910,24 @@ function resolveCustomerName(customerId: any) {
   return selected?.label || 'Walk-in Customer'
 }
 
+function resolveCustomerPhone(customerId: any): string {
+  const id = typeof customerId === 'string' ? customerId : customerId?._id
+  const selected = customers.value.find((c: any) => c.value === id)
+  return selected?.mobileNumber || ''
+}
+
 function buildPrintBillHtml(order: any) {
   const created = order?.createdDate ? new Date(order.createdDate) : new Date()
   const delivery = order?.deliveryDate ? new Date(order.deliveryDate) : null
   const orderItems = Array.isArray(order?.suborders) ? order.suborders : []
   const orderId = order?._id || 'N/A'
   const customerName = resolveCustomerName(order?.customerID)
+  const customerPhone = resolveCustomerPhone(order?.customerID)
   const subtotal = Number(order?.totalAmount ?? totalAmount.value ?? 0)
   const discount = Number(order?.discount ?? form.value.discount ?? 0)
   const netTotal = Math.max(subtotal - discount, 0)
+  const dueAmt = Number(order?.dueAmount ?? netTotal)
+  const paidAmt = Math.max(netTotal - dueAmt, 0)
 
   const rows = orderItems.map((item: any, index: number) => {
     const categoryName = item?.category?.name || categories.value.find((c: any) => c.value === item?.category)?.label || 'Item'
@@ -964,21 +973,24 @@ function buildPrintBillHtml(order: any) {
           th { text-align: left; font-weight: 600; }
           .summary-row { margin-top: 4px; font-size: 13px; display: flex; justify-content: space-between; }
           .summary-row.discount { color: #b45309; }
+          .summary-row.paid { color: #111827; }
           .divider { border-top: 1px dashed #d1d5db; margin: 4px 0; }
           .total { margin-top: 4px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; }
+          .balance { margin-top: 4px; font-size: 14px; display: flex; justify-content: space-between; color: #111827; }
           .footer { margin-top: 10px; text-align: center; font-size: 11px; color: #6b7280; }
         </style>
       </head>
       <body>
         <div class="bill">
           <div class="center">
-            <div class="title">OnePOS Bill</div>
+            <div class="title">Softwash</div>
             <div class="muted">Laundry Order Receipt</div>
           </div>
 
           <div class="section muted">Order: ${escapeHtml(orderId)}</div>
           <div class="muted">Date: ${escapeHtml(created.toLocaleString())}</div>
           <div class="muted">Customer: ${escapeHtml(customerName)}</div>
+          ${customerPhone ? `<div class="muted">Contact: ${escapeHtml(customerPhone)}</div>` : ''}
           <div class="muted">Delivery: ${escapeHtml(delivery ? delivery.toLocaleDateString() : '-')}</div>
 
           <div class="section">
@@ -1002,6 +1014,17 @@ function buildPrintBillHtml(order: any) {
             <span>Total</span>
             <span>${escapeHtml(formatMoney(netTotal))}</span>
           </div>
+          ${paidAmt > 0 ? `
+          <div class="divider"></div>
+          <div class="summary-row paid">
+            <span>Paid</span>
+            <span>${escapeHtml(formatMoney(paidAmt))}</span>
+          </div>
+          <div class="balance">
+            <span>Balance Due</span>
+            <span>${escapeHtml(formatMoney(dueAmt))}</span>
+          </div>
+          ` : ''}
 
           <div class="footer">Thank you for your order</div>
         </div>
