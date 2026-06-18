@@ -65,7 +65,7 @@ async function getDailySalesReport(fromDate, toDate) {
 async function getPendingOrdersByDueDate(fromDate, toDate, status) {
   const start = new Date(fromDate + 'T00:00:00.000Z');
   const end = new Date(toDate + 'T23:59:59.999Z');
-  const ACTIVE_STATUSES = ['todo', 'completed'];
+  const ACTIVE_STATUSES = ['todo', 'done'];
   const statusFilter = (status && status !== 'all') ? [status] : ACTIVE_STATUSES;
 
   const rows = await Order.aggregate([

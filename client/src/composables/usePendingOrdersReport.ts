@@ -22,12 +22,12 @@ export interface PendingTableRow {
 export const STATUS_OPTIONS = [
   { label: 'All', value: 'all' },
   { label: 'To Do', value: 'todo' },
-  { label: 'Completed', value: 'completed' },
+  { label: 'Done', value: 'done' },
 ]
 
 const STATUS_DISPLAY: Record<string, string> = {
   todo: 'To Do',
-  completed: 'Completed',
+  done: 'Done',
   cancelled: 'Cancelled',
 }
 

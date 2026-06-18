@@ -681,7 +681,7 @@ const errorMsg = ref('')
 
 const ORDER_STATUSES = [
   { label: 'To Do', value: 'todo' },
-  { label: 'Completed', value: 'completed' },
+  { label: 'Done', value: 'done' },
   { label: 'Cancelled', value: 'cancelled' },
   { label: 'Delivered', value: 'delivered' },
 ]
@@ -740,7 +740,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 function deliveryState(order: any): { overdue: boolean; dueSoon: boolean } {
   if (!order?.deliveryDate) return { overdue: false, dueSoon: false }
-  if (order.status === 'completed' || order.status === 'cancelled') return { overdue: false, dueSoon: false }
+  if (order.status === 'done' || order.status === 'cancelled') return { overdue: false, dueSoon: false }
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const due = new Date(order.deliveryDate)

@@ -156,7 +156,7 @@ function formatDate(isoString: string): string {
 function statusClass(status: string): string {
   const map: Record<string, string> = {
     todo: 'status-todo',
-    completed: 'status-completed',
+    done: 'status-done',
     cancelled: 'status-cancelled',
   }
   return map[status] ?? ''
@@ -311,7 +311,7 @@ function rowClass(row: PendingTableRow, idx: number): string {
 
   &.status-todo        { background: #f3f4f6; color: #374151; }
   &.status-inprogress  { background: #dbeafe; color: #1d4ed8; }
-  &.status-completed   { background: #dcfce7; color: #15803d; }
+  &.status-done        { background: #dcfce7; color: #15803d; }
   &.status-cancelled   { background: #fef3c7; color: #b45309; }
 }
 
