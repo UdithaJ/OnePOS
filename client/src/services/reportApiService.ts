@@ -11,6 +11,8 @@ export interface DailySalesRow {
   categoryName: string
   weight: number
   amount: number
+  totalAmount: number
+  discount: number
 }
 
 export interface DailySalesReportParams {
@@ -118,6 +120,8 @@ export interface CashBoxSummaryRow {
   businessDate: string | null
   customerName: string
   totalAmount: number
+  discount: number
+  orderAmountAfterDiscount: number
   dueAmount: number
   paymentMethod: string | null
   paymentReceived: number | null
@@ -130,5 +134,26 @@ export interface CashBoxSummaryParams {
 
 export async function getCashBoxSummaryReport(params: CashBoxSummaryParams): Promise<CashBoxSummaryRow[]> {
   const response = await axios.get(`${baseUrl()}/api/reports/cash-box-summary`, { params })
+  return response.data
+}
+
+export interface BankTransferTrackingRow {
+  orderId: string
+  orderNo: number
+  createdDate: string
+  bankTransferDate: string | null
+  customerName: string
+  totalAmount: number
+  dueAmount: number
+  bankTransferAmount: number
+}
+
+export interface BankTransferTrackingParams {
+  fromDate: string
+  toDate: string
+}
+
+export async function getBankTransferTrackingReport(params: BankTransferTrackingParams): Promise<BankTransferTrackingRow[]> {
+  const response = await axios.get(`${baseUrl()}/api/reports/bank-transfer-tracking`, { params })
   return response.data
 }

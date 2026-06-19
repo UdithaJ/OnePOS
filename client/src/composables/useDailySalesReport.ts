@@ -11,6 +11,8 @@ export interface TableRow {
   rackNumber: string
   customerName: string
   rowspanOrder: number
+  discount: number
+  netAmount: number
 
   dateKey: string
   dateTotalAmount: number
@@ -45,7 +47,6 @@ function transformRows(rawRows: DailySalesRow[]): TableRow[] {
   const result: TableRow[] = []
 
   for (const [dateKey, dateRows] of dateGroups) {
-    const dateTotalAmount = dateRows.reduce((sum, r) => sum + r.amount, 0)
     const dateTotalRowspan = dateRows.length
 
     // Group by orderId within this date
@@ -56,10 +57,19 @@ function transformRows(rawRows: DailySalesRow[]): TableRow[] {
       orderGroups.get(oid)!.push(row)
     }
 
+    // Date net total = sum of (totalAmount - discount) per unique order
+    let dateTotalAmount = 0
+    for (const orderRows of orderGroups.values()) {
+      const first = orderRows[0]
+      dateTotalAmount += first.totalAmount - first.discount
+    }
+
     let isFirstRowOfDate = true
 
     for (const [, orderRows] of orderGroups) {
       const rowspanOrder = orderRows.length
+      const first = orderRows[0]
+      const netAmount = first.totalAmount - first.discount
 
       orderRows.forEach((raw, idx) => {
         result.push({
@@ -72,6 +82,8 @@ function transformRows(rawRows: DailySalesRow[]): TableRow[] {
           rackNumber: raw.rackNumber ?? '-',
           customerName: raw.customerName,
           rowspanOrder: idx === 0 ? rowspanOrder : 0,
+          discount: raw.discount,
+          netAmount,
 
           dateKey,
           dateTotalAmount,
@@ -99,7 +111,11 @@ export function useDailySalesReport() {
   const hasSearched = ref(false)
 
   const tableRows = computed(() => transformRows(rawRows.value))
-  const grandTotal = computed(() => rawRows.value.reduce((sum, r) => sum + r.amount, 0))
+  const grandTotal = computed(() =>
+    tableRows.value
+      .filter(r => r.rowspanOrder > 0)
+      .reduce((sum, r) => sum + r.netAmount, 0)
+  )
 
   async function fetchReport() {
     loading.value = true

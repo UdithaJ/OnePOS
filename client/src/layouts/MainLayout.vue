@@ -149,6 +149,7 @@ const allMenuItems: MenuItem[] = [
       { title: 'Expenses', to: '/reports/expenses', icon: 'mdi-cash-minus' },
       { title: 'Returning Customers', to: '/reports/returning-customers', icon: 'mdi-account-reactivate' },
       { title: 'Cash Box Summary', to: '/reports/cash-box-summary', icon: 'mdi-cash-register' },
+      { title: 'Bank Transfer Tracking', to: '/reports/bank-transfer-tracking', icon: 'mdi-bank-transfer-in' },
     ],
   },
 ]

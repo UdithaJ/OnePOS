@@ -91,6 +91,12 @@ const routes: RouteRecordRaw[] = [
         meta: ADMIN_ONLY,
         component: () => import('@/components/reports/CashBoxSummaryReport.vue'),
       },
+      {
+        path: 'reports/bank-transfer-tracking',
+        name: 'BankTransferReport',
+        meta: ADMIN_ONLY,
+        component: () => import('@/components/reports/BankTransferReport.vue'),
+      },
     ],
   },
 ]

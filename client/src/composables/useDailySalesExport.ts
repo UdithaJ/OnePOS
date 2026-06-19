@@ -3,7 +3,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailySalesRow } from '@/services/reportApiService'
 
-const HEADERS = ['Date', 'Order No', 'Customer', 'Delivery Date', 'Status', 'Rack No', 'Laundry Category', 'Weight (kg)', 'Amount', 'Total Amount']
+const HEADERS = ['Date', 'Order No', 'Customer', 'Delivery Date', 'Status', 'Rack No', 'Laundry Category', 'Weight (kg)', 'Amount', 'Discount', 'Net Amount', 'Total Amount']
 
 const STATUS_DISPLAY: Record<string, string> = {
   todo: 'To Do',
@@ -22,14 +22,19 @@ function toDateKey(isoString: string): string {
 }
 
 function buildFlatRows(rawRows: DailySalesRow[]): string[][] {
-  // Group by dateKey to compute date totals
+  // Compute net total per date (sum of netAmount per unique order per date)
   const dateTotals = new Map<string, number>()
+  const seenOrdersForDate = new Map<string, Set<string>>()
   for (const row of rawRows) {
-    const key = toDateKey(row.createdDate)
-    dateTotals.set(key, (dateTotals.get(key) ?? 0) + row.amount)
+    const dateKey = toDateKey(row.createdDate)
+    const orderId = String(row.orderId)
+    if (!seenOrdersForDate.has(dateKey)) seenOrdersForDate.set(dateKey, new Set())
+    if (!seenOrdersForDate.get(dateKey)!.has(orderId)) {
+      seenOrdersForDate.get(dateKey)!.add(orderId)
+      dateTotals.set(dateKey, (dateTotals.get(dateKey) ?? 0) + (row.totalAmount - row.discount))
+    }
   }
 
-  // Track which orderIds and dateKeys have been output (for "first row" logic)
   const seenOrders = new Set<string>()
   const seenDates = new Set<string>()
 
@@ -41,6 +46,8 @@ function buildFlatRows(rawRows: DailySalesRow[]): string[][] {
     seenOrders.add(orderId)
     seenDates.add(dateKey)
 
+    const netAmount = row.totalAmount - row.discount
+
     return [
       isFirstOrder ? formatDate(row.createdDate) : '',
       isFirstOrder ? String(row.orderNo).padStart(4, '0') : '',
@@ -51,18 +58,29 @@ function buildFlatRows(rawRows: DailySalesRow[]): string[][] {
       row.categoryName,
       String(row.weight),
       row.amount.toFixed(2),
+      isFirstOrder ? (row.discount > 0 ? row.discount.toFixed(2) : '-') : '',
+      isFirstOrder ? netAmount.toFixed(2) : '',
       isFirstDate ? (dateTotals.get(dateKey) ?? 0).toFixed(2) : '',
     ]
   })
 }
 
 function grandTotal(rawRows: DailySalesRow[]): number {
-  return rawRows.reduce((sum, r) => sum + r.amount, 0)
+  const seenOrders = new Set<string>()
+  let total = 0
+  for (const row of rawRows) {
+    const orderId = String(row.orderId)
+    if (!seenOrders.has(orderId)) {
+      seenOrders.add(orderId)
+      total += row.totalAmount - row.discount
+    }
+  }
+  return total
 }
 
 export function useDailySalesExport() {
   function exportToExcel(rawRows: DailySalesRow[], fromDate: string, toDate: string) {
-    const data = [HEADERS, ...buildFlatRows(rawRows), ['', '', '', '', '', '', '', '', 'Total for the given period', grandTotal(rawRows).toFixed(2)]]
+    const data = [HEADERS, ...buildFlatRows(rawRows), ['', '', '', '', '', '', '', '', '', '', 'Total for the given period', grandTotal(rawRows).toFixed(2)]]
     const ws = XLSX.utils.aoa_to_sheet(data)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Daily Sales')
@@ -79,7 +97,7 @@ export function useDailySalesExport() {
     autoTable(doc, {
       head: [HEADERS],
       body: buildFlatRows(rawRows),
-      foot: [['', '', '', '', '', '', '', '', 'Total for the given period', grandTotal(rawRows).toFixed(2)]],
+      foot: [['', '', '', '', '', '', '', '', '', '', 'Total for the given period', grandTotal(rawRows).toFixed(2)]],
       startY: 28,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [13, 61, 56] },
@@ -97,7 +115,7 @@ export function useDailySalesExport() {
       return val
     }
 
-    const rows = [HEADERS, ...buildFlatRows(rawRows), ['', '', '', '', '', '', '', '', 'Total for the given period', grandTotal(rawRows).toFixed(2)]]
+    const rows = [HEADERS, ...buildFlatRows(rawRows), ['', '', '', '', '', '', '', '', '', '', 'Total for the given period', grandTotal(rawRows).toFixed(2)]]
     const csv = rows.map((row) => row.map(escapeCell).join(',')).join('\r\n')
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
