@@ -66,7 +66,7 @@
     >
       <div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ suggestedOpeningAmount.toFixed(2) }}</div>
-        <div class="text-sm text-gray-600 mb-3"><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
+        <div class="text-sm text-gray-600 mb-3"><strong>User:</strong> {{ userDisplayName() }}</div>
         <v-text-field
           v-model="sessionStartDateTime"
           label="Session Start Date & Time"
@@ -87,7 +87,7 @@
         <div class="text-sm text-gray-600 mb-1"><strong>Closing Amount:</strong> Rs {{ displayAmount.toFixed(2) }}</div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ activeSession?.openingAmount?.toFixed(2) }}</div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opened At:</strong> {{ formatDate(activeSession?.openedAt) }}</div>
-        <div class="text-sm text-gray-600"><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
+        <div class="text-sm text-gray-600"><strong>User:</strong> {{ userDisplayName() }}</div>
       </div>
     </ConfirmationDialog>
 
@@ -118,6 +118,15 @@ const actionLoading = ref(false)
 const activeSession = ref<any | null>(null)
 const currentAmount = ref<number | null>(null)
 const { getUser } = useAuth()
+
+function userDisplayName() {
+  const u = getUser();
+  if (!u) return 'Unknown';
+  const first = (u.firstName || '').trim();
+  const last = (u.lastName || '').trim();
+  const name = `${first} ${last}`.trim();
+  return name || u.userName || u._id || 'Unknown';
+}
 
 const showOpenDialog = ref(false)
 const showCloseDialog = ref(false)
