@@ -9,6 +9,12 @@ const expenseCategorySchema = new mongoose.Schema({
   displayName: {
     type: String,
     required: true
+  },
+  type: {
+    type: String,
+    enum: ['inflow', 'outflow'],
+    required: true,
+    default: 'outflow'
   }
 });
 

@@ -28,7 +28,7 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['todo', 'in_progress', 'completed', 'cancelled'],
+    enum: ['todo', 'done', 'cancelled', 'delivered'],
     default: 'todo',
     required: true
   },
@@ -45,6 +45,11 @@ const orderSchema = new mongoose.Schema({
   totalAmount: {
     type: Number,
     required: true
+  },
+  discount: {
+    type: Number,
+    default: 0,
+    min: 0
   },
   dueAmount: {
     type: Number,

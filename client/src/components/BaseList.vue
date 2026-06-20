@@ -9,8 +9,6 @@
     <v-data-table
       :headers="headers || []"
       :items="items || []"
-      v-model:sort-by="sortBy"
-      v-model:sort-desc="sortDesc"
       class="elevation-1"
     >
       <template #item.actions="{ item }">
@@ -33,14 +31,15 @@
 </template>
 
 <script lang="ts" setup>
-
-import { ref, defineProps, defineEmits } from 'vue'
+import { ref } from 'vue'
 
 interface Header {
   title: string
   key: string
-  align?: string
+  align?: 'start' | 'end' | 'center'
+  sortable?: boolean
 }
+
 const props = defineProps<{
   title?: string
   headers: Header[]
@@ -50,16 +49,5 @@ const props = defineProps<{
 
 const emit = defineEmits(['add', 'sort', 'edit'])
 
-const sortBy = ref([props.headers[0]?.value ?? ''])
-const sortDesc = ref(false)
-
-function onSortBy(val: string[] | string) {
-  sortBy.value = Array.isArray(val) ? val : [val]
-  emit('sort', { sortBy: sortBy.value, sortDesc: sortDesc.value })
-}
-function onSortDesc(val: boolean) {
-  sortDesc.value = val
-  emit('sort', { sortBy: sortBy.value, sortDesc: val })
-}
 import '../styles/BaseList.scss'
 </script>

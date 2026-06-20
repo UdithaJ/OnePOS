@@ -26,7 +26,7 @@ async function sumPendingKg() {
       }
     },
     { $unwind: '$order' },
-    { $match: { 'order.status': { $in: ['todo', 'in_progress'] } } },
+    { $match: { 'order.status': { $in: ['todo'] } } },
     { $group: { _id: null, totalKg: { $sum: '$weight' } } }
   ]);
   return result.length ? Number(result[0].totalKg) || 0 : 0;

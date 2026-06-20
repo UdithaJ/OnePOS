@@ -4,7 +4,7 @@
     <div class="report-header-bar">
       <div class="flex items-center gap-3">
         <span class="w-1 h-7 bg-[#0f766e] rounded-full inline-block"></span>
-        <h2 class="text-2xl font-semibold text-gray-900">Pending Orders by Due Date</h2>
+        <h2 class="text-2xl font-semibold text-gray-900">Bank Transfer Tracking</h2>
       </div>
       <div class="export-buttons">
         <button class="export-btn excel-btn" @click="exportToExcel(rawRows, fromDate, toDate)">
@@ -47,24 +47,7 @@
             class="filter-input"
           />
         </div>
-        <div class="filter-field">
-          <label class="filter-label">Status</label>
-          <v-select
-            v-model="statusFilter"
-            :items="STATUS_OPTIONS"
-            item-title="label"
-            item-value="value"
-            density="compact"
-            variant="outlined"
-            hide-details
-            class="filter-input"
-          />
-        </div>
-        <v-btn
-          class="generate-btn"
-          :loading="loading"
-          @click="fetchReport"
-        >
+        <v-btn class="generate-btn" :loading="loading" @click="fetchReport">
           Generate Report
         </v-btn>
       </div>
@@ -80,57 +63,47 @@
 
     <!-- Empty state -->
     <v-alert
-      v-if="hasSearched && !loading && !errorMsg && tableRows.length === 0"
+      v-if="hasSearched && !loading && !errorMsg && rawRows.length === 0"
       type="info"
       class="mt-4"
     >
-      No pending orders found for the selected date range and status.
+      No bank transfers found for the selected date range.
     </v-alert>
 
     <!-- Report Table -->
-    <div v-if="!loading && tableRows.length > 0" class="table-card">
+    <div v-if="!loading && rawRows.length > 0" class="table-card">
       <div class="table-wrapper">
         <table class="report-table">
           <thead>
             <tr>
-              <th>Due Date</th>
               <th>Order No</th>
+              <th>Order Created Date</th>
+              <th>Bank Transfer Date</th>
               <th>Customer</th>
-              <th>Mobile No</th>
-              <th>Status</th>
-              <th>Rack No</th>
-              <th>Laundry Category</th>
-              <th>Weight (kg)</th>
+              <th class="num-th">Order Amount</th>
+              <th class="num-th">Due Amount</th>
+              <th class="num-th">Bank Transfer Amount</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(row, idx) in tableRows" :key="idx" :class="rowClass(row, idx)">
-              <td v-if="row.rowspanDate > 0" :rowspan="row.rowspanDate" class="date-cell">
-                {{ formatDate(row.deliveryDate) }}
-              </td>
-              <td v-if="row.rowspanOrder > 0" :rowspan="row.rowspanOrder" class="order-cell">
-                {{ String(row.orderNo).padStart(4, '0') }}
-              </td>
-              <td v-if="row.rowspanOrder > 0" :rowspan="row.rowspanOrder" class="customer-cell">
-                {{ row.customerName }}
-              </td>
-              <td v-if="row.rowspanOrder > 0" :rowspan="row.rowspanOrder" class="mobile-cell">
-                {{ row.mobileNumber }}
-              </td>
-              <td v-if="row.rowspanOrder > 0" :rowspan="row.rowspanOrder" class="status-cell">
-                <span :class="['status-chip', statusClass(row.status)]">{{ row.statusDisplay }}</span>
-              </td>
-              <td v-if="row.rowspanOrder > 0" :rowspan="row.rowspanOrder" class="center-cell">
-                {{ row.rackNumber || '-' }}
-              </td>
-              <td class="category-cell">{{ row.categoryName }}</td>
-              <td class="num-cell">{{ row.weight }}</td>
+            <tr
+              v-for="(row, idx) in rawRows"
+              :key="`${row.orderId}-${idx}`"
+              :class="idx % 2 === 0 ? 'row-even' : 'row-odd'"
+            >
+              <td class="order-cell">{{ String(row.orderNo).padStart(4, '0') }}</td>
+              <td class="date-cell">{{ formatDate(row.createdDate) }}</td>
+              <td class="date-cell">{{ formatDate(row.bankTransferDate) }}</td>
+              <td class="customer-cell">{{ row.customerName }}</td>
+              <td class="num-cell">{{ row.totalAmount.toLocaleString() }}</td>
+              <td class="num-cell">{{ row.dueAmount > 0 ? row.dueAmount.toLocaleString() : '-' }}</td>
+              <td class="num-cell">{{ row.bankTransferAmount.toLocaleString() }}</td>
             </tr>
           </tbody>
           <tfoot>
             <tr class="grand-total-row">
-              <td colspan="7" class="grand-total-label">Total Pending Weight</td>
-              <td class="grand-total-value">{{ grandTotalWeight }} kg</td>
+              <td colspan="6" class="grand-total-label">Total Amount Received</td>
+              <td class="grand-total-value">{{ totalAmountReceived.toLocaleString() }}</td>
             </tr>
           </tfoot>
         </table>
@@ -140,31 +113,46 @@
 </template>
 
 <script lang="ts" setup>
-import { usePendingOrdersReport, STATUS_OPTIONS } from '@/composables/usePendingOrdersReport'
-import { usePendingOrdersExport } from '@/composables/usePendingOrdersExport'
-import type { PendingTableRow } from '@/composables/usePendingOrdersReport'
+import { ref, computed } from 'vue'
+import { getBankTransferTrackingReport } from '@/services/reportApiService'
+import type { BankTransferTrackingRow } from '@/services/reportApiService'
+import { useBankTransferExport } from '@/composables/useBankTransferExport'
 
-const { fromDate, toDate, statusFilter, rawRows, tableRows, grandTotalWeight, loading, errorMsg, hasSearched, fetchReport } = usePendingOrdersReport()
-const { exportToExcel, exportToPDF, exportToCSV } = usePendingOrdersExport()
+const today = new Date().toISOString().substring(0, 10)
+const fromDate = ref(today)
+const toDate = ref(today)
+const rawRows = ref<BankTransferTrackingRow[]>([])
+const loading = ref(false)
+const errorMsg = ref('')
+const hasSearched = ref(false)
 
-function formatDate(isoString: string): string {
+const totalAmountReceived = computed(() =>
+  rawRows.value.reduce((sum, r) => sum + (r.bankTransferAmount ?? 0), 0)
+)
+
+async function fetchReport() {
+  loading.value = true
+  errorMsg.value = ''
+  hasSearched.value = true
+  try {
+    rawRows.value = await getBankTransferTrackingReport({
+      fromDate: fromDate.value,
+      toDate: toDate.value,
+    })
+  } catch (err: unknown) {
+    errorMsg.value = err instanceof Error ? err.message : 'Failed to load report'
+  } finally {
+    loading.value = false
+  }
+}
+
+function formatDate(isoString: string | null): string {
   if (!isoString) return '-'
   const d = new Date(isoString)
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function statusClass(status: string): string {
-  const map: Record<string, string> = {
-    todo: 'status-todo',
-    done: 'status-done',
-    cancelled: 'status-cancelled',
-  }
-  return map[status] ?? ''
-}
-
-function rowClass(row: PendingTableRow, idx: number): string {
-  return idx % 2 === 0 ? 'row-even' : 'row-odd'
-}
+const { exportToExcel, exportToPDF, exportToCSV } = useBankTransferExport()
 </script>
 
 <style scoped lang="scss">
@@ -282,6 +270,8 @@ function rowClass(row: PendingTableRow, idx: number): string {
     letter-spacing: 0.03em;
   }
 
+  .num-th { text-align: right; }
+
   td {
     padding: 10px 14px;
     border-bottom: 1px solid #e5e7eb;
@@ -292,27 +282,10 @@ function rowClass(row: PendingTableRow, idx: number): string {
   .row-even td { background: #fff; }
   .row-odd td  { background: #f9fafb; }
 
-  .date-cell    { white-space: nowrap; }
-  .order-cell   { font-weight: 600; color: #0f766e; }
+  .order-cell    { font-weight: 600; color: #0f766e; }
+  .date-cell     { white-space: nowrap; }
   .customer-cell { font-weight: 500; }
-  .mobile-cell  { white-space: nowrap; }
-  .status-cell  { white-space: nowrap; }
-  .center-cell  { text-align: center; }
-  .category-cell { font-weight: 500; }
-  .num-cell     { text-align: right; font-variant-numeric: tabular-nums; }
-}
-
-.status-chip {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-
-  &.status-todo        { background: #f3f4f6; color: #374151; }
-  &.status-inprogress  { background: #dbeafe; color: #1d4ed8; }
-  &.status-done        { background: #dcfce7; color: #15803d; }
-  &.status-cancelled   { background: #fef3c7; color: #b45309; }
+  .num-cell      { text-align: right; font-variant-numeric: tabular-nums; }
 }
 
 .grand-total-row {

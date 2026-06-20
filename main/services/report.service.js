@@ -54,6 +54,8 @@ async function getDailySalesReport(fromDate, toDate) {
         categoryName: '$categoryDetail.name',
         weight: '$suborders.weight',
         amount: '$suborders.amount',
+        totalAmount: 1,
+        discount: { $ifNull: ['$discount', 0] },
       },
     },
     { $sort: { createdDate: 1, orderNo: 1 } },
@@ -65,7 +67,7 @@ async function getDailySalesReport(fromDate, toDate) {
 async function getPendingOrdersByDueDate(fromDate, toDate, status) {
   const start = new Date(fromDate + 'T00:00:00.000Z');
   const end = new Date(toDate + 'T23:59:59.999Z');
-  const ACTIVE_STATUSES = ['todo', 'in_progress', 'completed'];
+  const ACTIVE_STATUSES = ['todo', 'done'];
   const statusFilter = (status && status !== 'all') ? [status] : ACTIVE_STATUSES;
 
   const rows = await Order.aggregate([
@@ -251,8 +253,9 @@ async function getCashBoxSummary(fromDate, toDate) {
   const rows = await Order.aggregate([
     { $match: { createdDate: { $gte: start, $lte: end },
       $expr: {
-      $ne: ['$dueAmount', '$totalAmount']
-    } } },
+        $ne: ['$dueAmount', { $subtract: ['$totalAmount', { $ifNull: ['$discount', 0] }] }]
+      }
+    } },
     // Left join payments — one order may have multiple payments
     {
       $lookup: {
@@ -263,6 +266,7 @@ async function getCashBoxSummary(fromDate, toDate) {
       },
     },
     { $unwind: { path: '$payments', preserveNullAndEmptyArrays: true } },
+    { $match: { 'payments.paymentMethod': { $ne: 'bank' } } },
     // Left join customers
     {
       $lookup: {
@@ -315,6 +319,8 @@ async function getCashBoxSummary(fromDate, toDate) {
           $concat: ['$customer.firstName', ' ', '$customer.lastName'],
         },
         totalAmount: 1,
+        discount: { $ifNull: ['$discount', 0] },
+        orderAmountAfterDiscount: { $subtract: ['$totalAmount', { $ifNull: ['$discount', 0] }] },
         dueAmount: 1,
         paymentMethod: '$payments.paymentMethod',
         paymentReceived: '$payments.amount',
@@ -326,4 +332,50 @@ async function getCashBoxSummary(fromDate, toDate) {
   return rows;
 }
 
-module.exports = { getDailySalesReport, getPendingOrdersByDueDate, getBankTransferReconciliation, getExpensesReport, getReturningCustomers, getCashBoxSummary };
+async function getBankTransferTracking(fromDate, toDate) {
+  const start = new Date(fromDate + 'T00:00:00.000Z');
+  const end = new Date(toDate + 'T23:59:59.999Z');
+
+  const rows = await Order.aggregate([
+    { $match: { createdDate: { $gte: start, $lte: end } } },
+    {
+      $lookup: {
+        from: 'payments',
+        localField: '_id',
+        foreignField: 'orderId',
+        as: 'payments',
+      },
+    },
+    { $unwind: '$payments' },
+    { $match: { 'payments.paymentMethod': 'bank' } },
+    {
+      $lookup: {
+        from: 'customers',
+        localField: 'customerID',
+        foreignField: '_id',
+        as: 'customer',
+      },
+    },
+    { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 0,
+        orderId: '$_id',
+        orderNo: 1,
+        createdDate: 1,
+        bankTransferDate: '$payments.date',
+        customerName: {
+          $concat: ['$customer.firstName', ' ', '$customer.lastName'],
+        },
+        totalAmount: 1,
+        dueAmount: 1,
+        bankTransferAmount: '$payments.amount',
+      },
+    },
+    { $sort: { createdDate: 1, orderNo: 1 } },
+  ]);
+
+  return rows;
+}
+
+module.exports = { getDailySalesReport, getPendingOrdersByDueDate, getBankTransferReconciliation, getExpensesReport, getReturningCustomers, getCashBoxSummary, getBankTransferTracking };

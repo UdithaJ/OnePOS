@@ -74,3 +74,16 @@ exports.getCashBoxSummary = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getBankTransferTracking = async (req, res) => {
+  try {
+    const { fromDate, toDate } = req.query;
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: 'fromDate and toDate are required (YYYY-MM-DD)' });
+    }
+    const rows = await reportService.getBankTransferTracking(fromDate, toDate);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

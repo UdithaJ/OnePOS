@@ -84,7 +84,9 @@
               <th>Order Created Date</th>
               <th>Business Date</th>
               <th>Customer</th>
-              <th class="num-th">Order Amount</th>
+              <th class="num-th">Total Amount</th>
+              <th class="num-th">Discount</th>
+              <th class="num-th">Order Amount After Discount</th>
               <th class="num-th">Due Amount</th>
               <th>Payment Method</th>
               <th class="num-th">Payment Received</th>
@@ -97,6 +99,8 @@
               <td class="date-cell">{{ formatDate(row.businessDate) }}</td>
               <td class="customer-cell">{{ row.customerName }}</td>
               <td class="num-cell">{{ row.totalAmount.toLocaleString() }}</td>
+              <td class="num-cell">{{ row.discount > 0 ? row.discount.toLocaleString() : '-' }}</td>
+              <td class="num-cell">{{ row.orderAmountAfterDiscount.toLocaleString() }}</td>
               <td class="num-cell">{{ row.dueAmount > 0 ? row.dueAmount.toLocaleString() : '-' }}</td>
               <td class="method-cell">
                 <span v-if="row.paymentMethod" :class="['method-chip', methodClass(row.paymentMethod)]">
@@ -109,7 +113,7 @@
           </tbody>
           <tfoot>
             <tr class="grand-total-row">
-              <td colspan="7" class="grand-total-label">Total Amount Received</td>
+              <td colspan="9" class="grand-total-label">Total Amount Received</td>
               <td class="grand-total-value">{{ totalAmountReceived.toLocaleString() }}</td>
             </tr>
           </tfoot>
@@ -139,9 +143,7 @@ function displayMethod(method: string): string {
 function methodClass(method: string): string {
   const map: Record<string, string> = {
     cash: 'method-cash',
-    card: 'method-card',
     bank: 'method-bank',
-    other: 'method-other',
   }
   return map[method] ?? ''
 }
@@ -290,9 +292,7 @@ function methodClass(method: string): string {
   font-weight: 600;
 
   &.method-cash  { background: #dcfce7; color: #15803d; }
-  &.method-card  { background: #dbeafe; color: #1d4ed8; }
   &.method-bank  { background: #ede9fe; color: #6d28d9; }
-  &.method-other { background: #f3f4f6; color: #374151; }
 }
 
 .grand-total-row {

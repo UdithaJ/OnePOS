@@ -5,6 +5,7 @@ export interface ExpensePayload {
   amount: number
   userId: string
   sessionId: string
+  flowType: 'inflow' | 'outflow'
 }
 
 export interface Expense {

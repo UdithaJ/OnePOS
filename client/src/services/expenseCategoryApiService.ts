@@ -3,12 +3,14 @@ import axios from 'axios'
 export interface ExpenseCategoryPayload {
   name: string
   displayName: string
+  type: 'inflow' | 'outflow'
 }
 
 export interface ExpenseCategory {
   _id: string
   name: string
   displayName: string
+  type: 'inflow' | 'outflow'
 }
 
 const baseUrl = () => import.meta.env.VITE_API_BASE_URL || ''

@@ -14,7 +14,7 @@ exports.createExpenseCategory = async (data) => {
 };
 
 exports.updateExpenseCategory = async (id, data) => {
-  return await ExpenseCategory.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+  return await ExpenseCategory.findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true });
 };
 
 exports.deleteExpenseCategory = async (id) => {
