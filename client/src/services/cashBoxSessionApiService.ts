@@ -25,6 +25,14 @@ export const createCashBoxSession = async (payload: { openingAmount: number, ope
   return data;
 };
 
+export const getLastClosedCashBoxSession = async () => {
+  const { data } = await axios.get(API_BASE);
+  const closed = data.filter((s: any) => s.status === 'closed');
+  if (!closed || closed.length === 0) return null;
+  closed.sort((a: any, b: any) => new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime());
+  return closed[0];
+};
+
 export const closeCashBoxSession = async (
   id: string,
   payload: { closingAmount: number; closedBy: string; status?: string }

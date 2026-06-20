@@ -65,7 +65,7 @@
       @confirm="confirmStartSession"
     >
       <div>
-        <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs 0.00</div>
+        <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ suggestedOpeningAmount.toFixed(2) }}</div>
         <div class="text-sm text-gray-600 mb-3"><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
         <v-text-field
           v-model="sessionStartDateTime"
@@ -84,6 +84,7 @@
       @confirm="confirmCloseSession"
     >
       <div>
+        <div class="text-sm text-gray-600 mb-1"><strong>Closing Amount:</strong> Rs {{ displayAmount.toFixed(2) }}</div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ activeSession?.openingAmount?.toFixed(2) }}</div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opened At:</strong> {{ formatDate(activeSession?.openedAt) }}</div>
         <div class="text-sm text-gray-600"><strong>User:</strong> {{ getUser()?.name || getUser()?._id }}</div>
@@ -106,6 +107,7 @@ import {
   createCashBoxSession,
   closeCashBoxSession,
   getCashBoxSessionBalance,
+  getLastClosedCashBoxSession,
 } from '../services/cashBoxSessionApiService'
 import { useAuth } from '../composables/useAuth'
 import ConfirmationDialog from './ConfirmationDialog.vue'
@@ -121,6 +123,7 @@ const showOpenDialog = ref(false)
 const showCloseDialog = ref(false)
 const sessionStartDateTime = ref<string>("")
 const showExpenseDialog = ref(false)
+const suggestedOpeningAmount = ref<number>(0)
 
 const displayAmount = computed(() => {
   if (typeof currentAmount.value === 'number') return currentAmount.value
@@ -147,10 +150,16 @@ async function fetchSession() {
   }
 }
 
-function openSessionDialog() {
+async function openSessionDialog() {
   const now = new Date();
   const tzOffset = now.getTimezoneOffset() * 60000;
   sessionStartDateTime.value = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+  try {
+    const lastClosed = await getLastClosedCashBoxSession();
+    suggestedOpeningAmount.value = Number(lastClosed?.closingAmount || 0);
+  } catch (err) {
+    suggestedOpeningAmount.value = 0;
+  }
   showOpenDialog.value = true;
 }
 function openCloseDialog() {
@@ -161,7 +170,7 @@ async function confirmStartSession() {
   actionLoading.value = true
   try {
     const user = getUser();
-    const openingAmount = 0;
+    const openingAmount = Number(suggestedOpeningAmount.value || 0);
     let openedAt = sessionStartDateTime.value
       ? new Date(sessionStartDateTime.value).toISOString()
       : new Date().toISOString();
