@@ -49,7 +49,7 @@
               @update:options="handleTableOptions"
             >
               <template #item.status="{ item }">
-                <span>{{ item.status }}</span>
+                <span>{{ item.statusLabel || item.status }}</span>
                 <v-chip v-if="item.overdue" color="error" size="x-small" class="ml-2" label>Overdue</v-chip>
                 <v-chip v-else-if="item.dueSoon" color="warning" size="x-small" class="ml-2" label>Due Soon</v-chip>
               </template>
@@ -769,6 +769,7 @@ function setOrdersFromData(orderData: any[]) {
       orderNo: order.orderNo || order._id,
       customer: customers.value.find(c => c.value === (order.customerID?._id || order.customerID))?.label || order.customerID,
       status: order.status,
+      statusLabel: (ORDER_STATUSES.find(s => s.value === order.status) || { label: order.status }).label,
       deliveryDate: order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : '—',
       createdDate: order.createdDate ? new Date(order.createdDate).toLocaleDateString() : '—',
       totalAmount: typeof order.totalAmount === 'number' ? `Rs ${order.totalAmount.toFixed(2)}` : order.totalAmount,
