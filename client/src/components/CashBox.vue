@@ -66,7 +66,7 @@
     >
       <div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ suggestedOpeningAmount.toFixed(2) }}</div>
-        <div class="text-sm text-gray-600 mb-3"><strong>User:</strong> {{ userDisplayName() }}</div>
+        <div class="text-sm text-gray-600 mb-3"><strong>Opened By:</strong> {{ userDisplayName() }}</div>
         <v-text-field
           v-model="sessionStartDateTime"
           label="Session Start Date & Time"
