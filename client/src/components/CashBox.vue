@@ -110,6 +110,7 @@ import {
   getLastClosedCashBoxSession,
 } from '../services/cashBoxSessionApiService'
 import { useAuth } from '../composables/useAuth'
+import { useToast } from '@/composables/useToast'
 import ConfirmationDialog from './ConfirmationDialog.vue'
 import ExpenseDialog from './ExpenseDialog.vue'
 
@@ -118,6 +119,7 @@ const actionLoading = ref(false)
 const activeSession = ref<any | null>(null)
 const currentAmount = ref<number | null>(null)
 const { getUser } = useAuth()
+const { showToast } = useToast()
 
 function userDisplayName() {
   const u = getUser();
@@ -185,6 +187,13 @@ async function confirmStartSession() {
       : new Date().toISOString();
     await createCashBoxSession({ openingAmount, openedBy: user?._id, openedAt });
     await fetchSession();
+    } catch (err: any) {
+    try {
+      const msg = err?.response?.data?.error || err?.message || String(err);
+      showToast(msg, 'error');
+    } catch {
+      showToast('Failed to start session', 'error');
+    }
   } finally {
     actionLoading.value = false;
   }

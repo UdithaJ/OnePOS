@@ -2,8 +2,25 @@ const CashBoxSession = require('../models/cashBoxSession');
 const { getSessionLedgerTotals } = require('./cashLedger.service');
 
 exports.createCashBoxSession = async (data) => {
-  // Always set openingAmount to the last closed session's closingAmount
+  // Prevent creating a new session when there's an active open session
+  const active = await CashBoxSession.findOne({ status: 'open' });
+  if (active) {
+    throw new Error('An active cash box session already exists. Close it before starting a new one.');
+  }
+
+  // Get the most recent closed session to derive opening amount and validate timestamps
   const lastClosed = await CashBoxSession.findOne({ status: 'closed' }).sort({ closedAt: -1 });
+
+  // Determine the openedAt that will be used (client-provided or now)
+  const newOpenedAt = data.openedAt ? new Date(data.openedAt) : new Date();
+  if (lastClosed) {
+    const lastClosedAt = new Date(lastClosed.closedAt);
+    if (!(newOpenedAt > lastClosedAt)) {
+      throw new Error('Session start must be after the most recently closed session.');
+    }
+  }
+
+  // Always set openingAmount to the last closed session's closingAmount
   const openingAmount = Number((lastClosed && lastClosed.closingAmount) || 0);
   const payload = { ...data, openingAmount };
   const session = new CashBoxSession(payload);
