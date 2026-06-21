@@ -15,7 +15,19 @@
     >
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEditCategory(item)"></v-btn>
-        <v-btn icon="mdi-delete" size="small" color="error" @click="onDeleteCategory(item)"></v-btn>
+        <span
+          :title="item.inUse ? 'This category is in use and cannot be deleted' : 'Delete category'"
+          style="display: inline-block;"
+        >
+          <v-btn
+            icon="mdi-delete"
+            size="small"
+            color="error"
+            @click="onDeleteCategory(item)"
+            :disabled="item.inUse"
+            :aria-disabled="item.inUse"
+          ></v-btn>
+        </span>
       </template>
     </BaseList>
 
@@ -150,6 +162,12 @@ function onDeleteCategory(category: Category) {
 async function confirmDelete() {
   if (!categoryToDelete.value) return
   const target = categoryToDelete.value
+  if (target.inUse) {
+    showToast('This category is in use and cannot be deleted', 'warning')
+    categoryToDelete.value = null
+    showDeleteConfirm.value = false
+    return
+  }
   try {
     await deleteCategory(target._id)
     showToast('Category deleted', 'success')
@@ -189,4 +207,6 @@ async function handleSubmit() {
   }
 }
 </script>
+
+
 
