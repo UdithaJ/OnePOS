@@ -1,8 +1,11 @@
 <template>
   <v-dialog v-model="dialogValue" max-width="500" @update:model-value="onDialogToggle">
     <v-card class="rounded-xl overflow-hidden" style="border: none;">
-      <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
-        <span class="text-base font-semibold">Add Expense</span>
+      <div class="px-6 py-4 flex items-center justify-between"
+        :style="flowType === 'inflow' ? 'background: #0d3d38;' : 'background: #0d3d38;'">
+        <span class="text-white text-base font-semibold">
+          {{ flowType === 'inflow' ? 'Add Cash Inflow' : 'Add Expense' }}
+        </span>
         <v-btn icon="mdi-close" size="small" variant="text"
           style="color: rgba(255,255,255,0.8);" @click="close" />
       </div>
@@ -10,10 +13,10 @@
         <v-form ref="formRef" v-model="isValid">
           <v-select
             v-model="expenseCategoryId"
-            :items="categories"
+            :items="filteredCategories"
             item-title="displayName"
             item-value="_id"
-            label="Expense Category"
+            :label="flowType === 'inflow' ? 'Inflow Category' : 'Expense Category'"
             :rules="[(v) => !!v || 'Category is required']"
             :loading="loadingCategories"
             required
@@ -63,6 +66,7 @@ import { useToast } from '@/composables/useToast'
 const props = defineProps<{
   modelValue: boolean
   sessionId: string
+  flowType?: 'inflow' | 'outflow'
 }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
@@ -72,7 +76,12 @@ const emit = defineEmits<{
 const { getUser } = useAuth()
 const { showToast } = useToast()
 
+const effectiveFlowType = computed(() => props.flowType ?? 'outflow')
+
 const categories = ref<ExpenseCategory[]>([])
+const filteredCategories = computed(() =>
+  categories.value.filter(c => c.type === effectiveFlowType.value)
+)
 const loadingCategories = ref(false)
 const categoriesLoaded = ref(false)
 
@@ -94,7 +103,7 @@ async function loadCategories() {
     categories.value = await getAllExpenseCategories()
     categoriesLoaded.value = true
   } catch {
-    showToast('Failed to load expense categories', 'error')
+    showToast('Failed to load cashflow categories', 'error')
   } finally {
     loadingCategories.value = false
   }
@@ -143,13 +152,14 @@ async function onSave() {
       expenseType: expenseCategoryId.value,
       amount: Number(amount.value),
       userId: user._id,
-      sessionId: props.sessionId
+      sessionId: props.sessionId,
+      flowType: effectiveFlowType.value
     })
-    showToast('Expense recorded', 'success')
+    showToast(effectiveFlowType.value === 'inflow' ? 'Cash inflow recorded' : 'Expense recorded', 'success')
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    showToast(err?.response?.data?.message || 'Failed to record expense', 'error')
+    showToast(err?.response?.data?.message || 'Failed to record cashflow entry', 'error')
   } finally {
     saving.value = false
   }

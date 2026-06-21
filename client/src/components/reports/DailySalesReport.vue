@@ -89,6 +89,8 @@
               <th>Laundry Category</th>
               <th>Weight (kg)</th>
               <th>Amount</th>
+              <th>Discount</th>
+              <th>Net Amount</th>
               <th>Total Amount</th>
             </tr>
           </thead>
@@ -115,6 +117,12 @@
               <td class="category-cell">{{ row.categoryName }}</td>
               <td class="num-cell">{{ row.weight }}</td>
               <td class="num-cell">{{ row.amount.toFixed(2) }}</td>
+              <td v-if="row.rowspanOrder > 0" :rowspan="row.rowspanOrder" class="num-cell">
+                {{ row.discount > 0 ? row.discount.toFixed(2) : '-' }}
+              </td>
+              <td v-if="row.rowspanOrder > 0" :rowspan="row.rowspanOrder" class="num-cell">
+                {{ row.netAmount.toFixed(2) }}
+              </td>
               <td
                 v-if="row.rowspanDate > 0"
                 :rowspan="row.rowspanDate"
@@ -126,7 +134,7 @@
           </tbody>
           <tfoot>
             <tr class="grand-total-row">
-              <td colspan="9" class="grand-total-label">Total for the given period</td>
+              <td colspan="11" class="grand-total-label">Total for the given period</td>
               <td class="grand-total-value">{{ grandTotal.toFixed(2) }}</td>
             </tr>
           </tfoot>
@@ -153,8 +161,7 @@ function formatDate(isoString: string): string {
 function statusClass(status: string): string {
   const map: Record<string, string> = {
     todo: 'status-todo',
-    in_progress: 'status-inprogress',
-    completed: 'status-completed',
+    done: 'status-done',
     cancelled: 'status-cancelled',
   }
   return map[status] ?? ''
@@ -317,7 +324,7 @@ function rowClass(row: TableRow, idx: number): string {
 
   &.status-todo        { background: #f3f4f6; color: #374151; }
   &.status-inprogress  { background: #dbeafe; color: #1d4ed8; }
-  &.status-completed   { background: #dcfce7; color: #15803d; }
+  &.status-done        { background: #dcfce7; color: #15803d; }
   &.status-cancelled   { background: #fef3c7; color: #b45309; }
 }
 

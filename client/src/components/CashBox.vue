@@ -42,10 +42,11 @@
           :disabled="actionLoading"
         >Close Cash Box</v-btn>
         <div class="flex gap-2">
-          <v-btn icon="mdi-plus" size="small" :disabled="true"
-            style="background: #f3f4f6; color: #9ca3af;" />
-          <v-btn icon="mdi-minus" size="small"
+          <v-btn icon="mdi-plus" size="small"
             style="background: #0f766e; color: #ffffff;"
+            @click="showInflowDialog = true" />
+          <v-btn icon="mdi-minus" size="small"
+            style="background: #7f1d1d; color: #ffffff;"
             @click="showExpenseDialog = true" />
         </div>
       </template>
@@ -93,8 +94,16 @@
 
     <ExpenseDialog
       v-if="activeSession"
+      v-model="showInflowDialog"
+      :session-id="activeSession._id"
+      flow-type="inflow"
+      @saved="fetchSession"
+    />
+    <ExpenseDialog
+      v-if="activeSession"
       v-model="showExpenseDialog"
       :session-id="activeSession._id"
+      flow-type="outflow"
       @saved="fetchSession"
     />
   </div>
@@ -135,6 +144,7 @@ const showCloseDialog = ref(false)
 const sessionStartDateTime = ref<string>("")
 const showExpenseDialog = ref(false)
 const suggestedOpeningAmount = ref<number>(0)
+const showInflowDialog = ref(false)
 
 const displayAmount = computed(() => {
   if (typeof currentAmount.value === 'number') return currentAmount.value

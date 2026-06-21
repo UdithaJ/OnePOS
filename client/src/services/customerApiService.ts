@@ -22,3 +22,15 @@ export async function createCustomer(payload: CustomerPayload) {
   const response = await axios.post(`${baseUrl}/api/customers`, payload)
   return response.data
 }
+
+export async function updateCustomer(id: string, payload: CustomerPayload) {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.put(`${baseUrl}/api/customers/${id}`, payload)
+  return response.data
+}
+
+export async function deleteCustomer(id: string) {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.delete(`${baseUrl}/api/customers/${id}`)
+  return response.data
+}

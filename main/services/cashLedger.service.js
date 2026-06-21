@@ -36,6 +36,11 @@ async function getSessionLedgerTotals(sessionId) {
             $cond: [{ $eq: ['$event_type', 'WITHDRAWAL'] }, '$amount', 0],
           },
         },
+        totalInflows: {
+          $sum: {
+            $cond: [{ $eq: ['$event_type', 'INFLOW'] }, '$amount', 0],
+          },
+        },
       },
     },
   ]);
@@ -45,6 +50,7 @@ async function getSessionLedgerTotals(sessionId) {
     totalExpenses: totals?.totalExpenses || 0,
     totalDeposits: totals?.totalDeposits || 0,
     totalWithdrawals: totals?.totalWithdrawals || 0,
+    totalInflows: totals?.totalInflows || 0,
   };
 }
 

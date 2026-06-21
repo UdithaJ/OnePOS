@@ -61,7 +61,7 @@
           </template>
         </v-list>
 
-        <v-list nav class="sidebar-bottom">
+        <v-list v-if="isAdmin" nav class="sidebar-bottom">
           <v-list-item
             to="/system-settings"
             prepend-icon="mdi-cog"
@@ -101,6 +101,7 @@ const userInitials = computed(() => {
   return (first + last).toUpperCase() || 'U'
 })
 
+const isAdmin = computed(() => getUser()?.userRole === 'admin')
 
 onMounted(() => {
   document.body.classList.remove('dark-theme')
@@ -112,16 +113,18 @@ interface MenuItem {
   to?: string
   icon: string
   disabled?: boolean
+  adminOnly?: boolean
   children?: MenuItem[]
 }
 
-const menuItems: MenuItem[] = [
+const allMenuItems: MenuItem[] = [
   { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
   { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list' },
-  { title: 'Customers', to: '/customers', icon: 'mdi-account-group' },
+  { title: 'Customers', to: '/customers', icon: 'mdi-account-group', adminOnly: true },
   {
     title: 'Administration',
     icon: 'mdi-shield-account-outline',
+    adminOnly: true,
     children: [
       { title: 'Users', to: '/users', icon: 'mdi-account-cog' },
     ],
@@ -129,14 +132,16 @@ const menuItems: MenuItem[] = [
   {
     title: 'Configuration',
     icon: 'mdi-cog-outline',
+    adminOnly: true,
     children: [
       { title: 'Laundry Categories', to: '/categories', icon: 'mdi-tag-multiple' },
-      { title: 'Expense Categories', to: '/expense-categories', icon: 'mdi-cash-minus' },
+      { title: 'Cashflow Categories', to: '/expense-categories', icon: 'mdi-cash-sync' },
     ],
   },
   {
     title: 'Reports',
     icon: 'mdi-chart-bar',
+    adminOnly: true,
     children: [
       { title: 'Daily Sales', to: '/reports/daily-sales', icon: 'mdi-chart-timeline-variant' },
       { title: 'Pending Orders', to: '/reports/pending-orders', icon: 'mdi-clock-alert-outline' },
@@ -144,9 +149,14 @@ const menuItems: MenuItem[] = [
       { title: 'Expenses', to: '/reports/expenses', icon: 'mdi-cash-minus' },
       { title: 'Returning Customers', to: '/reports/returning-customers', icon: 'mdi-account-reactivate' },
       { title: 'Cash Box Summary', to: '/reports/cash-box-summary', icon: 'mdi-cash-register' },
+      { title: 'Bank Transfer Tracking', to: '/reports/bank-transfer-tracking', icon: 'mdi-bank-transfer-in' },
     ],
   },
 ]
+
+const menuItems = computed(() =>
+  isAdmin.value ? allMenuItems : allMenuItems.filter(item => !item.adminOnly)
+)
 
 function isActive(to?: string) {
   return !!to && route.path === to

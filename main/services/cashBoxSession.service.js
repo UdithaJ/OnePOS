@@ -71,7 +71,8 @@ exports.getCashBoxSessionBalance = async (id) => {
   const currentAmount =
     openingAmount +
     Number(totals.totalPayments || 0) +
-    Number(totals.totalDeposits || 0) -
+    Number(totals.totalDeposits || 0) +
+    Number(totals.totalInflows || 0) -
     Number(totals.totalExpenses || 0) -
     Number(totals.totalWithdrawals || 0);
 
@@ -82,6 +83,7 @@ exports.getCashBoxSessionBalance = async (id) => {
     totalExpenses: Number(totals.totalExpenses || 0),
     totalDeposits: Number(totals.totalDeposits || 0),
     totalWithdrawals: Number(totals.totalWithdrawals || 0),
+    totalInflows: Number(totals.totalInflows || 0),
     currentAmount,
   };
 };

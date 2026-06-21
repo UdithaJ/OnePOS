@@ -10,8 +10,9 @@ exports.createExpense = async (req, res) => {
     // Create cash ledger record
     // sessionId and userId must be provided in req.body
     if (req.body.sessionId && req.body.userId) {
+      const eventType = req.body.flowType === 'inflow' ? 'INFLOW' : 'EXPENSE';
       await createCashLedger({
-        event_type: 'EXPENSE',
+        event_type: eventType,
         date: new Date(),
         amount: expense.amount,
         userId: req.body.userId,

@@ -1,5 +1,6 @@
 <template>
   <v-form @submit.prevent="onSubmit" class="modal-form">
+    <slot />
     <v-row dense>
       <v-col cols="12" md="6" v-for="field in schema.fields" :key="field.name">
         <div class="field-group">

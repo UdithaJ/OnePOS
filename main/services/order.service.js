@@ -7,9 +7,9 @@ const Category = require('../models/category');
 // Hardcoded status list
 const ORDER_STATUSES = [
   { name: 'todo', displayName: 'To Do' },
-  { name: 'in_progress', displayName: 'In Progress' },
-  { name: 'completed', displayName: 'Completed' },
-  { name: 'cancelled', displayName: 'Cancelled' }
+  { name: 'done', displayName: 'Done' },
+  { name: 'cancelled', displayName: 'Cancelled' },
+  { name: 'delivered', displayName: 'Delivered' }
 ];
 
 // Authoritative suborder amount: max(weight * unitPrice, minimumPrice).
@@ -76,9 +76,11 @@ async function createOrder(orderData) {
   }
 
   // Step 3: Persist suborder IDs and the authoritative totals.
+  const discount = Math.min(Math.max(Number(orderData.discount) || 0, 0), recomputedTotal)
   order.suborders = suborderIds;
   order.totalAmount = recomputedTotal;
-  order.dueAmount = recomputedTotal;
+  order.discount = discount;
+  order.dueAmount = Math.max(recomputedTotal - discount, 0);
   await order.save();
 
   // Step 4: Populate suborders for return
@@ -89,12 +91,101 @@ async function createOrder(orderData) {
   return order;
 }
 
-// Get all orders
+// Get all orders (kept for internal/report use)
 async function getAllOrders() {
   return await Order.find().populate({
     path: 'suborders',
     populate: { path: 'category' }
   });
+}
+
+const SORTABLE_FIELDS = new Set(['orderNo', 'deliveryDate', 'status', 'totalAmount', 'createdDate', 'paymentStatus', 'customer'])
+
+async function getOrdersPaginated({
+  page = 1, limit = 10, sortBy = 'orderNo', sortOrder = 'desc',
+  status = [], deliveryDateFrom = '', deliveryDateTo = '', customerID = '',
+  createdDateFrom = '', createdDateTo = ''
+} = {}) {
+  const skip = (page - 1) * limit
+  const field = SORTABLE_FIELDS.has(sortBy) ? sortBy : 'orderNo'
+  const dir = sortOrder === 'asc' ? 1 : -1
+
+  const filter = {}
+  if (status && status.length) filter.status = { $in: status }
+  if (deliveryDateFrom || deliveryDateTo) {
+    filter.deliveryDate = {}
+    if (deliveryDateFrom) filter.deliveryDate.$gte = new Date(deliveryDateFrom)
+    if (deliveryDateTo) {
+      const end = new Date(deliveryDateTo)
+      end.setHours(23, 59, 59, 999)
+      filter.deliveryDate.$lte = end
+    }
+  }
+  if (customerID) filter.customerID = new mongoose.Types.ObjectId(customerID)
+  if (createdDateFrom || createdDateTo) {
+    filter.createdDate = {}
+    if (createdDateFrom) filter.createdDate.$gte = new Date(createdDateFrom)
+    if (createdDateTo) {
+      const end = new Date(createdDateTo)
+      end.setHours(23, 59, 59, 999)
+      filter.createdDate.$lte = end
+    }
+  }
+
+  // Customer sort — lookup customer name from the customers collection
+  if (field === 'customer') {
+    const [orders, total] = await Promise.all([
+      Order.aggregate([
+        { $match: filter },
+        { $lookup: { from: 'customers', localField: 'customerID', foreignField: '_id', as: '_cust' } },
+        { $addFields: { _sortName: { $concat: [
+          { $ifNull: [{ $arrayElemAt: ['$_cust.firstName', 0] }, ''] },
+          ' ',
+          { $ifNull: [{ $arrayElemAt: ['$_cust.lastName', 0] }, ''] }
+        ] } } },
+        { $sort: { _sortName: dir } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _cust: 0, _sortName: 0 } }
+      ]),
+      Order.countDocuments(filter)
+    ])
+    return { orders, total, page, limit }
+  }
+
+  // paymentStatus sort — alphabetical order is wrong (paid < partial < unpaid),
+  // so use a numeric proxy: unpaid=0, partial=1, paid=2
+  if (field === 'paymentStatus') {
+    const [orders, total] = await Promise.all([
+      Order.aggregate([
+        { $match: filter },
+        { $addFields: { _ps: { $switch: {
+          branches: [
+            { case: { $eq: ['$paymentStatus', 'unpaid']  }, then: 0 },
+            { case: { $eq: ['$paymentStatus', 'partial'] }, then: 1 },
+            { case: { $eq: ['$paymentStatus', 'paid']    }, then: 2 }
+          ],
+          default: -1
+        } } } },
+        { $sort: { _ps: dir } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _ps: 0 } }
+      ]),
+      Order.countDocuments(filter)
+    ])
+    return { orders, total, page, limit }
+  }
+
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .sort({ [field]: dir })
+      .skip(skip)
+      .limit(limit)
+      .populate({ path: 'suborders', populate: { path: 'category' } }),
+    Order.countDocuments(filter)
+  ])
+  return { orders, total, page, limit }
 }
 
 // Get order by ID
@@ -106,13 +197,16 @@ async function getOrderById(id) {
 }
 
 // Update order
+const Payment = require('../models/payment')
 async function updateOrder(id, updateData) {
+  const order = await Order.findById(id);
+  if (!order) throw new Error('Order not found');
+
   if (Array.isArray(updateData.suborders)) {
     const catMap = await loadCategoryMap(updateData.suborders);
 
     // Remove old suborders
-    const order = await Order.findById(id);
-    if (order && Array.isArray(order.suborders)) {
+    if (Array.isArray(order.suborders)) {
       await OrderCategory.deleteMany({ _id: { $in: order.suborders } });
     }
 
@@ -136,8 +230,18 @@ async function updateOrder(id, updateData) {
     }
     updateData.suborders = suborderIds;
     updateData.totalAmount = recomputedTotal;
-    // dueAmount intentionally left alone — payments may already exist.
   }
+
+  // Recalculate dueAmount whenever total or discount changes
+  const newTotal = updateData.totalAmount ?? order.totalAmount
+  const newDiscount = 'discount' in updateData
+    ? Math.min(Math.max(Number(updateData.discount) || 0, 0), newTotal)
+    : Number(order.discount || 0)
+  updateData.discount = newDiscount
+  const payments = await Payment.find({ orderId: id })
+  const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+  updateData.dueAmount = Math.max(newTotal - newDiscount - paid, 0)
+
   return await Order.findByIdAndUpdate(id, updateData, { new: true }).populate({
     path: 'suborders',
     populate: { path: 'category' }
@@ -153,6 +257,7 @@ module.exports = {
   getOrderStatuses,
   createOrder,
   getAllOrders,
+  getOrdersPaginated,
   getOrderById,
   updateOrder,
   deleteOrder,
