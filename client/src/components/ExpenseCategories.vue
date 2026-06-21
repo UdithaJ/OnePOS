@@ -23,7 +23,17 @@
       </template>
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEdit(item)" />
-        <v-btn icon="mdi-delete" size="small" color="error" @click="onDelete(item)" />
+        <span :title="item.inUse ? 'This cash flow category is in use and cannot be deleted' : 'Delete cash flow category'" style="display:inline-block;">
+          <v-btn
+            icon="mdi-delete"
+            size="small"
+            color="error"
+            @click="handleDeleteExpenseCategoryClick(item)"
+            :disabled="item.inUse"
+            :aria-disabled="item.inUse"
+            :class="item.inUse ? 'opacity-50 cursor-not-allowed' : ''"
+          />
+        </span>
       </template>
     </BaseList>
 
@@ -145,8 +155,19 @@ function onDelete(category: ExpenseCategory) {
   showDeleteConfirm.value = true
 }
 
+function handleDeleteExpenseCategoryClick(category: ExpenseCategory) {
+  if (category.inUse) return
+  onDelete(category)
+}
+
 async function confirmDelete() {
   if (!toDelete.value) return
+  if (toDelete.value.inUse) {
+    showToast('This cash flow category is in use and cannot be deleted', 'warning')
+    toDelete.value = null
+    showDeleteConfirm.value = false
+    return
+  }
   try {
     await deleteExpenseCategory(toDelete.value._id)
     showToast('Cashflow category deleted', 'success')

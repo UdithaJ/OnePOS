@@ -23,9 +23,10 @@
             icon="mdi-delete"
             size="small"
             color="error"
-            @click="onDeleteCategory(item)"
+            @click="handleDeleteCategoryClick(item)"
             :disabled="item.inUse"
             :aria-disabled="item.inUse"
+            :class="item.inUse ? 'opacity-50 cursor-not-allowed' : ''"
           ></v-btn>
         </span>
       </template>
@@ -157,6 +158,11 @@ function onEditCategory(category: Category) {
 function onDeleteCategory(category: Category) {
   categoryToDelete.value = category
   showDeleteConfirm.value = true
+}
+
+function handleDeleteCategoryClick(category: Category) {
+  if (category.inUse) return
+  onDeleteCategory(category)
 }
 
 async function confirmDelete() {

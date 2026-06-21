@@ -1,7 +1,13 @@
 const ExpenseCategory = require('../models/expenseCategory');
+const Expense = require('../models/expense');
 
 exports.getAllExpenseCategories = async () => {
-  return await ExpenseCategory.find();
+  // Return categories with `inUse` flag when referenced by any Expense
+  const categories = await ExpenseCategory.find().lean();
+  return await Promise.all(categories.map(async (c) => {
+    const count = await Expense.countDocuments({ expenseType: c._id });
+    return { ...c, inUse: count > 0 };
+  }));
 };
 
 exports.getExpenseCategoryById = async (id) => {
@@ -18,5 +24,10 @@ exports.updateExpenseCategory = async (id, data) => {
 };
 
 exports.deleteExpenseCategory = async (id) => {
+  // Prevent deletion if referenced by any Expense
+  const inUse = await Expense.countDocuments({ expenseType: id });
+  if (inUse > 0) {
+    throw new Error('This cash flow category is in use and cannot be deleted');
+  }
   return await ExpenseCategory.findByIdAndDelete(id);
 };

@@ -44,6 +44,7 @@ exports.remove = async (req, res) => {
     if (!deleted) return res.status(404).json({ message: 'Expense category not found' });
     res.json({ message: 'Expense category deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    // Return 400 for validation/usage errors so client can show friendly messages
+    res.status(400).json({ message: err.message });
   }
 };
