@@ -23,6 +23,18 @@ export async function createCustomer(payload: CustomerPayload) {
   return response.data
 }
 
+export async function sendOtp(mobileNumber: string, customer?: CustomerPayload) {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.post(`${baseUrl}/api/customers/send-otp`, { mobileNumber, customer })
+  return response.data
+}
+
+export async function verifyOtp(mobileNumber: string, otp: string) {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.post(`${baseUrl}/api/customers/verify-otp`, { mobileNumber, otp })
+  return response.data
+}
+
 export async function updateCustomer(id: string, payload: CustomerPayload) {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
   const response = await axios.put(`${baseUrl}/api/customers/${id}`, payload)

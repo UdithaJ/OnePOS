@@ -58,6 +58,25 @@
         </div>
       </template>
     </v-dialog>
+    <v-dialog v-model="showOtpDialog" max-width="400">
+      <template #default>
+        <v-card class="rounded-xl overflow-hidden">
+          <div class="bg-[#0d3d38] text-white px-6 py-4">
+            <h3 class="text-lg font-semibold">Verify Mobile</h3>
+          </div>
+          <div class="bg-white px-6 pt-6 pb-4">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
+              <v-text-field v-model="otpCode" placeholder="123456" />
+            </div>
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showOtpDialog = false">Cancel</v-btn>
+              <v-btn style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyOtpAndCreate">Verify</v-btn>
+            </div>
+          </div>
+        </v-card>
+      </template>
+    </v-dialog>
     <ConfirmationDialog
       v-model="showDeleteConfirm"
       title="Delete Customer"
@@ -73,7 +92,7 @@
 import { ref, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useDynamicForm } from '@/composables/useDynamicForm'
-import { getAllCustomers, createCustomer, updateCustomer, deleteCustomer } from '@/services/customerApiService'
+import { getAllCustomers, createCustomer, updateCustomer, deleteCustomer, sendOtp, verifyOtp } from '@/services/customerApiService'
 import { defineAsyncComponent } from 'vue'
 
 const BaseList = defineAsyncComponent(() => import('./BaseList.vue'))
@@ -138,6 +157,12 @@ const { showToast } = useToast()
 const showDeleteConfirm = ref(false)
 const toDelete = ref<any | null>(null)
 
+// OTP flow state
+const showOtpDialog = ref(false)
+const otpCode = ref('')
+const pendingMobile = ref('')
+const pendingPayload = ref<any | null>(null)
+
 function resetForm() {
   editId.value = null
   customerFormSchema.fields.forEach(f => { form.value[f.name] = '' })
@@ -165,14 +190,39 @@ async function handleSubmit() {
       if (idx !== -1) customers.value[idx] = toItem(saved)
       showToast('Customer updated successfully!', 'success')
     } else {
-      const saved = await createCustomer(payload)
-      customers.value.push(toItem(saved))
-      showToast('Customer registered successfully!', 'success')
+      // Start OTP flow: send OTP and create on verification
+      await startOtpFlow(payload)
     }
     showForm.value = false
     resetForm()
   } catch {
     showToast('Failed to save customer. Please try again.', 'error')
+  }
+}
+
+async function startOtpFlow(payload: any) {
+  try {
+    pendingPayload.value = payload
+    pendingMobile.value = payload.mobileNumber
+    await sendOtp(pendingMobile.value, payload)
+    showOtpDialog.value = true
+    showToast('OTP sent to mobile number. Please verify.', 'info')
+  } catch (err) {
+    showToast('Failed to send OTP. Please try again.', 'error')
+  }
+}
+
+async function verifyOtpAndCreate() {
+  try {
+    if (!pendingMobile.value) return showToast('No pending mobile number', 'error')
+    const saved = await verifyOtp(pendingMobile.value, otpCode.value)
+    customers.value.push(toItem(saved))
+    showToast('Customer registered successfully!', 'success')
+    showOtpDialog.value = false
+    showForm.value = false
+    resetForm()
+  } catch (err) {
+    showToast(err?.message || 'OTP verification failed', 'error')
   }
 }
 

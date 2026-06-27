@@ -11,4 +11,10 @@ async function sendBulkSms({ message, customerIds }) {
   return { sent: phones.length };
 }
 
-module.exports = { sendBulkSms };
+async function sendSms({ to, message }) {
+  // Stubbed single-SMS sender. Replace with real provider integration.
+  console.log(`[SMS] Sending to ${to}: "${message}"`);
+  return { sent: 1 };
+}
+
+module.exports = { sendBulkSms, sendSms };
