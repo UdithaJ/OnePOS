@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { BankTransferTrackingRow } from '@/services/reportApiService'
@@ -28,7 +27,9 @@ function grandTotal(rows: BankTransferTrackingRow[]): number {
 }
 
 export function useBankTransferExport() {
-  function exportToExcel(rows: BankTransferTrackingRow[], fromDate: string, toDate: string) {
+  async function exportToExcel(rows: BankTransferTrackingRow[], fromDate: string, toDate: string) {
+    const mod = await import('xlsx')
+    const XLSX = (mod && (mod as any).default) ? (mod as any).default : mod
     const data = [HEADERS, ...buildFlatRows(rows), ['', '', '', '', '', 'Total Amount Received', grandTotal(rows).toFixed(2)]]
     const ws = XLSX.utils.aoa_to_sheet(data)
     const wb = XLSX.utils.book_new()

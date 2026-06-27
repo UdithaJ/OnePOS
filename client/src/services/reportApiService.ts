@@ -84,6 +84,7 @@ export interface ExpenseCategory {
   _id: string
   name: string
   displayName: string
+  inUse?: boolean
 }
 
 export async function getExpensesReport(params: ExpensesReportParams): Promise<ExpensesReportRow[]> {

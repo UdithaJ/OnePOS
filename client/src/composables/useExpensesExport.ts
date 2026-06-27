@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { ExpensesReportRow } from '@/services/reportApiService'
@@ -36,7 +35,9 @@ function grandTotal(rawRows: ExpensesReportRow[]): number {
 }
 
 export function useExpensesExport() {
-  function exportToExcel(rawRows: ExpensesReportRow[], fromDate: string, toDate: string) {
+  async function exportToExcel(rawRows: ExpensesReportRow[], fromDate: string, toDate: string) {
+    const mod = await import('xlsx')
+    const XLSX = (mod && (mod as any).default) ? (mod as any).default : mod
     const data = [HEADERS, ...buildFlatRows(rawRows), ['', 'Total Expenses for the Given Period', grandTotal(rawRows).toFixed(2)]]
     const ws = XLSX.utils.aoa_to_sheet(data)
     const wb = XLSX.utils.book_new()

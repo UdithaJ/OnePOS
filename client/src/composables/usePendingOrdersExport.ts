@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { PendingOrdersRow } from '@/services/reportApiService'
@@ -43,7 +42,9 @@ function grandTotal(rawRows: PendingOrdersRow[]): number {
 }
 
 export function usePendingOrdersExport() {
-  function exportToExcel(rawRows: PendingOrdersRow[], fromDate: string, toDate: string) {
+  async function exportToExcel(rawRows: PendingOrdersRow[], fromDate: string, toDate: string) {
+    const mod = await import('xlsx')
+    const XLSX = (mod && (mod as any).default) ? (mod as any).default : mod
     const data = [HEADERS, ...buildFlatRows(rawRows), ['', '', '', '', '', '', 'Total Pending Weight', String(grandTotal(rawRows))]]
     const ws = XLSX.utils.aoa_to_sheet(data)
     const wb = XLSX.utils.book_new()

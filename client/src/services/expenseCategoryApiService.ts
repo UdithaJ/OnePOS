@@ -11,6 +11,7 @@ export interface ExpenseCategory {
   name: string
   displayName: string
   type: 'inflow' | 'outflow'
+  inUse?: boolean
 }
 
 const baseUrl = () => import.meta.env.VITE_API_BASE_URL || ''

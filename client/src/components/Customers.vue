@@ -222,7 +222,7 @@ async function verifyOtpAndCreate() {
     showForm.value = false
     resetForm()
   } catch (err) {
-    showToast(err?.message || 'OTP verification failed', 'error')
+    showToast((err as any)?.message || 'OTP verification failed', 'error')
   }
 }
 

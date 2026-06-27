@@ -11,6 +11,7 @@ export interface Category {
   name: string
   minimumPrice: number
   unitPrice: number
+  inUse?: boolean
 }
 
 const baseUrl = () => import.meta.env.VITE_API_BASE_URL || ''

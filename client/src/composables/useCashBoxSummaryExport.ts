@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { CashBoxSummaryRow } from '@/services/reportApiService'
@@ -32,7 +31,9 @@ function grandTotal(rawRows: CashBoxSummaryRow[]): number {
 }
 
 export function useCashBoxSummaryExport() {
-  function exportToExcel(rawRows: CashBoxSummaryRow[], fromDate: string, toDate: string) {
+  async function exportToExcel(rawRows: CashBoxSummaryRow[], fromDate: string, toDate: string) {
+    const mod = await import('xlsx')
+    const XLSX = (mod && (mod as any).default) ? (mod as any).default : mod
     const data = [HEADERS, ...buildFlatRows(rawRows), ['', '', '', '', '', '', '', '', 'Total Amount Received', grandTotal(rawRows).toFixed(2)]]
     const ws = XLSX.utils.aoa_to_sheet(data)
     const wb = XLSX.utils.book_new()

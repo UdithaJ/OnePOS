@@ -25,6 +25,9 @@ export default defineConfig({
       '.vue',
     ],
   },
+  optimizeDeps: {
+    include: ['xlsx'],
+  },
   server: {
     port: 3000,
   },

@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { BankReconciliationRow } from '@/services/reportApiService'
@@ -36,7 +35,10 @@ function grandTotal(rawRows: BankReconciliationRow[]): number {
 }
 
 export function useBankReconciliationExport() {
-  function exportToExcel(rawRows: BankReconciliationRow[], fromDate: string, toDate: string) {
+  async function exportToExcel(rawRows: BankReconciliationRow[], fromDate: string, toDate: string) {
+    // Load xlsx dynamically to avoid Rollup resolution issues during build
+    const mod = await import('xlsx')
+    const XLSX = (mod && (mod as any).default) ? (mod as any).default : mod
     const data = [HEADERS, ...buildFlatRows(rawRows), ['', 'Total Reconcile Value', grandTotal(rawRows).toFixed(2)]]
     const ws = XLSX.utils.aoa_to_sheet(data)
     const wb = XLSX.utils.book_new()

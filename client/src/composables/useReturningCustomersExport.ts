@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { ReturningCustomerRow } from '@/services/reportApiService'
@@ -15,7 +14,9 @@ function buildFlatRows(rawRows: ReturningCustomerRow[]): string[][] {
 }
 
 export function useReturningCustomersExport() {
-  function exportToExcel(rawRows: ReturningCustomerRow[]) {
+  async function exportToExcel(rawRows: ReturningCustomerRow[]) {
+    const mod = await import('xlsx')
+    const XLSX = (mod && (mod as any).default) ? (mod as any).default : mod
     const data = [HEADERS, ...buildFlatRows(rawRows)]
     const ws = XLSX.utils.aoa_to_sheet(data)
     const wb = XLSX.utils.book_new()
