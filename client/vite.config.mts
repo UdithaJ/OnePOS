@@ -6,6 +6,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Use relative asset paths so built files work when opened via file://
+  base: './',
   plugins: [
     vue(),
     vuetify(),

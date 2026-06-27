@@ -42,8 +42,6 @@
       "createStartMenuShortcut": true,
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
-      "installerHeader": "build/installerHeader.bmp",
-      "installerSidebar": "build/installerSidebar.bmp",
       "installerHeaderIcon": "build/icon.ico",
       "license": "build/LICENSE.txt"
     }

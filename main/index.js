@@ -71,6 +71,7 @@ const createWindow = () => {
     const distPath = path.join(app.getAppPath(), 'client', 'dist', 'index.html');
     console.log('Loading frontend from:', distPath);
     win.loadFile(distPath);
+    
   }
 };
 

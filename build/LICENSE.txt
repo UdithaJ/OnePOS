@@ -1,0 +1,7 @@
+Placeholder license file
+
+Replace this file with your project's actual license text (e.g. MIT, Apache-2.0).
+
+Copyright (c) YOUR_PROJECT_NAME
+
+All rights reserved.
