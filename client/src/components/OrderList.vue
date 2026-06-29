@@ -17,9 +17,9 @@
           variant="tonal"
           class="mb-4"
         >
-          <span v-if="dueSoonCount > 0">{{ dueSoonCount }} due soon</span>
-          <span v-if="dueSoonCount > 0 && overdueCount > 0"> &middot; </span>
-          <span v-if="overdueCount > 0">{{ overdueCount }} overdue</span>
+          <span v-if="dueSoonCount > 0">{{ dueSoonCount }} Order/s Due Soon</span>
+          <span v-if="dueSoonCount > 0 && overdueCount > 0"> • </span>
+          <span v-if="overdueCount > 0">{{ overdueCount }} Order/s Overdue</span>
         </v-alert>
         <v-skeleton-loader v-if="loading" type="table" class="mb-4 neomorphic-card" :loading="loading" />
         <div v-if="!loading && !errorMsg">
