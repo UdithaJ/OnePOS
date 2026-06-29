@@ -88,7 +88,7 @@
         <div class="text-sm text-gray-600 mb-1"><strong>Closing Amount:</strong> Rs {{ displayAmount.toFixed(2) }}</div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ activeSession?.openingAmount?.toFixed(2) }}</div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opened At:</strong> {{ formatDate(activeSession?.openedAt) }}</div>
-        <div class="text-sm text-gray-600"><strong>User:</strong> {{ userDisplayName() }}</div>
+        <div class="text-sm text-gray-600"><strong>Opened By:</strong> {{ userDisplayName() }}</div>
       </div>
     </ConfirmationDialog>
 
