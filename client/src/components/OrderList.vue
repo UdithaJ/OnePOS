@@ -241,7 +241,7 @@
                         <label class="field-label">Category <span class="required-star">*</span></label>
                         <v-select
                           v-model="sub.category"
-                          :items="categories"
+                          :items="availableCategoriesFor(idx)"
                           item-title="label"
                           item-value="value"
                           placeholder="Select"
@@ -623,6 +623,13 @@ function updateSuborderAmount(idx: number) {
   } else {
     sub.amount = 0
   }
+}
+
+function availableCategoriesFor(idx: number) {
+  const selectedElsewhere = new Set(
+    suborders.value.filter((_, i) => i !== idx).map(s => s.category).filter(Boolean)
+  )
+  return categories.value.filter((c: any) => !selectedElsewhere.has(c.value))
 }
 const totalAmount = computed(() => suborders.value.reduce((sum, s) => sum + Number(s.amount || 0), 0))
 const finalAmount = computed(() => Math.max(totalAmount.value - Number(form.value.discount || 0), 0))
