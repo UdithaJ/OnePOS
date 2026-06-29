@@ -17,11 +17,12 @@ exports.getAllOrders = async (req, res) => {
     const customerID = req.query.customerID || ''
     const createdDateFrom = req.query.createdDateFrom || ''
     const createdDateTo = req.query.createdDateTo || ''
+    const search = req.query.search || ''
 
     const result = await orderService.getOrdersPaginated({
       page, limit, sortBy, sortOrder,
       status, deliveryDateFrom, deliveryDateTo, customerID,
-      createdDateFrom, createdDateTo
+      createdDateFrom, createdDateTo, search
     })
     res.json(result)
   } catch (err) {

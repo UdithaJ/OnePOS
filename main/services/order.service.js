@@ -104,7 +104,7 @@ const SORTABLE_FIELDS = new Set(['orderNo', 'deliveryDate', 'status', 'totalAmou
 async function getOrdersPaginated({
   page = 1, limit = 10, sortBy = 'orderNo', sortOrder = 'desc',
   status = [], deliveryDateFrom = '', deliveryDateTo = '', customerID = '',
-  createdDateFrom = '', createdDateTo = ''
+  createdDateFrom = '', createdDateTo = '', search = ''
 } = {}) {
   const skip = (page - 1) * limit
   const field = SORTABLE_FIELDS.has(sortBy) ? sortBy : 'orderNo'
@@ -130,6 +130,74 @@ async function getOrdersPaginated({
       end.setHours(23, 59, 59, 999)
       filter.createdDate.$lte = end
     }
+  }
+
+  // Full-text search across orderNo, customer name, and customer phone
+  if (search && search.trim()) {
+    const s = search.trim()
+    const searchOrConditions = [
+      {
+        $expr: {
+          $regexMatch: {
+            input: {
+              $concat: [
+                { $ifNull: [{ $arrayElemAt: ['$_cust.firstName', 0] }, ''] },
+                ' ',
+                { $ifNull: [{ $arrayElemAt: ['$_cust.lastName', 0] }, ''] }
+              ]
+            },
+            regex: s, options: 'i'
+          }
+        }
+      },
+      { '_cust.mobileNumber': { $regex: s, $options: 'i' } }
+    ]
+    const searchNum = parseInt(s, 10)
+    if (!isNaN(searchNum)) searchOrConditions.push({ orderNo: searchNum })
+
+    const basePipeline = [
+      { $match: filter },
+      { $lookup: { from: 'customers', localField: 'customerID', foreignField: '_id', as: '_cust' } },
+      { $match: { $or: searchOrConditions } }
+    ]
+
+    let sortStage
+    if (field === 'customer') {
+      sortStage = [
+        { $addFields: { _sortName: { $concat: [
+          { $ifNull: [{ $arrayElemAt: ['$_cust.firstName', 0] }, ''] },
+          ' ',
+          { $ifNull: [{ $arrayElemAt: ['$_cust.lastName', 0] }, ''] }
+        ] } } },
+        { $sort: { _sortName: dir } }
+      ]
+    } else if (field === 'paymentStatus') {
+      sortStage = [
+        { $addFields: { _ps: { $switch: {
+          branches: [
+            { case: { $eq: ['$paymentStatus', 'unpaid']  }, then: 0 },
+            { case: { $eq: ['$paymentStatus', 'partial'] }, then: 1 },
+            { case: { $eq: ['$paymentStatus', 'paid']    }, then: 2 }
+          ],
+          default: -1
+        } } } },
+        { $sort: { _ps: dir } }
+      ]
+    } else {
+      sortStage = [{ $sort: { [field]: dir } }]
+    }
+
+    const [countResult, orders] = await Promise.all([
+      Order.aggregate([...basePipeline, { $count: 'total' }]),
+      Order.aggregate([
+        ...basePipeline,
+        ...sortStage,
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _cust: 0, _sortName: 0, _ps: 0 } }
+      ])
+    ])
+    return { orders, total: countResult[0]?.total ?? 0, page, limit }
   }
 
   // Customer sort — lookup customer name from the customers collection

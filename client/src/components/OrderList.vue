@@ -4,7 +4,7 @@
       <header class="header neomorphic-card">
         <div class="breadcrumbs">Laundromat · Orders</div>
         <div class="title-search">
-          <input class="search" type="text" placeholder="Search orders..." />
+          <input class="search" type="text" placeholder="Search by order #, customer, phone..." v-model="searchQuery" />
           <button class="new-order" @click="handleNewOrderClick">+ New order</button>
         </div>
         <!-- Status button filters removed as requested -->
@@ -519,6 +519,17 @@ const sortKey = ref('orderNo')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 const tableLoading = ref(false)
 
+const searchQuery = ref('')
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(searchQuery, () => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    page.value = 1
+    loadOrders()
+  }, 300)
+})
+
 const filterStatus = ref<string[]>([])
 const filterDeliveryDateFrom = ref('')
 const filterDeliveryDateTo = ref('')
@@ -809,6 +820,7 @@ async function loadOrders() {
       customerID: filterCustomerID.value || undefined,
       createdDateFrom: filterCreatedDateFrom.value || undefined,
       createdDateTo: filterCreatedDateTo.value || undefined,
+      search: searchQuery.value || undefined,
     })
     totalOrders.value = result.total
     setOrdersFromData(result.orders)
