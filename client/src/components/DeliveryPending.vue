@@ -33,7 +33,7 @@
       <!-- Empty -->
       <div v-else-if="pendingOrders.length === 0" class="dp-empty">
         <v-icon size="44" color="teal-darken-1" class="mb-2">mdi-truck-check-outline</v-icon>
-        <p class="dp-empty-text">No done orders pending delivery</p>
+        <p class="dp-empty-text">No orders pending delivery</p>
       </div>
 
       <!-- Tiles -->
