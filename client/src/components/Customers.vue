@@ -114,7 +114,7 @@ function toItem(c: any) {
     _id: c._id,
     firstName: c.firstName,
     lastName: c.lastName,
-    name: `${c.firstName} ${c.lastName}`,
+    name: [c.firstName, c.lastName].filter(Boolean).join(' '),
     mobileNumber: c.mobileNumber,
     addressLine1: c.addressLine1,
     addressLine2: c.addressLine2 ?? '',
@@ -141,13 +141,13 @@ const editId = ref<string | null>(null)
 const customerFormSchema = {
   fields: [
     { name: 'firstName', label: 'First Name', type: 'text', required: true },
-    { name: 'lastName', label: 'Last Name', type: 'text', required: true },
+    { name: 'lastName', label: 'Last Name', type: 'text' },
     { name: 'mobileNumber', label: 'Mobile Number', type: 'text', required: true },
-    { name: 'addressLine1', label: 'Address Line 1', type: 'text', required: true },
+    { name: 'addressLine1', label: 'Address Line 1', type: 'text' },
     { name: 'addressLine2', label: 'Address Line 2', type: 'text' },
-    { name: 'city', label: 'City', type: 'text', required: true },
-    { name: 'state', label: 'State', type: 'text', required: true },
-    { name: 'postalCode', label: 'Postal Code', type: 'text', required: true },
+    { name: 'city', label: 'City', type: 'text' },
+    { name: 'state', label: 'State', type: 'text' },
+    { name: 'postalCode', label: 'Postal Code', type: 'text' },
   ]
 }
 

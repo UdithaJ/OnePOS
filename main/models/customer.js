@@ -8,31 +8,26 @@ const customerSchema = new mongoose.Schema({
     required: true
   },
   lastName: {
-    type: String,
-    required: true
+    type: String
   },
   mobileNumber: {
     type: String,
     required: true
   },
   addressLine1: {
-    type: String,
-    required: true
+    type: String
   },
   addressLine2: {
     type: String
   },
   city: {
-    type: String,
-    required: true
+    type: String
   },
   state: {
-    type: String,
-    required: true
+    type: String
   },
   postalCode: {
-    type: String,
-    required: true
+    type: String
   }
 });
 

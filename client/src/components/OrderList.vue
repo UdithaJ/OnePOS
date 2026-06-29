@@ -359,7 +359,7 @@
                 </div>
                 <div class="order-form-field">
                   <div class="field-group">
-                    <label class="field-label">Last Name <span class="required-star">*</span></label>
+                    <label class="field-label">Last Name</label>
                     <v-text-field v-model="newCustomerForm.lastName" variant="outlined" density="compact" hide-details="auto" placeholder="Last name" />
                   </div>
                 </div>
@@ -373,13 +373,13 @@
                 </div>
                 <div class="order-form-field">
                   <div class="field-group">
-                    <label class="field-label">Postal Code <span class="required-star">*</span></label>
+                    <label class="field-label">Postal Code</label>
                     <v-text-field v-model="newCustomerForm.postalCode" variant="outlined" density="compact" hide-details="auto" placeholder="Postal code" />
                   </div>
                 </div>
               </div>
               <div class="field-group" style="margin-bottom: 12px;">
-                <label class="field-label">Address Line 1 <span class="required-star">*</span></label>
+                <label class="field-label">Address Line 1</label>
                 <v-text-field v-model="newCustomerForm.addressLine1" variant="outlined" density="compact" hide-details="auto" placeholder="Address line 1" />
               </div>
               <div class="field-group" style="margin-bottom: 12px;">
@@ -389,13 +389,13 @@
               <div class="order-form-row" style="margin-bottom: 16px;">
                 <div class="order-form-field">
                   <div class="field-group">
-                    <label class="field-label">City <span class="required-star">*</span></label>
+                    <label class="field-label">City</label>
                     <v-text-field v-model="newCustomerForm.city" variant="outlined" density="compact" hide-details="auto" placeholder="City" />
                   </div>
                 </div>
                 <div class="order-form-field">
                   <div class="field-group">
-                    <label class="field-label">State <span class="required-star">*</span></label>
+                    <label class="field-label">State</label>
                     <v-text-field v-model="newCustomerForm.state" variant="outlined" density="compact" hide-details="auto" placeholder="State" />
                   </div>
                 </div>
@@ -570,7 +570,7 @@ const newCustomerForm = ref({
 const savingNewCustomer = ref(false)
 const newCustomerFormValid = computed(() => {
   const f = newCustomerForm.value
-  return !!(f.firstName && f.lastName && f.mobileNumber && f.addressLine1 && f.city && f.state && f.postalCode)
+  return !!(f.firstName && f.mobileNumber)
 })
 
 const customerSearchItems = computed(() => [
@@ -742,7 +742,7 @@ async function loadCustomersAndOrders() {
     if (settings) {
       dueSoonLeadDays.value = Number(settings.dueSoonLeadDays) || 0
     }
-    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id, mobileNumber: c.mobileNumber }))
+    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: [c.firstName, c.lastName].filter(Boolean).join(' '), value: c._id, mobileNumber: c.mobileNumber }))
     if (Array.isArray(categoryData)) {
       categories.value = categoryData.map((cat: any) => ({
         label: cat.name,
@@ -1234,7 +1234,7 @@ async function handleAddNewCustomer() {
   savingNewCustomer.value = true
   try {
     const saved = await createCustomer(newCustomerForm.value)
-    customers.value = [...customers.value, { label: saved.firstName + ' ' + saved.lastName, value: saved._id, mobileNumber: saved.mobileNumber }]
+    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber }]
     form.value.customer = saved._id
     activeOrderModalTab.value = 'order'
     showToast('Customer added successfully!', 'success')
