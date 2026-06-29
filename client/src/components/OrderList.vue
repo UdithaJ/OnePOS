@@ -936,7 +936,7 @@ function buildPrintBillHtml(order: any) {
   const created = order?.createdDate ? new Date(order.createdDate) : new Date()
   const delivery = order?.deliveryDate ? new Date(order.deliveryDate) : null
   const orderItems = Array.isArray(order?.suborders) ? order.suborders : []
-  const orderId = order?._id || 'N/A'
+  const orderId = order?.orderNo || order?._id || 'N/A'
   const customerName = resolveCustomerName(order?.customerID)
   const customerPhone = resolveCustomerPhone(order?.customerID)
   const subtotal = Number(order?.totalAmount ?? totalAmount.value ?? 0)
