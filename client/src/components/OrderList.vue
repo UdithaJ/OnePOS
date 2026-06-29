@@ -2,7 +2,7 @@
   <div class="orders-ui-redesign neomorphic-container">
     <main class="main-content neomorphic-container">
       <header class="header neomorphic-card">
-        <div class="breadcrumbs">Laundromat · Orders</div>
+        <div class="breadcrumbs">Softwash · Orders</div>
         <div class="title-search">
           <input class="search" type="text" placeholder="Search by order #, customer, phone..." v-model="searchQuery" />
           <button class="new-order" @click="handleNewOrderClick">+ New order</button>
@@ -135,14 +135,18 @@
             <span class="text-base font-semibold">Capacity warning</span>
           </div>
           <div class="bg-white px-6 pt-4 pb-2 text-gray-700 text-sm">
-            <p>This order may not be deliverable by the chosen date.</p>
-            <p class="mt-2">
-              Pending work: <strong>{{ capacityResult?.pendingKg ?? 0 }} kg</strong><br />
-              This order: <strong>{{ capacityResult?.newOrderKg ?? 0 }} kg</strong><br />
-              Processable by due date: <strong>{{ capacityResult?.maxProcessableKg ?? 0 }} kg</strong>
-              ({{ capacityResult?.daysUntilDue ?? 0 }} day(s) × {{ capacityResult?.capacityPerDayKg ?? 0 }} kg/day)
+            <p>
+              Current pending workload : <strong>{{ capacityResult?.pendingKg ?? 0 }} kg</strong><br />
+              Daily processing capacity : <strong>{{ capacityResult?.capacityPerDayKg ?? 0 }} kg/day</strong>
             </p>
-            <p class="mt-2">Proceed anyway?</p>
+            <p class="mt-3">
+              The current workload requires approximately
+              <strong>{{ Math.ceil((capacityResult?.pendingKg ?? 0) / (capacityResult?.capacityPerDayKg || 1)) }} processing day(s)</strong>.
+            </p>
+            <p class="mt-3">
+              Adding this order (<strong>{{ capacityResult?.newOrderKg ?? 0 }} kg</strong>) may cause the selected delivery date to be missed.
+            </p>
+            <p class="mt-3">Do you want to continue with the selected delivery date?</p>
           </div>
           <div class="bg-white flex justify-end gap-3 px-6 pb-4">
             <v-btn variant="outlined"
@@ -150,7 +154,7 @@
               @click="cancelCapacityWarning">Cancel</v-btn>
             <v-btn
               style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-              @click="confirmCapacityWarning">Proceed</v-btn>
+              @click="confirmCapacityWarning">Yes, Continue</v-btn>
           </div>
         </v-card>
       </v-dialog>
