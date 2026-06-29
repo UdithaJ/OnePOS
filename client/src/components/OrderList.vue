@@ -649,7 +649,7 @@ async function onPaymentMade(payment: any) {
     if (makePaymentOnCreate.value) {
       try {
         // Use authoritative order returned from server to render bill
-        printBill(latestOrder)
+        await printBill(latestOrder)
       } catch (e) {
         console.error('Print after payment failed', e)
       }
@@ -1034,15 +1034,27 @@ function buildPrintBillHtml(order: any) {
   `
 }
 
-function printBill(order: any) {
+async function printBill(order: any) {
+  const htmlContent = buildPrintBillHtml(order)
+  const electronStore = (window as any).electronStore
+  if (electronStore?.printBill) {
+    try {
+      await electronStore.printBill(htmlContent)
+      showToast('Bill sent to printer!', 'success')
+    } catch (e) {
+      console.error('Auto-print failed:', e)
+      showToast('Printing failed. Please check printer connection.', 'error')
+    }
+    return
+  }
+  // Fallback for non-Electron context
   const billWindow = window.open('', '_blank', 'width=420,height=720')
   if (!billWindow) {
     showToast('Unable to open print preview. Please check pop-up settings.', 'warning')
     return
   }
-
   billWindow.document.open()
-  billWindow.document.write(buildPrintBillHtml(order))
+  billWindow.document.write(htmlContent)
   billWindow.document.close()
   billWindow.focus()
   billWindow.onload = () => {
@@ -1105,7 +1117,7 @@ async function persistOrder() {
     if (printBillOnCreate.value) {
       // If the user requested to make payment now, defer printing until after payment completes
       if (!makePaymentOnCreate.value) {
-        printBill(createdOrder)
+        await printBill(createdOrder)
       }
     }
     return createdOrder

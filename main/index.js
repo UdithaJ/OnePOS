@@ -36,6 +36,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
 import './server.js';
+import registerIPCHandlers from './ipc/index.js';
 
 const store = new Store();
 
@@ -104,8 +105,11 @@ function waitForBackendAndCreateWindow() {
   check();
 }
 
-app.whenReady().then(waitForBackendAndCreateWindow);
+app.whenReady().then(() => {
+  registerIPCHandlers();
+  waitForBackendAndCreateWindow();
+});
 
-ipcMain.handle('store-get', (event, key) => store.get(key));
-ipcMain.handle('store-set', (event, key, value) => store.set(key, value));
-ipcMain.handle('store-delete', (event, key) => store.delete(key));
+ipcMain.handle('store-get', (_event, key) => store.get(key));
+ipcMain.handle('store-set', (_event, key, value) => store.set(key, value));
+ipcMain.handle('store-delete', (_event, key) => store.delete(key));
