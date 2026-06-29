@@ -1,14 +1,22 @@
 const { BrowserWindow } = require('electron');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 async function getPrinters(event) {
   return event.sender.getPrintersAsync();
 }
 
-async function printBill(event, htmlContent) {
-  // Resolve printers from the main window — it has a guaranteed print context
+async function printBill(event, htmlContent, copies = 1) {
   const printers = await event.sender.getPrintersAsync();
   const printer = printers.find(p => p.isDefault) || printers[0];
   console.log('[print-bill] printers:', printers.length, '| using:', printer?.name || 'system default');
+
+  // Write HTML to a temp file so Chromium loads it via a single clean navigation.
+  // The about:blank + executeJavaScript(document.write) approach causes a second
+  // internal navigation, meaning print() fires before the content is rendered.
+  const tmpFile = path.join(os.tmpdir(), `onepos-bill-${Date.now()}.html`);
+  fs.writeFileSync(tmpFile, htmlContent, 'utf8');
 
   return new Promise((resolve, reject) => {
     const printWindow = new BrowserWindow({
@@ -18,48 +26,48 @@ async function printBill(event, htmlContent) {
       webPreferences: { contextIsolation: true },
     });
 
-    // Load about:blank first, then inject HTML via JS — avoids data-URL length limits
-    // and ensures the document is fully writable before printing
-    printWindow.loadURL('about:blank');
+    printWindow.loadURL(`file://${tmpFile}`);
 
     printWindow.webContents.once('did-finish-load', async () => {
       try {
-        // Write the bill HTML into the blank document
-        await printWindow.webContents.executeJavaScript(
-          `document.open(); document.write(${JSON.stringify(htmlContent)}); document.close();`
-        );
-
-        // Give the browser time to apply CSS and complete layout before printing
+        // Allow CSS layout to complete before printing
         await new Promise(r => setTimeout(r, 500));
 
         console.log('[print-bill] sending to printer:', printer?.name || 'system default');
-        const result = await Promise.resolve(
-          printWindow.webContents.print({
+
+        // Use the callback form — Electron calls it even in builds where the return
+        // is void. The callback is the only reliable signal that the job was submitted.
+        printWindow.webContents.print(
+          {
             silent: true,
             printBackground: true,
             deviceName: printer?.name || '',
-          })
+            copies: Math.max(1, parseInt(copies) || 1),
+          },
+          (success, failureReason) => {
+            console.log('[print-bill] callback success:', success, failureReason || '');
+            try { fs.unlinkSync(tmpFile); } catch (_) {}
+            // Keep the window alive so the OS can fully spool before it closes
+            setTimeout(() => { try { printWindow.close(); } catch (_) {} }, 3000);
+            if (success) {
+              resolve({ success: true, printer: printer?.name || 'default' });
+            } else {
+              reject(new Error(failureReason || 'Print failed'));
+            }
+          }
         );
-        console.log('[print-bill] print() result:', result);
-
-        // Keep the window alive long enough for the OS to fully spool the job
-        setTimeout(() => printWindow.close(), 3000);
-
-        if (result === false) {
-          reject(new Error('Print job returned false'));
-        } else {
-          resolve({ success: true, printer: printer?.name || 'default' });
-        }
       } catch (e) {
         console.error('[print-bill] error:', e);
-        printWindow.close();
+        try { fs.unlinkSync(tmpFile); } catch (_) {}
+        try { printWindow.close(); } catch (_) {}
         reject(e);
       }
     });
 
     printWindow.webContents.on('did-fail-load', (_e, _code, desc) => {
       console.error('[print-bill] load failed:', desc);
-      printWindow.close();
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
+      try { printWindow.close(); } catch (_) {}
       reject(new Error('Failed to load bill: ' + desc));
     });
   });

@@ -6,5 +6,5 @@ contextBridge.exposeInMainWorld('electronStore', {
   set: (key, value) => ipcRenderer.invoke('store-set', key, value),
   delete: (key) => ipcRenderer.invoke('store-delete', key),
   getPrinters: () => ipcRenderer.invoke('get-printers'),
-  printBill: (htmlContent) => ipcRenderer.invoke('print-bill', htmlContent),
+  printBill: (htmlContent, copies) => ipcRenderer.invoke('print-bill', htmlContent, copies),
 });

@@ -318,6 +318,19 @@
                       density="compact"
                       hide-details
                     />
+                    <div v-if="printBillOnCreate" class="d-flex align-center ml-6 mt-1 mb-1" style="gap: 8px;">
+                      <span style="font-size: 13px; color: #374151;">Copies:</span>
+                      <v-text-field
+                        v-model.number="printCopies"
+                        type="number"
+                        min="1"
+                        max="10"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="max-width: 80px;"
+                      />
+                    </div>
                     <v-checkbox
                       v-model="makePaymentOnCreate"
                       label="Make payment now"
@@ -573,6 +586,7 @@ const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
 const printBillOnCreate = ref(true)
+const printCopies = ref(1)
 const makePaymentOnCreate = ref(false)
 const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
@@ -649,7 +663,7 @@ async function onPaymentMade(payment: any) {
     if (makePaymentOnCreate.value) {
       try {
         // Use authoritative order returned from server to render bill
-        await printBill(latestOrder)
+        await printBill(latestOrder, printCopies.value)
       } catch (e) {
         console.error('Print after payment failed', e)
       }
@@ -868,6 +882,7 @@ function resetForm() {
   currentOrderPaymentStatus.value = 'unpaid'
   activeOrderModalTab.value = 'order'
   printBillOnCreate.value = true
+  printCopies.value = 1
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
   newCustomerForm.value = {
@@ -1034,12 +1049,12 @@ function buildPrintBillHtml(order: any) {
   `
 }
 
-async function printBill(order: any) {
+async function printBill(order: any, copies = 1) {
   const htmlContent = buildPrintBillHtml(order)
   const electronStore = (window as any).electronStore
   if (electronStore?.printBill) {
     try {
-      await electronStore.printBill(htmlContent)
+      await electronStore.printBill(htmlContent, copies)
       showToast('Bill sent to printer!', 'success')
     } catch (e) {
       console.error('Auto-print failed:', e)
@@ -1117,7 +1132,7 @@ async function persistOrder() {
     if (printBillOnCreate.value) {
       // If the user requested to make payment now, defer printing until after payment completes
       if (!makePaymentOnCreate.value) {
-        await printBill(createdOrder)
+        await printBill(createdOrder, printCopies.value)
       }
     }
     return createdOrder
