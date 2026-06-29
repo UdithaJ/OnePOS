@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
@@ -101,8 +101,13 @@ const routes: RouteRecordRaw[] = [
   },
 ]
 
+// Use hash history when running from file:// (packaged Electron) to avoid
+// mismatches with the file protocol. In dev we keep HTML5 history.
+const useHash = typeof window !== 'undefined' && window.location && window.location.protocol === 'file:'
+const history = useHash ? createWebHashHistory() : createWebHistory()
+
 const router = createRouter({
-  history: createWebHistory(),
+  history,
   routes,
 })
 
