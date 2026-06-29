@@ -205,18 +205,41 @@ async function updateOrder(id, updateData) {
   if (Array.isArray(updateData.suborders)) {
     const catMap = await loadCategoryMap(updateData.suborders);
 
+    // Load existing suborders so we can preserve original amounts when appropriate
+    const existingSuborders = Array.isArray(order.suborders) && order.suborders.length
+      ? await OrderCategory.find({ _id: { $in: order.suborders } }).lean()
+      : [];
+
+    // Build a map of existing amounts keyed by category+weight so unchanged items keep original amount
+    const existingMap = new Map();
+    for (const ex of existingSuborders) {
+      const key = `${String(ex.category)}_${String(ex.weight)}`;
+      // If multiple entries exist for same key, keep them in an array (consume FIFO)
+      if (!existingMap.has(key)) existingMap.set(key, []);
+      existingMap.get(key).push(Number(ex.amount || 0));
+    }
+
     // Remove old suborders
-    if (Array.isArray(order.suborders)) {
+    if (existingSuborders.length) {
       await OrderCategory.deleteMany({ _id: { $in: order.suborders } });
     }
 
-    // Create new suborders with authoritative amounts.
+    // Create new suborders, reusing original amounts when category+weight match, otherwise compute
     const suborderIds = [];
     let recomputedTotal = 0;
     for (const sub of updateData.suborders) {
       const cat = catMap.get(String(sub.category));
       if (!cat) throw new Error(`Category ${sub.category} not found`);
-      const amount = computeAmount(sub.weight, cat);
+
+      const key = `${String(sub.category)}_${String(sub.weight)}`;
+      let amount;
+      if (existingMap.has(key) && existingMap.get(key).length > 0) {
+        // Reuse the earliest preserved amount
+        amount = existingMap.get(key).shift();
+      } else {
+        amount = computeAmount(sub.weight, cat);
+      }
+
       recomputedTotal += amount;
 
       const suborder = new OrderCategory({
