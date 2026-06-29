@@ -142,7 +142,7 @@ const customerFormSchema = {
   fields: [
     { name: 'firstName', label: 'First Name', type: 'text', required: true },
     { name: 'lastName', label: 'Last Name', type: 'text' },
-    { name: 'mobileNumber', label: 'Mobile Number', type: 'text', required: true },
+    { name: 'mobileNumber', label: 'Mobile Number', type: 'text', required: true, rules: [(v: string) => /^\d{10}$/.test(v) || 'Must be exactly 10 digits'] },
     { name: 'addressLine1', label: 'Address Line 1', type: 'text' },
     { name: 'addressLine2', label: 'Address Line 2', type: 'text' },
     { name: 'city', label: 'City', type: 'text' },

@@ -368,7 +368,7 @@
                 <div class="order-form-field">
                   <div class="field-group">
                     <label class="field-label">Mobile Number <span class="required-star">*</span></label>
-                    <v-text-field v-model="newCustomerForm.mobileNumber" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" />
+                    <v-text-field v-model="newCustomerForm.mobileNumber" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" :rules="MOBILE_RULES" />
                   </div>
                 </div>
                 <div class="order-form-field">
@@ -568,9 +568,11 @@ const newCustomerForm = ref({
   postalCode: '',
 })
 const savingNewCustomer = ref(false)
+const MOBILE_RULES = [(v: string) => /^\d{10}$/.test(v) || 'Must be exactly 10 digits']
+
 const newCustomerFormValid = computed(() => {
   const f = newCustomerForm.value
-  return !!(f.firstName && f.mobileNumber)
+  return !!(f.firstName && /^\d{10}$/.test(f.mobileNumber))
 })
 
 const customerSearchItems = computed(() => [
