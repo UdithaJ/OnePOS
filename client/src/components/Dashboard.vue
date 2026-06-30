@@ -30,11 +30,11 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="px-5 py-3 flex items-center gap-2" style="background: #0f766e;">
             <v-icon color="white" size="20">mdi-cart</v-icon>
-            <span class="text-white text-sm font-medium">Orders Today</span>
+            <span class="text-white text-sm font-medium">Orders</span>
           </div>
           <div class="px-5 py-5">
             <div class="text-3xl font-bold text-gray-900">27</div>
-            <div class="text-sm text-gray-500 mt-1">Since midnight</div>
+            <div class="text-sm text-gray-500 mt-1">Orders Today</div>
           </div>
         </div>
 
@@ -47,12 +47,12 @@
           <div class="px-5 py-5 flex items-center justify-between">
             <div>
               <div class="text-3xl font-bold text-gray-900">{{ pendingCount }}</div>
-              <div class="text-sm text-gray-500 mt-1">Awaiting processing</div>
+              <div class="text-sm text-gray-500 mt-1">Orders Pending</div>
             </div>
             <div class="w-px h-10 bg-gray-200"></div>
             <div>
               <div class="text-3xl font-bold text-gray-900">{{ pendingWeightKg }} <span class="text-lg font-medium text-gray-500">kg</span></div>
-              <div class="text-sm text-gray-500 mt-1">Total weight</div>
+              <div class="text-sm text-gray-500 mt-1">Pending</div>
             </div>
           </div>
         </div>

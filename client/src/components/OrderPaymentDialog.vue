@@ -36,6 +36,8 @@
           <v-select
             v-model="type"
             :items="types"
+            item-title="title"
+            item-value="value"
             label="Type"
             required
             variant="outlined"
@@ -73,7 +75,11 @@ const methods = [
   { title: 'Cash', value: 'cash' },
   { title: 'Bank Transfer', value: 'bank' },
 ]
-const types = ['advance', 'full_payment', 'settlement']
+const types = [
+  { title: 'Advance', value: 'advance' },
+  { title: 'Full Payment', value: 'full_payment' },
+  { title: 'Settlement', value: 'settlement' },
+]
 
 watch(() => props.dueAmount, (val) => {
   if (type.value !== 'advance') {
