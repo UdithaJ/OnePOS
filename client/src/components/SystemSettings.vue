@@ -193,7 +193,7 @@ async function loadCustomers() {
     const data = await getAllCustomers()
     customers.value = data.map((c: any) => ({
       ...c,
-      fullName: `${c.firstName} ${c.lastName}`,
+      fullName: [c.firstName, c.lastName].filter(Boolean).join(' '),
     }))
   } catch {
     showToast('Failed to load customers', 'error')

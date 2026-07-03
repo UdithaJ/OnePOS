@@ -6,6 +6,7 @@ export interface FormField {
   type: string
   options?: { label: string; value: any }[]
   required?: boolean
+  rules?: Array<(v: any) => true | string>
 }
 
 export interface FormSchema {
@@ -22,8 +23,10 @@ export function useDynamicForm(schema: FormSchema) {
 
   const isValid = computed(() => {
     return schema.fields.every(field => {
-      if (field.required) {
-        return form.value[field.name] !== ''
+      const val = form.value[field.name]
+      if (field.required && !val) return false
+      if (field.rules) {
+        return field.rules.every(rule => rule(val) === true)
       }
       return true
     })

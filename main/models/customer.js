@@ -8,31 +8,27 @@ const customerSchema = new mongoose.Schema({
     required: true
   },
   lastName: {
-    type: String,
-    required: true
+    type: String
   },
   mobileNumber: {
     type: String,
-    required: true
+    required: true,
+    match: [/^\d{10}$/, 'Mobile number must be exactly 10 digits']
   },
   addressLine1: {
-    type: String,
-    required: true
+    type: String
   },
   addressLine2: {
     type: String
   },
   city: {
-    type: String,
-    required: true
+    type: String
   },
   state: {
-    type: String,
-    required: true
+    type: String
   },
   postalCode: {
-    type: String,
-    required: true
+    type: String
   }
 });
 

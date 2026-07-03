@@ -12,6 +12,7 @@
             v-model="form[field.name]"
             :placeholder="field.label"
             :required="field.required"
+            :rules="field.rules || []"
             variant="outlined"
             density="compact"
             hide-details="auto"

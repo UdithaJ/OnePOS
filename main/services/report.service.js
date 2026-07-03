@@ -49,7 +49,7 @@ async function getDailySalesReport(fromDate, toDate) {
         status: 1,
         rackNumber: 1,
         customerName: {
-          $concat: ['$customerDetail.firstName', ' ', '$customerDetail.lastName'],
+          $concat: ['$customerDetail.firstName', { $cond: [{ $ifNull: ['$customerDetail.lastName', false] }, { $concat: [' ', '$customerDetail.lastName'] }, ''] }],
         },
         categoryName: '$categoryDetail.name',
         weight: '$suborders.weight',
@@ -113,7 +113,7 @@ async function getPendingOrdersByDueDate(fromDate, toDate, status) {
         status: 1,
         rackNumber: 1,
         customerName: {
-          $concat: ['$customerDetail.firstName', ' ', '$customerDetail.lastName'],
+          $concat: ['$customerDetail.firstName', { $cond: [{ $ifNull: ['$customerDetail.lastName', false] }, { $concat: [' ', '$customerDetail.lastName'] }, ''] }],
         },
         mobileNumber: '$customerDetail.mobileNumber',
         categoryName: '$categoryDetail.name',
@@ -233,7 +233,7 @@ async function getReturningCustomers(minOrderCount) {
         _id: 0,
         customerId: '$_id',
         customerName: {
-          $concat: ['$customer.firstName', ' ', '$customer.lastName'],
+          $concat: ['$customer.firstName', { $cond: [{ $ifNull: ['$customer.lastName', false] }, { $concat: [' ', '$customer.lastName'] }, ''] }],
         },
         mobileNumber: '$customer.mobileNumber',
         orderCount: 1,
@@ -316,7 +316,7 @@ async function getCashBoxSummary(fromDate, toDate) {
         createdDate: 1,
         businessDate: '$session.openedAt',
         customerName: {
-          $concat: ['$customer.firstName', ' ', '$customer.lastName'],
+          $concat: ['$customer.firstName', { $cond: [{ $ifNull: ['$customer.lastName', false] }, { $concat: [' ', '$customer.lastName'] }, ''] }],
         },
         totalAmount: 1,
         discount: { $ifNull: ['$discount', 0] },
@@ -365,7 +365,7 @@ async function getBankTransferTracking(fromDate, toDate) {
         createdDate: 1,
         bankTransferDate: '$payments.date',
         customerName: {
-          $concat: ['$customer.firstName', ' ', '$customer.lastName'],
+          $concat: ['$customer.firstName', { $cond: [{ $ifNull: ['$customer.lastName', false] }, { $concat: [' ', '$customer.lastName'] }, ''] }],
         },
         totalAmount: 1,
         dueAmount: 1,

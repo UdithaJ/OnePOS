@@ -2,9 +2,9 @@
   <div class="orders-ui-redesign neomorphic-container">
     <main class="main-content neomorphic-container">
       <header class="header neomorphic-card">
-        <div class="breadcrumbs">Laundromat · Orders</div>
+        <div class="breadcrumbs">Softwash · Orders</div>
         <div class="title-search">
-          <input class="search" type="text" placeholder="Search orders..." />
+          <input class="search" type="text" placeholder="Search by order #, customer, phone..." v-model="searchQuery" />
           <button class="new-order" @click="handleNewOrderClick">+ New order</button>
         </div>
         <!-- Status button filters removed as requested -->
@@ -17,9 +17,9 @@
           variant="tonal"
           class="mb-4"
         >
-          <span v-if="dueSoonCount > 0">{{ dueSoonCount }} due soon</span>
-          <span v-if="dueSoonCount > 0 && overdueCount > 0"> &middot; </span>
-          <span v-if="overdueCount > 0">{{ overdueCount }} overdue</span>
+          <span v-if="dueSoonCount > 0">{{ dueSoonCount }} Order/s Due Soon</span>
+          <span v-if="dueSoonCount > 0 && overdueCount > 0"> • </span>
+          <span v-if="overdueCount > 0">{{ overdueCount }} Order/s Overdue</span>
         </v-alert>
         <v-skeleton-loader v-if="loading" type="table" class="mb-4 neomorphic-card" :loading="loading" />
         <div v-if="!loading && !errorMsg">
@@ -135,14 +135,18 @@
             <span class="text-base font-semibold">Capacity warning</span>
           </div>
           <div class="bg-white px-6 pt-4 pb-2 text-gray-700 text-sm">
-            <p>This order may not be deliverable by the chosen date.</p>
-            <p class="mt-2">
-              Pending work: <strong>{{ capacityResult?.pendingKg ?? 0 }} kg</strong><br />
-              This order: <strong>{{ capacityResult?.newOrderKg ?? 0 }} kg</strong><br />
-              Processable by due date: <strong>{{ capacityResult?.maxProcessableKg ?? 0 }} kg</strong>
-              ({{ capacityResult?.daysUntilDue ?? 0 }} day(s) × {{ capacityResult?.capacityPerDayKg ?? 0 }} kg/day)
+            <p>
+              Current pending workload : <strong>{{ capacityResult?.pendingKg ?? 0 }} kg</strong><br />
+              Daily processing capacity : <strong>{{ capacityResult?.capacityPerDayKg ?? 0 }} kg/day</strong>
             </p>
-            <p class="mt-2">Proceed anyway?</p>
+            <p class="mt-3">
+              The current workload requires approximately
+              <strong>{{ Math.ceil((capacityResult?.pendingKg ?? 0) / (capacityResult?.capacityPerDayKg || 1)) }} processing day(s)</strong>.
+            </p>
+            <p class="mt-3">
+              Adding this order (<strong>{{ capacityResult?.newOrderKg ?? 0 }} kg</strong>) may cause the selected delivery date to be missed.
+            </p>
+            <p class="mt-3">Do you want to continue with the selected delivery date?</p>
           </div>
           <div class="bg-white flex justify-end gap-3 px-6 pb-4">
             <v-btn variant="outlined"
@@ -150,7 +154,7 @@
               @click="cancelCapacityWarning">Cancel</v-btn>
             <v-btn
               style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-              @click="confirmCapacityWarning">Proceed</v-btn>
+              @click="confirmCapacityWarning">Yes, Continue</v-btn>
           </div>
         </v-card>
       </v-dialog>
@@ -241,7 +245,7 @@
                         <label class="field-label">Category <span class="required-star">*</span></label>
                         <v-select
                           v-model="sub.category"
-                          :items="categories"
+                          :items="availableCategoriesFor(idx)"
                           item-title="label"
                           item-value="value"
                           placeholder="Select"
@@ -318,6 +322,19 @@
                       density="compact"
                       hide-details
                     />
+                    <div v-if="printBillOnCreate" class="d-flex align-center ml-6 mt-1 mb-1" style="gap: 8px;">
+                      <span style="font-size: 13px; color: #374151;">Copies:</span>
+                      <v-text-field
+                        v-model.number="printCopies"
+                        type="number"
+                        min="1"
+                        max="10"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="max-width: 80px;"
+                      />
+                    </div>
                     <v-checkbox
                       v-model="makePaymentOnCreate"
                       label="Make payment now"
@@ -346,7 +363,7 @@
                 </div>
                 <div class="order-form-field">
                   <div class="field-group">
-                    <label class="field-label">Last Name <span class="required-star">*</span></label>
+                    <label class="field-label">Last Name</label>
                     <v-text-field v-model="newCustomerForm.lastName" variant="outlined" density="compact" hide-details="auto" placeholder="Last name" />
                   </div>
                 </div>
@@ -355,18 +372,18 @@
                 <div class="order-form-field">
                   <div class="field-group">
                     <label class="field-label">Mobile Number <span class="required-star">*</span></label>
-                    <v-text-field v-model="newCustomerForm.mobileNumber" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" />
+                    <v-text-field v-model="newCustomerForm.mobileNumber" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" :rules="MOBILE_RULES" />
                   </div>
                 </div>
                 <div class="order-form-field">
                   <div class="field-group">
-                    <label class="field-label">Postal Code <span class="required-star">*</span></label>
+                    <label class="field-label">Postal Code</label>
                     <v-text-field v-model="newCustomerForm.postalCode" variant="outlined" density="compact" hide-details="auto" placeholder="Postal code" />
                   </div>
                 </div>
               </div>
               <div class="field-group" style="margin-bottom: 12px;">
-                <label class="field-label">Address Line 1 <span class="required-star">*</span></label>
+                <label class="field-label">Address Line 1</label>
                 <v-text-field v-model="newCustomerForm.addressLine1" variant="outlined" density="compact" hide-details="auto" placeholder="Address line 1" />
               </div>
               <div class="field-group" style="margin-bottom: 12px;">
@@ -376,13 +393,13 @@
               <div class="order-form-row" style="margin-bottom: 16px;">
                 <div class="order-form-field">
                   <div class="field-group">
-                    <label class="field-label">City <span class="required-star">*</span></label>
+                    <label class="field-label">City</label>
                     <v-text-field v-model="newCustomerForm.city" variant="outlined" density="compact" hide-details="auto" placeholder="City" />
                   </div>
                 </div>
                 <div class="order-form-field">
                   <div class="field-group">
-                    <label class="field-label">State <span class="required-star">*</span></label>
+                    <label class="field-label">State</label>
                     <v-text-field v-model="newCustomerForm.state" variant="outlined" density="compact" hide-details="auto" placeholder="State" />
                   </div>
                 </div>
@@ -506,6 +523,17 @@ const sortKey = ref('orderNo')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 const tableLoading = ref(false)
 
+const searchQuery = ref('')
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(searchQuery, () => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    page.value = 1
+    loadOrders()
+  }, 300)
+})
+
 const filterStatus = ref<string[]>([])
 const filterDeliveryDateFrom = ref('')
 const filterDeliveryDateTo = ref('')
@@ -544,9 +572,11 @@ const newCustomerForm = ref({
   postalCode: '',
 })
 const savingNewCustomer = ref(false)
+const MOBILE_RULES = [(v: string) => /^\d{10}$/.test(v) || 'Must be exactly 10 digits']
+
 const newCustomerFormValid = computed(() => {
   const f = newCustomerForm.value
-  return !!(f.firstName && f.lastName && f.mobileNumber && f.addressLine1 && f.city && f.state && f.postalCode)
+  return !!(f.firstName && /^\d{10}$/.test(f.mobileNumber))
 })
 
 const customerSearchItems = computed(() => [
@@ -573,6 +603,7 @@ const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
 const printBillOnCreate = ref(true)
+const printCopies = ref(1)
 const makePaymentOnCreate = ref(false)
 const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
@@ -596,6 +627,13 @@ function updateSuborderAmount(idx: number) {
   } else {
     sub.amount = 0
   }
+}
+
+function availableCategoriesFor(idx: number) {
+  const selectedElsewhere = new Set(
+    suborders.value.filter((_, i) => i !== idx).map(s => s.category).filter(Boolean)
+  )
+  return categories.value.filter((c: any) => !selectedElsewhere.has(c.value))
 }
 const totalAmount = computed(() => suborders.value.reduce((sum, s) => sum + Number(s.amount || 0), 0))
 const finalAmount = computed(() => Math.max(totalAmount.value - Number(form.value.discount || 0), 0))
@@ -649,7 +687,7 @@ async function onPaymentMade(payment: any) {
     if (makePaymentOnCreate.value) {
       try {
         // Use authoritative order returned from server to render bill
-        printBill(latestOrder)
+        await printBill(latestOrder, printCopies.value)
       } catch (e) {
         console.error('Print after payment failed', e)
       }
@@ -717,7 +755,7 @@ async function loadCustomersAndOrders() {
     if (settings) {
       dueSoonLeadDays.value = Number(settings.dueSoonLeadDays) || 0
     }
-    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: c.firstName + ' ' + c.lastName, value: c._id, mobileNumber: c.mobileNumber }))
+    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: [c.firstName, c.lastName].filter(Boolean).join(' '), value: c._id, mobileNumber: c.mobileNumber }))
     if (Array.isArray(categoryData)) {
       categories.value = categoryData.map((cat: any) => ({
         label: cat.name,
@@ -795,6 +833,7 @@ async function loadOrders() {
       customerID: filterCustomerID.value || undefined,
       createdDateFrom: filterCreatedDateFrom.value || undefined,
       createdDateTo: filterCreatedDateTo.value || undefined,
+      search: searchQuery.value || undefined,
     })
     totalOrders.value = result.total
     setOrdersFromData(result.orders)
@@ -868,6 +907,7 @@ function resetForm() {
   currentOrderPaymentStatus.value = 'unpaid'
   activeOrderModalTab.value = 'order'
   printBillOnCreate.value = true
+  printCopies.value = 1
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
   newCustomerForm.value = {
@@ -921,7 +961,7 @@ function buildPrintBillHtml(order: any) {
   const created = order?.createdDate ? new Date(order.createdDate) : new Date()
   const delivery = order?.deliveryDate ? new Date(order.deliveryDate) : null
   const orderItems = Array.isArray(order?.suborders) ? order.suborders : []
-  const orderId = order?._id || 'N/A'
+  const orderId = order?.orderNo || order?._id || 'N/A'
   const customerName = resolveCustomerName(order?.customerID)
   const customerPhone = resolveCustomerPhone(order?.customerID)
   const subtotal = Number(order?.totalAmount ?? totalAmount.value ?? 0)
@@ -1034,15 +1074,27 @@ function buildPrintBillHtml(order: any) {
   `
 }
 
-function printBill(order: any) {
+async function printBill(order: any, copies = 1) {
+  const htmlContent = buildPrintBillHtml(order)
+  const electronStore = (window as any).electronStore
+  if (electronStore?.printBill) {
+    try {
+      await electronStore.printBill(htmlContent, copies)
+      showToast('Bill sent to printer!', 'success')
+    } catch (e) {
+      console.error('Auto-print failed:', e)
+      showToast('Printing failed. Please check printer connection.', 'error')
+    }
+    return
+  }
+  // Fallback for non-Electron context
   const billWindow = window.open('', '_blank', 'width=420,height=720')
   if (!billWindow) {
     showToast('Unable to open print preview. Please check pop-up settings.', 'warning')
     return
   }
-
   billWindow.document.open()
-  billWindow.document.write(buildPrintBillHtml(order))
+  billWindow.document.write(htmlContent)
   billWindow.document.close()
   billWindow.focus()
   billWindow.onload = () => {
@@ -1105,7 +1157,7 @@ async function persistOrder() {
     if (printBillOnCreate.value) {
       // If the user requested to make payment now, defer printing until after payment completes
       if (!makePaymentOnCreate.value) {
-        printBill(createdOrder)
+        await printBill(createdOrder, printCopies.value)
       }
     }
     return createdOrder
@@ -1195,7 +1247,7 @@ async function handleAddNewCustomer() {
   savingNewCustomer.value = true
   try {
     const saved = await createCustomer(newCustomerForm.value)
-    customers.value = [...customers.value, { label: saved.firstName + ' ' + saved.lastName, value: saved._id, mobileNumber: saved.mobileNumber }]
+    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber }]
     form.value.customer = saved._id
     activeOrderModalTab.value = 'order'
     showToast('Customer added successfully!', 'success')

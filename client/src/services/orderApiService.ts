@@ -40,6 +40,7 @@ export interface OrdersParams {
   customerID?: string
   createdDateFrom?: string
   createdDateTo?: string
+  search?: string
 }
 
 export interface OrdersPage {
