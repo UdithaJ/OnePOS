@@ -158,6 +158,26 @@
           </div>
         </v-card>
       </v-dialog>
+      <v-dialog v-model="showPaymentAffectWarning" max-width="480">
+        <v-card class="rounded-xl overflow-hidden" style="border: none;">
+          <div class="bg-[#0d3d38] text-white px-6 py-4">
+            <span class="text-base font-semibold">Confirm update</span>
+          </div>
+          <div class="bg-white px-6 pt-4 pb-2 text-gray-700 text-sm">
+            <p>
+              This order already contains payments. Updating order items will recalculate the outstanding balance. Do you want to continue?
+            </p>
+          </div>
+          <div class="bg-white flex justify-end gap-3 px-6 pb-4">
+            <v-btn variant="outlined"
+              style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+              @click="showPaymentAffectWarning = false">Cancel</v-btn>
+            <v-btn
+              style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+              @click="confirmModifyWithPayments">Continue</v-btn>
+          </div>
+        </v-card>
+      </v-dialog>
       <v-dialog v-model="showForm" max-width="900" scrim>
         <template #default>
           <v-card class="rounded-xl overflow-hidden" style="border: none;">
@@ -237,6 +257,7 @@
                       <span class="suborders-badge">{{ suborders.length }}</span>
                     </div>
                     <v-btn class="add-suborder-btn" @click="addSuborder" variant="outlined"
+                      :disabled="isOrderDone"
                       style="border-color: #0f766e; color: #0f766e; text-transform: none;">+ Add Item</v-btn>
                   </div>
                   <div class="suborder-table">
@@ -609,6 +630,8 @@ const printCopies = ref(1)
 const makePaymentOnCreate = ref(false)
 const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
+const showPaymentAffectWarning = ref(false)
+const originalSubordersSnapshot = ref('')
 const dueSoonLeadDays = ref<number>(1)
 const overdueCount = computed(() => orders.value.filter(o => o.overdue).length)
 const dueSoonCount = computed(() => orders.value.filter(o => o.dueSoon).length)
@@ -740,7 +763,10 @@ const orderFormSchema = computed(() => ({
   ]
 }))
 
-const isOrderDone = computed(() => String(form.value.status || '').toLowerCase() === 'done')
+const isOrderDone = computed(() => {
+  const s = String(form.value.status || '').toLowerCase()
+  return s === 'done' || s === 'delivered'
+})
 
 import type { CustomerPayload } from '@/services/customerApiService'
 
@@ -1131,12 +1157,31 @@ async function onEditOrder(order: any) {
       const floor = Number(cat.minimumPrice) || 0;
       amount = Math.max(computed, floor);
     }
-    return {
-      category: categoryId,
-      weight,
-      amount
-    };
-  });
+    const mapped = (data.suborders || []).map((sub: any) => {
+      let categoryId = sub.category?._id || sub.category;
+      const cat = categories.value.find((c: any) => c.value === categoryId);
+      let weight = sub.weight || '';
+      let amount = 0;
+      if (cat && weight) {
+        const computed = Number(weight) * Number(cat.unitPrice);
+        const floor = Number(cat.minimumPrice) || 0;
+        amount = Math.max(computed, floor);
+      }
+      return {
+        category: categoryId,
+        weight,
+        amount
+      };
+    });
+    suborders.value = mapped;
+    // Save a normalized snapshot for change detection when editing
+    try {
+      const norm = mapped.map((s: any) => ({ category: String(s.category), weight: String(s.weight) }))
+      norm.sort((a: any, b: any) => (a.category + '_' + a.weight).localeCompare(b.category + '_' + b.weight))
+      originalSubordersSnapshot.value = JSON.stringify(norm)
+    } catch (e) {
+      originalSubordersSnapshot.value = ''
+    }
   // Fetch payments for this order
   payments.value = await getPaymentsByOrder(orderId)
   showForm.value = true
@@ -1205,6 +1250,11 @@ async function handleSubmit() {
         console.error('Capacity check failed', e)
       }
     }
+    // If editing an existing order that already has payments and items changed, warn the user
+    if (editOrderId.value && payments.value.length > 0 && subordersChanged()) {
+      showPaymentAffectWarning.value = true
+      return
+    }
     const createdOrder = await persistOrder()
     await afterOrderPersist(createdOrder)
   } catch (error) {
@@ -1226,6 +1276,28 @@ async function confirmCapacityWarning() {
     await afterOrderPersist(createdOrder)
   } catch (error) {
     showToast('Order creation failed', 'error')
+    console.error('Order save failed', error)
+  }
+}
+
+function subordersChanged() {
+  try {
+    const incoming = suborders.value.map((s: any) => ({ category: String(s.category), weight: String(s.weight) }))
+    incoming.sort((a: any, b: any) => (a.category + '_' + a.weight).localeCompare(b.category + '_' + b.weight))
+    const inc = JSON.stringify(incoming)
+    return inc !== originalSubordersSnapshot.value
+  } catch (e) {
+    return true
+  }
+}
+
+async function confirmModifyWithPayments() {
+  showPaymentAffectWarning.value = false
+  try {
+    const createdOrder = await persistOrder()
+    await afterOrderPersist(createdOrder)
+  } catch (error) {
+    showToast('Order update failed', 'error')
     console.error('Order save failed', error)
   }
 }

@@ -271,6 +271,11 @@ async function updateOrder(id, updateData) {
   if (!order) throw new Error('Order not found');
 
   if (Array.isArray(updateData.suborders)) {
+    // Disallow editing of order items if the order is finalized (Done or Delivered)
+    if (['done', 'delivered'].includes(String(order.status))) {
+      throw new Error('Cannot edit order items when order status is Done or Delivered');
+    }
+
     const catMap = await loadCategoryMap(updateData.suborders);
 
     // Load existing suborders so we can preserve original amounts when appropriate
@@ -278,37 +283,10 @@ async function updateOrder(id, updateData) {
       ? await OrderCategory.find({ _id: { $in: order.suborders } }).lean()
       : [];
 
-    // If the order is already done, prevent changing existing items' category or weight,
-    // and prevent removing existing items. New items may be appended but existing ones
-    // must remain present and unchanged.
-    if (String(order.status) === 'done') {
-      // Build counts of existing category+weight occurrences
-      const existingCounts = new Map();
-      for (const ex of existingSuborders) {
-        const key = `${String(ex.category)}_${String(ex.weight)}`;
-        existingCounts.set(key, (existingCounts.get(key) || 0) + 1);
-      }
-
-      // Build counts from incoming suborders for comparison
-      const incomingCounts = new Map();
-      for (const sub of updateData.suborders) {
-        const key = `${String(sub.category)}_${String(sub.weight)}`;
-        incomingCounts.set(key, (incomingCounts.get(key) || 0) + 1);
-      }
-
-      // Ensure every existing key is present in incoming with at least the same count
-      for (const [key, cnt] of existingCounts.entries()) {
-        if ((incomingCounts.get(key) || 0) < cnt) {
-          throw new Error('Cannot remove or modify existing items when order status is Done');
-        }
-      }
-    }
-
     // Build a map of existing amounts keyed by category+weight so unchanged items keep original amount
     const existingMap = new Map();
     for (const ex of existingSuborders) {
       const key = `${String(ex.category)}_${String(ex.weight)}`;
-      // If multiple entries exist for same key, keep them in an array (consume FIFO)
       if (!existingMap.has(key)) existingMap.set(key, []);
       existingMap.get(key).push(Number(ex.amount || 0));
     }
@@ -328,7 +306,6 @@ async function updateOrder(id, updateData) {
       const key = `${String(sub.category)}_${String(sub.weight)}`;
       let amount;
       if (existingMap.has(key) && existingMap.get(key).length > 0) {
-        // Reuse the earliest preserved amount
         amount = existingMap.get(key).shift();
       } else {
         amount = computeAmount(sub.weight, cat);
@@ -358,6 +335,15 @@ async function updateOrder(id, updateData) {
   const payments = await Payment.find({ orderId: id })
   const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
   updateData.dueAmount = Math.max(newTotal - newDiscount - paid, 0)
+
+  // Recalculate paymentStatus based on collected payments and new totals
+  const netTotal = Math.max(newTotal - newDiscount, 0)
+  let paymentStatus = 'unpaid'
+  if (paid <= 0) paymentStatus = 'unpaid'
+  else if (paid >= netTotal && netTotal > 0) paymentStatus = 'paid'
+  else if (paid > 0 && paid < netTotal) paymentStatus = 'partial'
+  else if (netTotal === 0 && paid > 0) paymentStatus = 'paid'
+  updateData.paymentStatus = paymentStatus
 
   return await Order.findByIdAndUpdate(id, updateData, { new: true }).populate({
     path: 'suborders',
