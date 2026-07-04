@@ -278,6 +278,32 @@ async function updateOrder(id, updateData) {
       ? await OrderCategory.find({ _id: { $in: order.suborders } }).lean()
       : [];
 
+    // If the order is already done, prevent changing existing items' category or weight,
+    // and prevent removing existing items. New items may be appended but existing ones
+    // must remain present and unchanged.
+    if (String(order.status) === 'done') {
+      // Build counts of existing category+weight occurrences
+      const existingCounts = new Map();
+      for (const ex of existingSuborders) {
+        const key = `${String(ex.category)}_${String(ex.weight)}`;
+        existingCounts.set(key, (existingCounts.get(key) || 0) + 1);
+      }
+
+      // Build counts from incoming suborders for comparison
+      const incomingCounts = new Map();
+      for (const sub of updateData.suborders) {
+        const key = `${String(sub.category)}_${String(sub.weight)}`;
+        incomingCounts.set(key, (incomingCounts.get(key) || 0) + 1);
+      }
+
+      // Ensure every existing key is present in incoming with at least the same count
+      for (const [key, cnt] of existingCounts.entries()) {
+        if ((incomingCounts.get(key) || 0) < cnt) {
+          throw new Error('Cannot remove or modify existing items when order status is Done');
+        }
+      }
+    }
+
     // Build a map of existing amounts keyed by category+weight so unchanged items keep original amount
     const existingMap = new Map();
     for (const ex of existingSuborders) {

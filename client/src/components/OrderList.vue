@@ -254,6 +254,7 @@
                           density="compact"
                           hide-details="auto"
                           @change="() => updateSuborderAmount(idx)"
+                          :disabled="isOrderDone"
                           required
                         />
                       </div>
@@ -268,6 +269,7 @@
                           density="compact"
                           hide-details="auto"
                           @input="() => updateSuborderAmount(idx)"
+                          :disabled="isOrderDone"
                           required
                         />
                       </div>
@@ -285,7 +287,7 @@
                       </div>
                       <div class="delete-btn-wrapper">
                         <span class="delete-btn-spacer"></span>
-                        <v-btn icon color="error" size="small" @click="removeSuborder(idx)"><v-icon size="18">mdi-delete</v-icon></v-btn>
+                        <v-btn icon color="error" size="small" :disabled="isOrderDone" @click="removeSuborder(idx)"><v-icon size="18">mdi-delete</v-icon></v-btn>
                       </div>
                     </div>
                   </div>
@@ -737,6 +739,8 @@ const orderFormSchema = computed(() => ({
     ] : [])
   ]
 }))
+
+const isOrderDone = computed(() => String(form.value.status || '').toLowerCase() === 'done')
 
 import type { CustomerPayload } from '@/services/customerApiService'
 
