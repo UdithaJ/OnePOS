@@ -377,8 +377,8 @@ async function sendOrderCompletionSms(order) {
     console.warn(`[SMS] order ${order.orderNo}: no customer/mobile, skipping completion SMS`);
     return;
   }
-  const name = customer.firstName || 'Customer';
-  const message = `Dear ${name}, your order #${order.orderNo} is now ready for collection. Thank you.`;
+  const greetName = [customer.title, customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Customer';
+  const message = `Dear ${greetName}, your order #${order.orderNo} is now ready for collection. Thank you.`;
   await messaging.sendSms({ to: customer.mobileNumber, message });
 }
 

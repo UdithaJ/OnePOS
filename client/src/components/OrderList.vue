@@ -380,6 +380,12 @@
               <div class="order-form-row" style="margin-bottom: 12px;">
                 <div class="order-form-field">
                   <div class="field-group">
+                    <label class="field-label">Title <span class="required-star">*</span></label>
+                    <v-select v-model="newCustomerForm.title" :items="['Mr','Mrs','Miss','Dr']" variant="outlined" density="compact" hide-details="auto" placeholder="Title" />
+                  </div>
+                </div>
+                <div class="order-form-field">
+                  <div class="field-group">
                     <label class="field-label">First Name <span class="required-star">*</span></label>
                     <v-text-field v-model="newCustomerForm.firstName" variant="outlined" density="compact" hide-details="auto" placeholder="First name" />
                   </div>
@@ -585,6 +591,7 @@ const activeOrderModalTab = ref<'order' | 'payments' | 'new-customer'>('order')
 const customerSearchQuery = ref('')
 
 const newCustomerForm = ref({
+  title: '',
   firstName: '',
   lastName: '',
   mobileNumber: '',
@@ -599,7 +606,7 @@ const MOBILE_RULES = [(v: string) => /^\d{10}$/.test(v) || 'Must be exactly 10 d
 
 const newCustomerFormValid = computed(() => {
   const f = newCustomerForm.value
-  return !!(f.firstName && /^\d{10}$/.test(f.mobileNumber))
+  return !!(f.title && f.firstName && /^\d{10}$/.test(f.mobileNumber))
 })
 
 const customerSearchItems = computed(() => [
@@ -737,7 +744,7 @@ import { createOrder } from '@/services/orderApiService'
 import { useToast } from '@/composables/useToast'
 const { toast, showToast } = useToast()
 
-const customers = ref<Array<{ label: string; value: string; mobileNumber: string }>>([])
+const customers = ref<Array<{ label: string; value: string; mobileNumber: string; title?: string }>>([])
 
 const loading = ref(false)
 const errorMsg = ref('')
@@ -785,7 +792,7 @@ async function loadCustomersAndOrders() {
     if (settings) {
       dueSoonLeadDays.value = Number(settings.dueSoonLeadDays) || 0
     }
-    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: [c.firstName, c.lastName].filter(Boolean).join(' '), value: c._id, mobileNumber: c.mobileNumber }))
+    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: [c.firstName, c.lastName].filter(Boolean).join(' '), value: c._id, mobileNumber: c.mobileNumber, title: c.title }))
     if (Array.isArray(categoryData)) {
       categories.value = categoryData.map((cat: any) => ({
         label: cat.name,
@@ -941,6 +948,7 @@ function resetForm() {
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
   newCustomerForm.value = {
+    title: '',
     firstName: '',
     lastName: '',
     mobileNumber: '',
@@ -978,7 +986,7 @@ function formatMoney(value: number) {
 function resolveCustomerName(customerId: any) {
   const id = typeof customerId === 'string' ? customerId : customerId?._id
   const selected = customers.value.find((c: any) => c.value === id)
-  return selected?.label || 'Walk-in Customer'
+  return selected ? ([selected.title, selected.label].filter(Boolean).join(' ') || 'Walk-in Customer') : 'Walk-in Customer'
 }
 
 function resolveCustomerPhone(customerId: any): string {
@@ -1147,7 +1155,7 @@ async function onEditOrder(order: any) {
   currentOrderDueAmount.value = Number(data.dueAmount || 0)
   currentOrderPaymentStatus.value = String(data.paymentStatus || 'unpaid')
   // Map suborders to ensure category is the ID and amount is recalculated
-  suborders.value = (data.suborders || []).map((sub: any) => {
+  const mapped = (data.suborders || []).map((sub: any) => {
     let categoryId = sub.category?._id || sub.category;
     const cat = categories.value.find((c: any) => c.value === categoryId);
     let weight = sub.weight || '';
@@ -1157,31 +1165,21 @@ async function onEditOrder(order: any) {
       const floor = Number(cat.minimumPrice) || 0;
       amount = Math.max(computed, floor);
     }
-    const mapped = (data.suborders || []).map((sub: any) => {
-      let categoryId = sub.category?._id || sub.category;
-      const cat = categories.value.find((c: any) => c.value === categoryId);
-      let weight = sub.weight || '';
-      let amount = 0;
-      if (cat && weight) {
-        const computed = Number(weight) * Number(cat.unitPrice);
-        const floor = Number(cat.minimumPrice) || 0;
-        amount = Math.max(computed, floor);
-      }
-      return {
-        category: categoryId,
-        weight,
-        amount
-      };
-    });
-    suborders.value = mapped;
-    // Save a normalized snapshot for change detection when editing
-    try {
-      const norm = mapped.map((s: any) => ({ category: String(s.category), weight: String(s.weight) }))
-      norm.sort((a: any, b: any) => (a.category + '_' + a.weight).localeCompare(b.category + '_' + b.weight))
-      originalSubordersSnapshot.value = JSON.stringify(norm)
-    } catch (e) {
-      originalSubordersSnapshot.value = ''
-    }
+    return {
+      category: categoryId,
+      weight,
+      amount
+    };
+  });
+  suborders.value = mapped;
+  // Save a normalized snapshot for change detection when editing
+  try {
+    const norm = mapped.map((s: any) => ({ category: String(s.category), weight: String(s.weight) }))
+    norm.sort((a: any, b: any) => (a.category + '_' + a.weight).localeCompare(b.category + '_' + b.weight))
+    originalSubordersSnapshot.value = JSON.stringify(norm)
+  } catch (e) {
+    originalSubordersSnapshot.value = ''
+  }
   // Fetch payments for this order
   payments.value = await getPaymentsByOrder(orderId)
   showForm.value = true
@@ -1306,6 +1304,7 @@ async function confirmModifyWithPayments() {
 function goToNewCustomerTab() {
   const searchVal = customerSearchQuery.value.trim()
   newCustomerForm.value = {
+    title: '',
     firstName: '',
     lastName: '',
     mobileNumber: /^\d+$/.test(searchVal) ? searchVal : '',
@@ -1323,7 +1322,7 @@ async function handleAddNewCustomer() {
   savingNewCustomer.value = true
   try {
     const saved = await createCustomer(newCustomerForm.value)
-    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber }]
+    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber, title: saved.title }]
     form.value.customer = saved._id
     activeOrderModalTab.value = 'order'
     showToast('Customer added successfully!', 'success')

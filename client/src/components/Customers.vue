@@ -112,6 +112,7 @@ const customers = ref<any[]>([])
 function toItem(c: any) {
   return {
     _id: c._id,
+    title: c.title,
     firstName: c.firstName,
     lastName: c.lastName,
     name: [c.firstName, c.lastName].filter(Boolean).join(' '),
@@ -140,6 +141,12 @@ const editId = ref<string | null>(null)
 
 const customerFormSchema = {
   fields: [
+    { name: 'title', label: 'Title', type: 'select', required: true, options: [
+      { label: 'Mr', value: 'Mr' },
+      { label: 'Mrs', value: 'Mrs' },
+      { label: 'Miss', value: 'Miss' },
+      { label: 'Dr', value: 'Dr' },
+    ] },
     { name: 'firstName', label: 'First Name', type: 'text', required: true },
     { name: 'lastName', label: 'Last Name', type: 'text' },
     { name: 'mobileNumber', label: 'Mobile Number', type: 'text', required: true, rules: [(v: string) => /^\d{10}$/.test(v) || 'Must be exactly 10 digits'] },
