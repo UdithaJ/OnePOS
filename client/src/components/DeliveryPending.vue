@@ -133,7 +133,7 @@ async function loadData() {
       ])
     )
     pendingOrders.value = (orderData || [])
-      .filter((o: any) => o.status === 'done')
+      .filter((o: any) => o.status === 'done' && o.paymentStatus === 'paid')
       .map((o: any) => ({
         id: String(o._id),
         orderNo: o.orderNo || o._id,
