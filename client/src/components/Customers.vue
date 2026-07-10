@@ -69,9 +69,12 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
               <v-text-field v-model="otpCode" placeholder="123456" />
             </div>
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-              <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showOtpDialog = false">Cancel</v-btn>
-              <v-btn style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyOtpAndCreate">Verify</v-btn>
+            <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+              <v-btn variant="text" :loading="resendingOtp" style="color: #0f766e; text-transform: none; font-weight: 600;" @click="resendOtp">Resend OTP</v-btn>
+              <div class="flex gap-3">
+                <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showOtpDialog = false">Cancel</v-btn>
+                <v-btn style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyOtpAndCreate">Verify</v-btn>
+              </div>
             </div>
           </div>
         </v-card>
@@ -169,6 +172,7 @@ const showOtpDialog = ref(false)
 const otpCode = ref('')
 const pendingMobile = ref('')
 const pendingPayload = ref<any | null>(null)
+const resendingOtp = ref(false)
 
 function resetForm() {
   editId.value = null
@@ -216,6 +220,20 @@ async function startOtpFlow(payload: any) {
     showToast('OTP sent to mobile number. Please verify.', 'info')
   } catch (err) {
     showToast('Failed to send OTP. Please try again.', 'error')
+  }
+}
+
+async function resendOtp() {
+  if (!pendingMobile.value) return
+  resendingOtp.value = true
+  try {
+    await sendOtp(pendingMobile.value, pendingPayload.value)
+    otpCode.value = ''
+    showToast('A new OTP has been sent.', 'info')
+  } catch {
+    showToast('Failed to resend OTP. Please try again.', 'error')
+  } finally {
+    resendingOtp.value = false
   }
 }
 

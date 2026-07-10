@@ -503,9 +503,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
                 <v-text-field v-model="newCustomerOtpCode" placeholder="123456" variant="outlined" density="compact" hide-details="auto" />
               </div>
-              <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showNewCustomerOtpDialog = false">Cancel</v-btn>
-                <v-btn :loading="verifyingOtp" style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyNewCustomerOtp">Verify</v-btn>
+              <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                <v-btn variant="text" :loading="resendingOtp" style="color: #0f766e; text-transform: none; font-weight: 600;" @click="resendNewCustomerOtp">Resend OTP</v-btn>
+                <div class="flex gap-3">
+                  <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showNewCustomerOtpDialog = false">Cancel</v-btn>
+                  <v-btn :loading="verifyingOtp" style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyNewCustomerOtp">Verify</v-btn>
+                </div>
               </div>
             </div>
           </v-card>
@@ -631,6 +634,7 @@ const showNewCustomerOtpDialog = ref(false)
 const newCustomerOtpCode = ref('')
 const otpMobile = ref('')
 const verifyingOtp = ref(false)
+const resendingOtp = ref(false)
 // Once a customer is created inline, the tab switches to "update" mode for that
 // customer (id set) so edits save directly without re-running OTP.
 const newCustomerId = ref<string | null>(null)
@@ -1393,6 +1397,20 @@ async function updateNewCustomer() {
     showToast('Failed to update customer. Please try again.', 'error')
   } finally {
     savingNewCustomer.value = false
+  }
+}
+
+async function resendNewCustomerOtp() {
+  if (!otpMobile.value) return
+  resendingOtp.value = true
+  try {
+    await sendOtp(otpMobile.value, newCustomerForm.value)
+    newCustomerOtpCode.value = ''
+    showToast('A new OTP has been sent.', 'info')
+  } catch {
+    showToast('Failed to resend OTP. Please try again.', 'error')
+  } finally {
+    resendingOtp.value = false
   }
 }
 
