@@ -190,7 +190,7 @@
             <div class="mb-4">
               <v-tabs v-model="activeOrderModalTab" color="#0f766e" density="comfortable">
                 <v-tab value="order" style="text-transform: none;">Order</v-tab>
-                <v-tab v-if="!editOrderId" value="new-customer" style="text-transform: none;">New Customer</v-tab>
+                <v-tab v-if="showNewCustomerTab" value="new-customer" style="text-transform: none;">New Customer</v-tab>
                 <v-tab v-if="editOrderId" value="payments" style="text-transform: none;">Payments</v-tab>
               </v-tabs>
             </div>
@@ -373,7 +373,7 @@
                 </div>
               </template>
             </DynamicForm>
-            <div v-if="!editOrderId && activeOrderModalTab === 'new-customer'" class="pa-2">
+            <div v-if="showNewCustomerTab && activeOrderModalTab === 'new-customer'" class="pa-2">
               <div style="font-size: 13px; color: #6b7280; margin-bottom: 16px;">
                 Enter customer details to register and continue with the order.
               </div>
@@ -443,8 +443,8 @@
                   :disabled="!newCustomerFormValid"
                   :loading="savingNewCustomer"
                   style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
-                  @click="handleAddNewCustomer"
-                >Add Customer</v-btn>
+                  @click="onSaveNewCustomer"
+                >{{ newCustomerId ? 'Update Customer' : 'Add Customer' }}</v-btn>
               </div>
             </div>
             <template v-if="editOrderId">
@@ -631,11 +631,19 @@ const showNewCustomerOtpDialog = ref(false)
 const newCustomerOtpCode = ref('')
 const otpMobile = ref('')
 const verifyingOtp = ref(false)
+// Once a customer is created inline, the tab switches to "update" mode for that
+// customer (id set) so edits save directly without re-running OTP.
+const newCustomerId = ref<string | null>(null)
 
 const newCustomerFormValid = computed(() => {
   const f = newCustomerForm.value
   return !!(f.title && f.firstName && /^\d{10}$/.test(f.mobileNumber))
 })
+
+// Show the New Customer tab only when registering a customer for this order:
+// hidden once an existing customer is picked, but kept while a just-added
+// customer (update mode) is selected so it can still be edited.
+const showNewCustomerTab = computed(() => !editOrderId.value && (!form.value.customer || !!newCustomerId.value))
 
 const customerSearchItems = computed(() => [
   ...customers.value,
@@ -767,7 +775,7 @@ async function onPaymentMade(payment: any) {
 }
 
 import { onMounted } from 'vue'
-import { getAllCustomers, sendOtp, verifyOtp } from '@/services/customerApiService'
+import { getAllCustomers, sendOtp, verifyOtp, updateCustomer } from '@/services/customerApiService'
 import { createOrder } from '@/services/orderApiService'
 import { useToast } from '@/composables/useToast'
 const { toast, showToast } = useToast()
@@ -975,6 +983,7 @@ function resetForm() {
   printCopies.value = 1
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
+  newCustomerId.value = null
   newCustomerForm.value = {
     title: '',
     firstName: '',
@@ -1331,6 +1340,7 @@ async function confirmModifyWithPayments() {
 
 function goToNewCustomerTab() {
   const searchVal = customerSearchQuery.value.trim()
+  newCustomerId.value = null
   newCustomerForm.value = {
     title: '',
     firstName: '',
@@ -1343,6 +1353,13 @@ function goToNewCustomerTab() {
     postalCode: '',
   }
   activeOrderModalTab.value = 'new-customer'
+}
+
+// Save button on the New Customer tab: register a new customer (OTP) or, once
+// one has been registered inline, update it directly.
+function onSaveNewCustomer() {
+  if (newCustomerId.value) updateNewCustomer()
+  else handleAddNewCustomer()
 }
 
 async function handleAddNewCustomer() {
@@ -1360,6 +1377,25 @@ async function handleAddNewCustomer() {
   }
 }
 
+async function updateNewCustomer() {
+  if (!newCustomerFormValid.value || !newCustomerId.value) return
+  savingNewCustomer.value = true
+  try {
+    const saved = await updateCustomer(newCustomerId.value, newCustomerForm.value)
+    const opt = { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber, title: saved.title }
+    const idx = customers.value.findIndex(c => c.value === saved._id)
+    if (idx !== -1) customers.value[idx] = opt
+    else customers.value = [...customers.value, opt]
+    form.value.customer = saved._id
+    activeOrderModalTab.value = 'order'
+    showToast('Customer updated successfully!', 'success')
+  } catch {
+    showToast('Failed to update customer. Please try again.', 'error')
+  } finally {
+    savingNewCustomer.value = false
+  }
+}
+
 async function verifyNewCustomerOtp() {
   verifyingOtp.value = true
   try {
@@ -1368,10 +1404,24 @@ async function verifyNewCustomerOtp() {
     form.value.customer = saved._id
     showNewCustomerOtpDialog.value = false
     newCustomerOtpCode.value = ''
+    // Keep the saved data on the New Customer tab and switch it to "update" mode,
+    // so returning to it edits this customer directly instead of creating a duplicate.
+    newCustomerId.value = saved._id
+    newCustomerForm.value = {
+      title: saved.title || '',
+      firstName: saved.firstName || '',
+      lastName: saved.lastName || '',
+      mobileNumber: saved.mobileNumber || '',
+      addressLine1: saved.addressLine1 || '',
+      addressLine2: saved.addressLine2 || '',
+      city: saved.city || '',
+      state: saved.state || '',
+      postalCode: saved.postalCode || '',
+    }
     activeOrderModalTab.value = 'order'
     showToast('Customer added successfully!', 'success')
   } catch (err) {
-    showToast((err as any)?.message || 'OTP verification failed', 'error')
+    showToast((err as any)?.response?.data?.message || 'Incorrect or expired OTP. Please try again.', 'error')
   } finally {
     verifyingOtp.value = false
   }
