@@ -4,7 +4,7 @@
       <v-container class="d-flex align-center justify-center" style="min-height: 100vh;">
         <v-card class="rounded-xl overflow-hidden" width="420" style="border: 1px solid #e5e7eb; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
           <div class="bg-[#0d3d38] text-white px-8 py-6 text-center">
-            <div class="text-2xl font-bold tracking-wide">OnePOS</div>
+            <div class="text-2xl font-bold tracking-wide">Softwash</div>
             <div class="text-sm mt-1" style="color: rgba(255,255,255,0.7);">Sign in to your account</div>
           </div>
           <div class="bg-white px-8 py-8">
@@ -19,7 +19,7 @@
                 class="mb-3"
               />
               <v-text-field
-                v-model="password"
+                v-model="password"  
                 label="Password"
                 prepend-inner-icon="mdi-lock"
                 :type="showPassword ? 'text' : 'password'"
