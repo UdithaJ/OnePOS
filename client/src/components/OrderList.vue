@@ -490,6 +490,28 @@
           </v-card>
         </template>
       </v-dialog>
+
+      <!-- OTP verification for inline new-customer registration -->
+      <v-dialog v-model="showNewCustomerOtpDialog" max-width="400">
+        <template #default>
+          <v-card class="rounded-xl overflow-hidden">
+            <div class="bg-[#0d3d38] text-white px-6 py-4">
+              <h3 class="text-lg font-semibold">Verify Mobile</h3>
+            </div>
+            <div class="bg-white px-6 pt-6 pb-4">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
+                <v-text-field v-model="newCustomerOtpCode" placeholder="123456" variant="outlined" density="compact" hide-details="auto" />
+              </div>
+              <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showNewCustomerOtpDialog = false">Cancel</v-btn>
+                <v-btn :loading="verifyingOtp" style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyNewCustomerOtp">Verify</v-btn>
+              </div>
+            </div>
+          </v-card>
+        </template>
+      </v-dialog>
+
       <OrderPaymentDialog
         v-if="editOrderId"
         :show="showPaymentDialog"
@@ -603,6 +625,12 @@ const newCustomerForm = ref({
 })
 const savingNewCustomer = ref(false)
 const MOBILE_RULES = [(v: string) => /^\d{10}$/.test(v) || 'Must be exactly 10 digits']
+
+// OTP verification for the inline "Add New Customer" flow (mirrors the Customers tab)
+const showNewCustomerOtpDialog = ref(false)
+const newCustomerOtpCode = ref('')
+const otpMobile = ref('')
+const verifyingOtp = ref(false)
 
 const newCustomerFormValid = computed(() => {
   const f = newCustomerForm.value
@@ -739,7 +767,7 @@ async function onPaymentMade(payment: any) {
 }
 
 import { onMounted } from 'vue'
-import { getAllCustomers, createCustomer } from '@/services/customerApiService'
+import { getAllCustomers, sendOtp, verifyOtp } from '@/services/customerApiService'
 import { createOrder } from '@/services/orderApiService'
 import { useToast } from '@/composables/useToast'
 const { toast, showToast } = useToast()
@@ -1321,15 +1349,31 @@ async function handleAddNewCustomer() {
   if (!newCustomerFormValid.value) return
   savingNewCustomer.value = true
   try {
-    const saved = await createCustomer(newCustomerForm.value)
-    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber, title: saved.title }]
-    form.value.customer = saved._id
-    activeOrderModalTab.value = 'order'
-    showToast('Customer added successfully!', 'success')
+    otpMobile.value = newCustomerForm.value.mobileNumber
+    await sendOtp(otpMobile.value, newCustomerForm.value)
+    showNewCustomerOtpDialog.value = true
+    showToast('OTP sent to mobile number. Please verify.', 'info')
   } catch (e) {
-    showToast('Failed to add customer. Please try again.', 'error')
+    showToast('Failed to send OTP. Please try again.', 'error')
   } finally {
     savingNewCustomer.value = false
+  }
+}
+
+async function verifyNewCustomerOtp() {
+  verifyingOtp.value = true
+  try {
+    const saved = await verifyOtp(otpMobile.value, newCustomerOtpCode.value)
+    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber, title: saved.title }]
+    form.value.customer = saved._id
+    showNewCustomerOtpDialog.value = false
+    newCustomerOtpCode.value = ''
+    activeOrderModalTab.value = 'order'
+    showToast('Customer added successfully!', 'success')
+  } catch (err) {
+    showToast((err as any)?.message || 'OTP verification failed', 'error')
+  } finally {
+    verifyingOtp.value = false
   }
 }
 
