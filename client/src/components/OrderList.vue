@@ -692,6 +692,15 @@ function removeSuborder(idx: number) {
 }
 function updateSuborderAmount(idx: number) {
   const sub = suborders.value[idx]
+  // Items loaded from an existing (already placed) order keep the amount that was
+  // stored when the order was placed — their category/weight inputs are always
+  // disabled, so they can never change. Only newly added items are priced with the
+  // current category rates. This keeps historical orders showing their original
+  // pricing even after a category's unitPrice/minimumPrice is modified.
+  if (sub.originalAmount != null) {
+    sub.amount = sub.originalAmount
+    return
+  }
   const cat = categories.value.find((c: any) => c.value === sub.category)
   if (cat && sub.weight) {
     const computed = Number(sub.weight) * Number(cat.unitPrice)
@@ -1196,21 +1205,21 @@ async function onEditOrder(order: any) {
   form.value.rackNumber = data.rackNumber || ''
   currentOrderDueAmount.value = Number(data.dueAmount || 0)
   currentOrderPaymentStatus.value = String(data.paymentStatus || 'unpaid')
-  // Map suborders to ensure category is the ID and amount is recalculated
+  // Map suborders keeping each item's ORIGINAL stored amount. Category prices
+  // (unitPrice/minimumPrice) may have changed since the order was placed, so we
+  // must not recompute from current prices here — doing so would show amounts
+  // that no longer match the payment/due amount recorded for this order.
+  // originalAmount marks an item as coming from a placed order so
+  // updateSuborderAmount preserves its stored amount instead of re-pricing it.
   const mapped = (data.suborders || []).map((sub: any) => {
-    let categoryId = sub.category?._id || sub.category;
-    const cat = categories.value.find((c: any) => c.value === categoryId);
-    let weight = sub.weight || '';
-    let amount = 0;
-    if (cat && weight) {
-      const computed = Number(weight) * Number(cat.unitPrice);
-      const floor = Number(cat.minimumPrice) || 0;
-      amount = Math.max(computed, floor);
-    }
+    const categoryId = sub.category?._id || sub.category;
+    const weight = sub.weight ?? '';
+    const amount = Number(sub.amount || 0);
     return {
       category: categoryId,
       weight,
-      amount
+      amount,
+      originalAmount: amount,
     };
   });
   suborders.value = mapped;
