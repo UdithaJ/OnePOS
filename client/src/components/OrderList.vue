@@ -813,7 +813,7 @@ const orderFormSchema = computed(() => ({
 
 const isOrderDone = computed(() => {
   const s = String(form.value.status || '').toLowerCase()
-  return s === 'done' || s === 'delivered'
+  return s === 'todo'|| s === 'done' || s === 'delivered' || s === 'cancelled' 
 })
 
 import type { CustomerPayload } from '@/services/customerApiService'
