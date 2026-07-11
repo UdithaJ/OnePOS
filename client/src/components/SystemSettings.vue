@@ -55,12 +55,15 @@
           v-model="smsMessage"
           label="Message"
           placeholder="Type your SMS message here…"
-          :counter="160"
-          maxlength="160"
+          :counter="smsMeta.singleMax"
           rows="3"
           no-resize
           variant="outlined"
-          class="mb-6"
+          class="mb-2"
+          :hint="`${smsMeta.length}/${smsMeta.singleMax} characters`"
+          persistent-hint
+          :error="smsMeta.overLimit"
+          :error-messages="smsMeta.overLimit ? [`Message exceeds one SMS (${smsMeta.singleMax} chars for ${smsMeta.encoding}). Shorten it to send.`] : []"
         />
 
         <div class="flex items-center justify-between mb-3">
@@ -91,7 +94,7 @@
         <div class="flex items-center justify-between mt-4">
           <span class="text-sm text-gray-500">{{ selectedCustomers.length }} customer(s) selected</span>
           <v-btn
-            :disabled="selectedCustomers.length === 0 || !smsMessage.trim()"
+            :disabled="selectedCustomers.length === 0 || !smsMessage.trim() || smsMeta.overLimit"
             style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
             @click="confirmDialog = true"
           >Send</v-btn>
@@ -134,11 +137,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { getSystemSettings, updateSystemSettings } from '@/services/systemSettingsApiService'
 import { getAllCustomers } from '@/services/customerApiService'
 import { sendBulkSms } from '@/services/smsApiService'
+import { smsInfo } from '@/utils/smsEncoding'
 
 const { showToast } = useToast()
 
@@ -181,6 +185,9 @@ const customerSearch = ref('')
 const smsMessage = ref('')
 const sending = ref(false)
 const confirmDialog = ref(false)
+
+// Encoding-aware character info for the bulk SMS composer.
+const smsMeta = computed(() => smsInfo(smsMessage.value))
 
 const customerHeaders = [
   { title: 'Name', key: 'fullName', sortable: true },

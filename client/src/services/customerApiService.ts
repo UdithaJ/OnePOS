@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 export interface CustomerPayload {
+  title?: string
   firstName: string
   lastName: string
   mobileNumber: string

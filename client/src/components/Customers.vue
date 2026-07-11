@@ -69,9 +69,12 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
               <v-text-field v-model="otpCode" placeholder="123456" />
             </div>
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-              <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showOtpDialog = false">Cancel</v-btn>
-              <v-btn style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyOtpAndCreate">Verify</v-btn>
+            <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+              <v-btn variant="text" :loading="resendingOtp" style="color: #0f766e; text-transform: none; font-weight: 600;" @click="resendOtp">Resend OTP</v-btn>
+              <div class="flex gap-3">
+                <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showOtpDialog = false">Cancel</v-btn>
+                <v-btn style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyOtpAndCreate">Verify</v-btn>
+              </div>
             </div>
           </div>
         </v-card>
@@ -112,6 +115,7 @@ const customers = ref<any[]>([])
 function toItem(c: any) {
   return {
     _id: c._id,
+    title: c.title,
     firstName: c.firstName,
     lastName: c.lastName,
     name: [c.firstName, c.lastName].filter(Boolean).join(' '),
@@ -140,6 +144,12 @@ const editId = ref<string | null>(null)
 
 const customerFormSchema = {
   fields: [
+    { name: 'title', label: 'Title', type: 'select', required: true, options: [
+      { label: 'Mr', value: 'Mr' },
+      { label: 'Mrs', value: 'Mrs' },
+      { label: 'Miss', value: 'Miss' },
+      { label: 'Dr', value: 'Dr' },
+    ] },
     { name: 'firstName', label: 'First Name', type: 'text', required: true },
     { name: 'lastName', label: 'Last Name', type: 'text' },
     { name: 'mobileNumber', label: 'Mobile Number', type: 'text', required: true, rules: [(v: string) => /^\d{10}$/.test(v) || 'Must be exactly 10 digits'] },
@@ -162,6 +172,7 @@ const showOtpDialog = ref(false)
 const otpCode = ref('')
 const pendingMobile = ref('')
 const pendingPayload = ref<any | null>(null)
+const resendingOtp = ref(false)
 
 function resetForm() {
   editId.value = null
@@ -212,6 +223,20 @@ async function startOtpFlow(payload: any) {
   }
 }
 
+async function resendOtp() {
+  if (!pendingMobile.value) return
+  resendingOtp.value = true
+  try {
+    await sendOtp(pendingMobile.value, pendingPayload.value)
+    otpCode.value = ''
+    showToast('A new OTP has been sent.', 'info')
+  } catch {
+    showToast('Failed to resend OTP. Please try again.', 'error')
+  } finally {
+    resendingOtp.value = false
+  }
+}
+
 async function verifyOtpAndCreate() {
   try {
     if (!pendingMobile.value) return showToast('No pending mobile number', 'error')
@@ -222,7 +247,7 @@ async function verifyOtpAndCreate() {
     showForm.value = false
     resetForm()
   } catch (err) {
-    showToast((err as any)?.message || 'OTP verification failed', 'error')
+    showToast((err as any)?.response?.data?.message || 'Incorrect or expired OTP. Please try again.', 'error')
   }
 }
 

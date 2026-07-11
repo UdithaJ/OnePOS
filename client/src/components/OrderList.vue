@@ -190,7 +190,7 @@
             <div class="mb-4">
               <v-tabs v-model="activeOrderModalTab" color="#0f766e" density="comfortable">
                 <v-tab value="order" style="text-transform: none;">Order</v-tab>
-                <v-tab v-if="!editOrderId" value="new-customer" style="text-transform: none;">New Customer</v-tab>
+                <v-tab v-if="showNewCustomerTab" value="new-customer" style="text-transform: none;">New Customer</v-tab>
                 <v-tab v-if="editOrderId" value="payments" style="text-transform: none;">Payments</v-tab>
               </v-tabs>
             </div>
@@ -373,11 +373,17 @@
                 </div>
               </template>
             </DynamicForm>
-            <div v-if="!editOrderId && activeOrderModalTab === 'new-customer'" class="pa-2">
+            <div v-if="showNewCustomerTab && activeOrderModalTab === 'new-customer'" class="pa-2">
               <div style="font-size: 13px; color: #6b7280; margin-bottom: 16px;">
                 Enter customer details to register and continue with the order.
               </div>
               <div class="order-form-row" style="margin-bottom: 12px;">
+                <div class="order-form-field">
+                  <div class="field-group">
+                    <label class="field-label">Title <span class="required-star">*</span></label>
+                    <v-select v-model="newCustomerForm.title" :items="['Mr','Mrs','Miss','Dr']" variant="outlined" density="compact" hide-details="auto" placeholder="Title" />
+                  </div>
+                </div>
                 <div class="order-form-field">
                   <div class="field-group">
                     <label class="field-label">First Name <span class="required-star">*</span></label>
@@ -437,8 +443,8 @@
                   :disabled="!newCustomerFormValid"
                   :loading="savingNewCustomer"
                   style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
-                  @click="handleAddNewCustomer"
-                >Add Customer</v-btn>
+                  @click="onSaveNewCustomer"
+                >{{ newCustomerId ? 'Update Customer' : 'Add Customer' }}</v-btn>
               </div>
             </div>
             <template v-if="editOrderId">
@@ -484,6 +490,31 @@
           </v-card>
         </template>
       </v-dialog>
+
+      <!-- OTP verification for inline new-customer registration -->
+      <v-dialog v-model="showNewCustomerOtpDialog" max-width="400">
+        <template #default>
+          <v-card class="rounded-xl overflow-hidden">
+            <div class="bg-[#0d3d38] text-white px-6 py-4">
+              <h3 class="text-lg font-semibold">Verify Mobile</h3>
+            </div>
+            <div class="bg-white px-6 pt-6 pb-4">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
+                <v-text-field v-model="newCustomerOtpCode" placeholder="123456" variant="outlined" density="compact" hide-details="auto" />
+              </div>
+              <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                <v-btn variant="text" :loading="resendingOtp" style="color: #0f766e; text-transform: none; font-weight: 600;" @click="resendNewCustomerOtp">Resend OTP</v-btn>
+                <div class="flex gap-3">
+                  <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showNewCustomerOtpDialog = false">Cancel</v-btn>
+                  <v-btn :loading="verifyingOtp" style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyNewCustomerOtp">Verify</v-btn>
+                </div>
+              </div>
+            </div>
+          </v-card>
+        </template>
+      </v-dialog>
+
       <OrderPaymentDialog
         v-if="editOrderId"
         :show="showPaymentDialog"
@@ -585,6 +616,7 @@ const activeOrderModalTab = ref<'order' | 'payments' | 'new-customer'>('order')
 const customerSearchQuery = ref('')
 
 const newCustomerForm = ref({
+  title: '',
   firstName: '',
   lastName: '',
   mobileNumber: '',
@@ -597,10 +629,25 @@ const newCustomerForm = ref({
 const savingNewCustomer = ref(false)
 const MOBILE_RULES = [(v: string) => /^\d{10}$/.test(v) || 'Must be exactly 10 digits']
 
+// OTP verification for the inline "Add New Customer" flow (mirrors the Customers tab)
+const showNewCustomerOtpDialog = ref(false)
+const newCustomerOtpCode = ref('')
+const otpMobile = ref('')
+const verifyingOtp = ref(false)
+const resendingOtp = ref(false)
+// Once a customer is created inline, the tab switches to "update" mode for that
+// customer (id set) so edits save directly without re-running OTP.
+const newCustomerId = ref<string | null>(null)
+
 const newCustomerFormValid = computed(() => {
   const f = newCustomerForm.value
-  return !!(f.firstName && /^\d{10}$/.test(f.mobileNumber))
+  return !!(f.title && f.firstName && /^\d{10}$/.test(f.mobileNumber))
 })
+
+// Show the New Customer tab only when registering a customer for this order:
+// hidden once an existing customer is picked, but kept while a just-added
+// customer (update mode) is selected so it can still be edited.
+const showNewCustomerTab = computed(() => !editOrderId.value && (!form.value.customer || !!newCustomerId.value))
 
 const customerSearchItems = computed(() => [
   ...customers.value,
@@ -732,12 +779,12 @@ async function onPaymentMade(payment: any) {
 }
 
 import { onMounted } from 'vue'
-import { getAllCustomers, createCustomer } from '@/services/customerApiService'
+import { getAllCustomers, sendOtp, verifyOtp, updateCustomer } from '@/services/customerApiService'
 import { createOrder } from '@/services/orderApiService'
 import { useToast } from '@/composables/useToast'
 const { toast, showToast } = useToast()
 
-const customers = ref<Array<{ label: string; value: string; mobileNumber: string }>>([])
+const customers = ref<Array<{ label: string; value: string; mobileNumber: string; title?: string }>>([])
 
 const loading = ref(false)
 const errorMsg = ref('')
@@ -785,7 +832,7 @@ async function loadCustomersAndOrders() {
     if (settings) {
       dueSoonLeadDays.value = Number(settings.dueSoonLeadDays) || 0
     }
-    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: [c.firstName, c.lastName].filter(Boolean).join(' '), value: c._id, mobileNumber: c.mobileNumber }))
+    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: [c.firstName, c.lastName].filter(Boolean).join(' '), value: c._id, mobileNumber: c.mobileNumber, title: c.title }))
     if (Array.isArray(categoryData)) {
       categories.value = categoryData.map((cat: any) => ({
         label: cat.name,
@@ -940,7 +987,9 @@ function resetForm() {
   printCopies.value = 1
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
+  newCustomerId.value = null
   newCustomerForm.value = {
+    title: '',
     firstName: '',
     lastName: '',
     mobileNumber: '',
@@ -978,7 +1027,7 @@ function formatMoney(value: number) {
 function resolveCustomerName(customerId: any) {
   const id = typeof customerId === 'string' ? customerId : customerId?._id
   const selected = customers.value.find((c: any) => c.value === id)
-  return selected?.label || 'Walk-in Customer'
+  return selected ? ([selected.title, selected.label].filter(Boolean).join(' ') || 'Walk-in Customer') : 'Walk-in Customer'
 }
 
 function resolveCustomerPhone(customerId: any): string {
@@ -1147,7 +1196,7 @@ async function onEditOrder(order: any) {
   currentOrderDueAmount.value = Number(data.dueAmount || 0)
   currentOrderPaymentStatus.value = String(data.paymentStatus || 'unpaid')
   // Map suborders to ensure category is the ID and amount is recalculated
-  suborders.value = (data.suborders || []).map((sub: any) => {
+  const mapped = (data.suborders || []).map((sub: any) => {
     let categoryId = sub.category?._id || sub.category;
     const cat = categories.value.find((c: any) => c.value === categoryId);
     let weight = sub.weight || '';
@@ -1157,31 +1206,21 @@ async function onEditOrder(order: any) {
       const floor = Number(cat.minimumPrice) || 0;
       amount = Math.max(computed, floor);
     }
-    const mapped = (data.suborders || []).map((sub: any) => {
-      let categoryId = sub.category?._id || sub.category;
-      const cat = categories.value.find((c: any) => c.value === categoryId);
-      let weight = sub.weight || '';
-      let amount = 0;
-      if (cat && weight) {
-        const computed = Number(weight) * Number(cat.unitPrice);
-        const floor = Number(cat.minimumPrice) || 0;
-        amount = Math.max(computed, floor);
-      }
-      return {
-        category: categoryId,
-        weight,
-        amount
-      };
-    });
-    suborders.value = mapped;
-    // Save a normalized snapshot for change detection when editing
-    try {
-      const norm = mapped.map((s: any) => ({ category: String(s.category), weight: String(s.weight) }))
-      norm.sort((a: any, b: any) => (a.category + '_' + a.weight).localeCompare(b.category + '_' + b.weight))
-      originalSubordersSnapshot.value = JSON.stringify(norm)
-    } catch (e) {
-      originalSubordersSnapshot.value = ''
-    }
+    return {
+      category: categoryId,
+      weight,
+      amount
+    };
+  });
+  suborders.value = mapped;
+  // Save a normalized snapshot for change detection when editing
+  try {
+    const norm = mapped.map((s: any) => ({ category: String(s.category), weight: String(s.weight) }))
+    norm.sort((a: any, b: any) => (a.category + '_' + a.weight).localeCompare(b.category + '_' + b.weight))
+    originalSubordersSnapshot.value = JSON.stringify(norm)
+  } catch (e) {
+    originalSubordersSnapshot.value = ''
+  }
   // Fetch payments for this order
   payments.value = await getPaymentsByOrder(orderId)
   showForm.value = true
@@ -1305,7 +1344,9 @@ async function confirmModifyWithPayments() {
 
 function goToNewCustomerTab() {
   const searchVal = customerSearchQuery.value.trim()
+  newCustomerId.value = null
   newCustomerForm.value = {
+    title: '',
     firstName: '',
     lastName: '',
     mobileNumber: /^\d+$/.test(searchVal) ? searchVal : '',
@@ -1318,19 +1359,89 @@ function goToNewCustomerTab() {
   activeOrderModalTab.value = 'new-customer'
 }
 
+// Save button on the New Customer tab: register a new customer (OTP) or, once
+// one has been registered inline, update it directly.
+function onSaveNewCustomer() {
+  if (newCustomerId.value) updateNewCustomer()
+  else handleAddNewCustomer()
+}
+
 async function handleAddNewCustomer() {
   if (!newCustomerFormValid.value) return
   savingNewCustomer.value = true
   try {
-    const saved = await createCustomer(newCustomerForm.value)
-    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber }]
-    form.value.customer = saved._id
-    activeOrderModalTab.value = 'order'
-    showToast('Customer added successfully!', 'success')
+    otpMobile.value = newCustomerForm.value.mobileNumber
+    await sendOtp(otpMobile.value, newCustomerForm.value)
+    showNewCustomerOtpDialog.value = true
+    showToast('OTP sent to mobile number. Please verify.', 'info')
   } catch (e) {
-    showToast('Failed to add customer. Please try again.', 'error')
+    showToast('Failed to send OTP. Please try again.', 'error')
   } finally {
     savingNewCustomer.value = false
+  }
+}
+
+async function updateNewCustomer() {
+  if (!newCustomerFormValid.value || !newCustomerId.value) return
+  savingNewCustomer.value = true
+  try {
+    const saved = await updateCustomer(newCustomerId.value, newCustomerForm.value)
+    const opt = { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber, title: saved.title }
+    const idx = customers.value.findIndex(c => c.value === saved._id)
+    if (idx !== -1) customers.value[idx] = opt
+    else customers.value = [...customers.value, opt]
+    form.value.customer = saved._id
+    activeOrderModalTab.value = 'order'
+    showToast('Customer updated successfully!', 'success')
+  } catch {
+    showToast('Failed to update customer. Please try again.', 'error')
+  } finally {
+    savingNewCustomer.value = false
+  }
+}
+
+async function resendNewCustomerOtp() {
+  if (!otpMobile.value) return
+  resendingOtp.value = true
+  try {
+    await sendOtp(otpMobile.value, newCustomerForm.value)
+    newCustomerOtpCode.value = ''
+    showToast('A new OTP has been sent.', 'info')
+  } catch {
+    showToast('Failed to resend OTP. Please try again.', 'error')
+  } finally {
+    resendingOtp.value = false
+  }
+}
+
+async function verifyNewCustomerOtp() {
+  verifyingOtp.value = true
+  try {
+    const saved = await verifyOtp(otpMobile.value, newCustomerOtpCode.value)
+    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber, title: saved.title }]
+    form.value.customer = saved._id
+    showNewCustomerOtpDialog.value = false
+    newCustomerOtpCode.value = ''
+    // Keep the saved data on the New Customer tab and switch it to "update" mode,
+    // so returning to it edits this customer directly instead of creating a duplicate.
+    newCustomerId.value = saved._id
+    newCustomerForm.value = {
+      title: saved.title || '',
+      firstName: saved.firstName || '',
+      lastName: saved.lastName || '',
+      mobileNumber: saved.mobileNumber || '',
+      addressLine1: saved.addressLine1 || '',
+      addressLine2: saved.addressLine2 || '',
+      city: saved.city || '',
+      state: saved.state || '',
+      postalCode: saved.postalCode || '',
+    }
+    activeOrderModalTab.value = 'order'
+    showToast('Customer added successfully!', 'success')
+  } catch (err) {
+    showToast((err as any)?.response?.data?.message || 'Incorrect or expired OTP. Please try again.', 'error')
+  } finally {
+    verifyingOtp.value = false
   }
 }
 

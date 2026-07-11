@@ -4,7 +4,7 @@
     <div class="report-header-bar">
       <div class="flex items-center gap-3">
         <span class="w-1 h-7 bg-[#0f766e] rounded-full inline-block"></span>
-        <h2 class="text-2xl font-semibold text-gray-900">Cash Box Summary</h2>
+        <h2 class="text-2xl font-semibold text-gray-900">Cash Box Summary (Cash Inflow)</h2>
       </div>
       <div class="export-buttons">
         <button class="export-btn excel-btn" @click="exportToExcel(rawRows, fromDate, toDate)">

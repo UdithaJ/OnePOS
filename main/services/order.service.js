@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const Order = require('../models/order');
 const OrderCategory = require('../models/orderCategory');
 const Category = require('../models/category');
+const Customer = require('../models/customer');
+const messaging = require('../services/messaging.service');
 
 // Hardcoded status list
 const ORDER_STATUSES = [
@@ -270,6 +272,12 @@ async function updateOrder(id, updateData) {
   const order = await Order.findById(id);
   if (!order) throw new Error('Order not found');
 
+  // Detect transition into the 'done' status so we can notify the customer.
+  // The !wasDone guard keeps this idempotent (re-saving a done order sends nothing).
+  const wasDone = String(order.status) === 'done';
+  const willBeDone = updateData.status === 'done';
+  const justCompleted = willBeDone && !wasDone;
+
   if (Array.isArray(updateData.suborders)) {
     // Disallow editing of order items if the order is finalized (Done or Delivered)
     if (['done', 'delivered'].includes(String(order.status))) {
@@ -345,10 +353,33 @@ async function updateOrder(id, updateData) {
   else if (netTotal === 0 && paid > 0) paymentStatus = 'paid'
   updateData.paymentStatus = paymentStatus
 
-  return await Order.findByIdAndUpdate(id, updateData, { new: true }).populate({
+  const updated = await Order.findByIdAndUpdate(id, updateData, { new: true }).populate({
     path: 'suborders',
     populate: { path: 'category' }
   });
+
+  // Best-effort: notify the customer when the order has just been completed.
+  // Not awaited so the response isn't delayed by the SMS gateway timeout, and any
+  // failure is logged only — it must never fail the order update.
+  if (justCompleted) {
+    sendOrderCompletionSms(updated).catch(err =>
+      console.error('[SMS] order-completion send failed', err?.message || err)
+    );
+  }
+
+  return updated;
+}
+
+// Send a completion notification SMS to the order's customer (best-effort).
+async function sendOrderCompletionSms(order) {
+  const customer = await Customer.findById(order.customerID);
+  if (!customer || !customer.mobileNumber) {
+    console.warn(`[SMS] order ${order.orderNo}: no customer/mobile, skipping completion SMS`);
+    return;
+  }
+  const greetName = [customer.title, customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Customer';
+  const message = `Dear ${greetName}, your order #${order.orderNo} is now ready for collection. Thank you.`;
+  await messaging.sendSms({ to: customer.mobileNumber, message });
 }
 
 // Delete order
