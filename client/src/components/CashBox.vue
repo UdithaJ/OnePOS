@@ -224,6 +224,7 @@ async function confirmCloseSession() {
     await fetchSession();
   } catch (err) {
     console.error('[DEBUG] Error in confirmCloseSession:', err);
+    showToast((err as any)?.response?.data?.error || 'Failed to close session', 'error');
   } finally {
     actionLoading.value = false;
   }
