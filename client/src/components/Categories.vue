@@ -10,8 +10,14 @@
       title="Category List"
       :headers="categoryHeaders"
       :items="categories"
+      server
+      :items-length="total"
+      :loading="loading"
+      :page="page"
+      :items-per-page="itemsPerPage"
       @add="onAddCategory"
       @edit="onEditCategory"
+      @update:options="handleOptions"
     >
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEditCategory(item)"></v-btn>
@@ -86,14 +92,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
 import ConfirmationDialog from '@/components/ConfirmationDialog.vue'
 import { useDynamicForm } from '@/composables/useDynamicForm'
 import { useToast } from '@/composables/useToast'
 import {
-  getAllCategories,
+  getCategoriesPaginated,
   createCategory,
   updateCategory,
   deleteCategory,
@@ -111,6 +117,11 @@ const categoryHeaders = [
 ]
 
 const categories = ref<Category[]>([])
+const total = ref(0)
+const loading = ref(false)
+const page = ref(1)
+const itemsPerPage = ref(10)
+const sortBy = ref<{ key: string; order: 'asc' | 'desc' }[]>([])
 const showForm = ref(false)
 const showDeleteConfirm = ref(false)
 const editCategoryId = ref<string | null>(null)
@@ -127,13 +138,30 @@ const categoryFormSchema = {
 const { form, isValid } = useDynamicForm(categoryFormSchema)
 
 async function loadCategories() {
+  loading.value = true
   try {
-    categories.value = await getAllCategories()
+    const s = sortBy.value[0]
+    const res = await getCategoriesPaginated({
+      page: page.value,
+      limit: itemsPerPage.value,
+      sort: s?.key,
+      order: s?.order,
+    })
+    categories.value = res.items
+    total.value = res.total
   } catch {
     showToast('Failed to load categories', 'error')
+  } finally {
+    loading.value = false
   }
 }
-onMounted(loadCategories)
+
+function handleOptions(opts: any) {
+  page.value = opts.page
+  itemsPerPage.value = opts.itemsPerPage
+  sortBy.value = opts.sortBy || []
+  loadCategories()
+}
 
 function resetForm() {
   form.value.name = ''

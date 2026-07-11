@@ -30,6 +30,15 @@ exports.getAllCategories = async (req, res) => {
   }
 };
 
+exports.getCategoriesPaginated = async (req, res) => {
+  try {
+    const result = await categoryService.getCategoriesPaginated(req.query);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getCategoryById = async (req, res) => {
   try {
     const category = await categoryService.getCategoryById(req.params.id);

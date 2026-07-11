@@ -10,8 +10,14 @@
       title="Cashflow Category List"
       :headers="headers"
       :items="categories"
+      server
+      :items-length="total"
+      :loading="loading"
+      :page="page"
+      :items-per-page="itemsPerPage"
       @add="onAdd"
       @edit="onEdit"
+      @update:options="handleOptions"
     >
       <template #item.type="{ item }">
         <v-chip
@@ -88,12 +94,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import BaseList from '@/components/BaseList.vue'
 import ConfirmationDialog from '@/components/ConfirmationDialog.vue'
 import { useToast } from '@/composables/useToast'
 import {
-  getAllExpenseCategories,
+  getExpenseCategoriesPaginated,
   createExpenseCategory,
   updateExpenseCategory,
   deleteExpenseCategory,
@@ -109,6 +115,11 @@ const headers = [
 ]
 
 const categories = ref<ExpenseCategory[]>([])
+const total = ref(0)
+const loading = ref(false)
+const page = ref(1)
+const itemsPerPage = ref(10)
+const sortBy = ref<{ key: string; order: 'asc' | 'desc' }[]>([])
 const showForm = ref(false)
 const showDeleteConfirm = ref(false)
 const editId = ref<string | null>(null)
@@ -124,13 +135,30 @@ function generateName(displayName: string): string {
 }
 
 async function load() {
+  loading.value = true
   try {
-    categories.value = await getAllExpenseCategories()
+    const s = sortBy.value[0]
+    const res = await getExpenseCategoriesPaginated({
+      page: page.value,
+      limit: itemsPerPage.value,
+      sort: s?.key,
+      order: s?.order,
+    })
+    categories.value = res.items
+    total.value = res.total
   } catch {
     showToast('Failed to load cashflow categories', 'error')
+  } finally {
+    loading.value = false
   }
 }
-onMounted(load)
+
+function handleOptions(opts: any) {
+  page.value = opts.page
+  itemsPerPage.value = opts.itemsPerPage
+  sortBy.value = opts.sortBy || []
+  load()
+}
 
 function resetForm() {
   form.displayName = ''

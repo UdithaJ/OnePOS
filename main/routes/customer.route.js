@@ -8,6 +8,9 @@ const otpController = require('../controllers/otp.controller');
 // Get all customers
 router.get('/', customerController.getAllCustomers);
 
+// Paginated customers (registered before '/:id' so it isn't captured as an id)
+router.get('/paginated', customerController.getCustomersPaginated);
+
 // Send OTP to verify mobile before creating customer
 router.post('/send-otp', otpController.sendOtp);
 

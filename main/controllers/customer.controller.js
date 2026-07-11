@@ -23,6 +23,15 @@ exports.getCustomerById = async (req, res) => {
 };
 
 // Create a customer
+exports.getCustomersPaginated = async (req, res) => {
+  try {
+    const result = await customerService.getCustomersPaginated(req.query);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.createCustomer = async (req, res) => {
   try {
     const newCustomer = await customerService.createCustomer(req.body);

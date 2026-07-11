@@ -9,6 +9,15 @@ exports.getAll = async (req, res) => {
   }
 };
 
+exports.getPaginated = async (req, res) => {
+  try {
+    const result = await expenseCategoryService.getExpenseCategoriesPaginated(req.query);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getById = async (req, res) => {
   try {
     const category = await expenseCategoryService.getExpenseCategoryById(req.params.id);

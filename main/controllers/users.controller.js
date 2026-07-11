@@ -1,5 +1,6 @@
 import {
   listUsers,
+  listUsersPaginated,
   getUserById,
   createUser,
   updateUser,
@@ -10,6 +11,15 @@ export const list = async (req, res) => {
   try {
     const users = await listUsers();
     res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const listPaginated = async (req, res) => {
+  try {
+    const result = await listUsersPaginated(req.query);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

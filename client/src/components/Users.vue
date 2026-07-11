@@ -10,8 +10,14 @@
       title="User List"
       :headers="userHeaders"
       :items="users"
+      server
+      :items-length="total"
+      :loading="loading"
+      :page="page"
+      :items-per-page="itemsPerPage"
       @add="onAddUser"
       @edit="onEditUser"
+      @update:options="handleOptions"
     >
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEditUser(item)"></v-btn>
@@ -72,14 +78,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
 import ConfirmationDialog from '@/components/ConfirmationDialog.vue'
 import { useDynamicForm } from '@/composables/useDynamicForm'
 import { useToast } from '@/composables/useToast'
 import {
-  getAllUsers,
+  getUsersPaginated,
   createUser,
   updateUser,
   deleteUser,
@@ -103,6 +109,11 @@ const userHeaders = [
 ]
 
 const users = ref<User[]>([])
+const total = ref(0)
+const loading = ref(false)
+const page = ref(1)
+const itemsPerPage = ref(10)
+const sortBy = ref<{ key: string; order: 'asc' | 'desc' }[]>([])
 const showForm = ref(false)
 const showDeleteConfirm = ref(false)
 const editUserId = ref<string | null>(null)
@@ -133,13 +144,30 @@ const { form } = useDynamicForm({ fields: [] })
 resetForm()
 
 async function loadUsers() {
+  loading.value = true
   try {
-    users.value = await getAllUsers()
+    const s = sortBy.value[0]
+    const res = await getUsersPaginated({
+      page: page.value,
+      limit: itemsPerPage.value,
+      sort: s?.key,
+      order: s?.order,
+    })
+    users.value = res.items
+    total.value = res.total
   } catch {
     showToast('Failed to load users', 'error')
+  } finally {
+    loading.value = false
   }
 }
-onMounted(loadUsers)
+
+function handleOptions(opts: any) {
+  page.value = opts.page
+  itemsPerPage.value = opts.itemsPerPage
+  sortBy.value = opts.sortBy || []
+  loadUsers()
+}
 
 function resetForm() {
   form.value.firstName = ''

@@ -10,6 +10,24 @@ exports.getAllExpenseCategories = async () => {
   }));
 };
 
+const EXPENSE_CATEGORY_SORTABLE = new Set(['displayName', 'name', 'type']);
+
+exports.getExpenseCategoriesPaginated = async ({ page = 1, limit = 10, sort = 'displayName', order = 'asc' } = {}) => {
+  const p = Math.max(1, parseInt(page) || 1);
+  const l = Math.max(1, parseInt(limit) || 10);
+  const field = EXPENSE_CATEGORY_SORTABLE.has(sort) ? sort : 'displayName';
+  const dir = order === 'desc' ? -1 : 1;
+  const [rows, total] = await Promise.all([
+    ExpenseCategory.find().sort({ [field]: dir }).skip((p - 1) * l).limit(l).lean(),
+    ExpenseCategory.countDocuments(),
+  ]);
+  const items = await Promise.all(rows.map(async (c) => {
+    const count = await Expense.countDocuments({ expenseType: c._id });
+    return { ...c, inUse: count > 0 };
+  }));
+  return { items, total, page: p, limit: l };
+};
+
 exports.getExpenseCategoryById = async (id) => {
   return await ExpenseCategory.findById(id);
 };

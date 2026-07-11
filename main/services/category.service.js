@@ -19,6 +19,24 @@ exports.getAllCategories = async () => {
   }));
 };
 
+const CATEGORY_SORTABLE = new Set(['name', 'minimumPrice', 'unitPrice']);
+
+exports.getCategoriesPaginated = async ({ page = 1, limit = 10, sort = 'name', order = 'asc' } = {}) => {
+  const p = Math.max(1, parseInt(page) || 1);
+  const l = Math.max(1, parseInt(limit) || 10);
+  const field = CATEGORY_SORTABLE.has(sort) ? sort : 'name';
+  const dir = order === 'desc' ? -1 : 1;
+  const [rows, total] = await Promise.all([
+    Category.find().sort({ [field]: dir }).skip((p - 1) * l).limit(l).lean(),
+    Category.countDocuments(),
+  ]);
+  const items = await Promise.all(rows.map(async (c) => {
+    const count = await OrderCategory.countDocuments({ category: c._id });
+    return { ...c, inUse: count > 0 };
+  }));
+  return { items, total, page: p, limit: l };
+};
+
 exports.getCategoryById = async (id) => {
   return await Category.findById(id);
 };

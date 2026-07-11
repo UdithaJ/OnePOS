@@ -21,6 +21,25 @@ export async function getAllExpenseCategories(): Promise<ExpenseCategory[]> {
   return res.data
 }
 
+export interface PaginationParams {
+  page: number
+  limit: number
+  sort?: string
+  order?: 'asc' | 'desc'
+}
+
+export interface Paginated<T> {
+  items: T[]
+  total: number
+  page: number
+  limit: number
+}
+
+export async function getExpenseCategoriesPaginated(params: PaginationParams): Promise<Paginated<ExpenseCategory>> {
+  const res = await axios.get(`${baseUrl()}/api/expense-categories/paginated`, { params })
+  return res.data
+}
+
 export async function getExpenseCategoryById(id: string): Promise<ExpenseCategory> {
   const res = await axios.get(`${baseUrl()}/api/expense-categories/${id}`)
   return res.data
