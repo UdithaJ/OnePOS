@@ -918,7 +918,11 @@ function setOrdersFromData(orderData: any[]) {
       statusLabel: (ORDER_STATUSES.find(s => s.value === order.status) || { label: order.status }).label,
       deliveryDate: order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : '—',
       createdDate: order.createdDate ? new Date(order.createdDate).toLocaleDateString() : '—',
-      totalAmount: typeof order.totalAmount === 'number' ? `Rs ${order.totalAmount.toFixed(2)}` : order.totalAmount,
+      // Total reflects the amount after discount (subtotal − discount), matching
+      // the "Total After Discount" shown on the order form.
+      totalAmount: typeof order.totalAmount === 'number'
+        ? `Rs ${Math.max(order.totalAmount - Number(order.discount || 0), 0).toFixed(2)}`
+        : order.totalAmount,
       paymentStatus,
       overdue,
       dueSoon,
