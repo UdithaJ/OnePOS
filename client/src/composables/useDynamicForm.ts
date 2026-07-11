@@ -6,6 +6,7 @@ export interface FormField {
   type: string
   options?: { label: string; value: any }[]
   required?: boolean
+  disabled?: boolean
   rules?: Array<(v: any) => true | string>
 }
 

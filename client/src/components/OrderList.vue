@@ -371,6 +371,7 @@
                     />
                   </div>
                   <v-btn type="submit" block
+                    :disabled="isOrderFullyLocked"
                     style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600; height: 44px;">
                     {{ submitButtonLabel }}
                   </v-btn>
@@ -683,6 +684,11 @@ const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
 const showPaymentAffectWarning = ref(false)
 const originalSubordersSnapshot = ref('')
+// The order's status as loaded from the server (empty when creating). A Delivered
+// order is terminal — nothing on it may be edited, including the status and rack
+// number — so lock the whole form based on this, not the (editable) form status.
+const originalOrderStatus = ref('')
+const isOrderFullyLocked = computed(() => originalOrderStatus.value === 'delivered')
 const dueSoonLeadDays = ref<number>(1)
 const overdueCount = computed(() => orders.value.filter(o => o.overdue).length)
 const dueSoonCount = computed(() => orders.value.filter(o => o.dueSoon).length)
@@ -817,8 +823,20 @@ const ORDER_STATUSES = [
 const orderFormSchema = computed(() => ({
   fields: [
     ...(editOrderId.value ? [
-      { name: 'status', label: 'Status', type: 'select', required: true, options: ORDER_STATUSES },
-      { name: 'rackNumber', label: 'Rack Number', type: 'text' },
+      { name: 'status', label: 'Status', type: 'select', required: true, options: ORDER_STATUSES, disabled: isOrderFullyLocked.value },
+      // Rack Number is shown once the order is Done or Delivered, and is mandatory
+      // at that point (it identifies where the finished order is stored). It is
+      // read-only on a Delivered order, which is terminal.
+      ...(['done', 'delivered'].includes(String(form.value.status || '').toLowerCase()) ? [
+        {
+          name: 'rackNumber',
+          label: 'Rack Number',
+          type: 'text',
+          required: true,
+          disabled: isOrderFullyLocked.value,
+          rules: [(v: any) => (!!v && String(v).trim() !== '' ? true : 'Rack Number is required')],
+        },
+      ] : []),
     ] : [])
   ]
 }))
@@ -991,6 +1009,7 @@ function resetForm() {
   form.value.discount = 0
   form.value.status = ''
   form.value.rackNumber = ''
+  originalOrderStatus.value = ''
   suborders.value = []
   payments.value = []
   currentOrderDueAmount.value = 0
@@ -1205,6 +1224,7 @@ async function onEditOrder(order: any) {
   form.value.deliveryDate = data.deliveryDate?.substring(0, 10)
   form.value.discount = Number(data.discount || 0)
   form.value.status = data.status || 'todo'
+  originalOrderStatus.value = String(data.status || 'todo').toLowerCase()
   form.value.rackNumber = data.rackNumber || ''
   currentOrderDueAmount.value = Number(data.dueAmount || 0)
   currentOrderPaymentStatus.value = String(data.paymentStatus || 'unpaid')
@@ -1248,7 +1268,20 @@ async function persistOrder() {
     discount: Number(form.value.discount || 0),
   };
   if (editOrderId.value) {
-    const editPayload = { ...payload, status: form.value.status, rackNumber: form.value.rackNumber }
+    const editPayload: Record<string, any> = {
+      customerID: form.value.customer,
+      deliveryDate: form.value.deliveryDate,
+      discount: Number(form.value.discount || 0),
+      status: form.value.status,
+      rackNumber: form.value.rackNumber,
+    }
+    // Only send order items when they actually changed. Finalized orders (Done/
+    // Delivered) reject item edits server-side and their item fields are locked,
+    // so a status-only change (e.g. Done → Delivered) must not resend suborders.
+    if (subordersChanged()) {
+      editPayload.suborders = suborders.value
+      editPayload.totalAmount = totalAmount.value
+    }
     await updateOrder(editOrderId.value, editPayload)
     showToast('Order updated successfully!', 'success')
     return
@@ -1285,6 +1318,17 @@ async function afterOrderPersist(createdOrder?: any) {
 
 async function handleSubmit() {
   try {
+    // A Delivered order is terminal — nothing on it can be changed.
+    if (isOrderFullyLocked.value) return
+    // Rack Number is required when marking an order as Done or Delivered.
+    if (
+      editOrderId.value &&
+      ['done', 'delivered'].includes(String(form.value.status || '').toLowerCase()) &&
+      !String(form.value.rackNumber || '').trim()
+    ) {
+      showToast('Rack Number is required when the order status is Done or Delivered.', 'error')
+      return
+    }
     if (!editOrderId.value && form.value.deliveryDate) {
       const totalKg = suborders.value.reduce((sum, s) => sum + (Number(s.weight) || 0), 0)
       try {
