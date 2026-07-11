@@ -860,7 +860,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 function deliveryState(order: any): { overdue: boolean; dueSoon: boolean } {
   if (!order?.deliveryDate) return { overdue: false, dueSoon: false }
-  if (order.status === 'done' || order.status === 'cancelled') return { overdue: false, dueSoon: false }
+  if (order.status === 'done' || order.status === 'cancelled' || order.status === 'delivered') return { overdue: false, dueSoon: false }
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const due = new Date(order.deliveryDate)
