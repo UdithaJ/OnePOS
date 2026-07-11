@@ -29,7 +29,7 @@
       </template>
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEdit(item)" />
-        <span :title="item.inUse ? 'This cash flow category is in use and cannot be deleted' : 'Delete cash flow category'" style="display:inline-block;">
+        <span :title="item.inUse ? 'This cashflow category is in use and cannot be deleted' : 'Delete cashflow category'" style="display:inline-block;">
           <v-btn
             icon="mdi-delete"
             size="small"
@@ -191,7 +191,7 @@ function handleDeleteExpenseCategoryClick(category: ExpenseCategory) {
 async function confirmDelete() {
   if (!toDelete.value) return
   if (toDelete.value.inUse) {
-    showToast('This cash flow category is in use and cannot be deleted', 'warning')
+    showToast('This cashflow category is in use and cannot be deleted', 'warning')
     toDelete.value = null
     showDeleteConfirm.value = false
     return

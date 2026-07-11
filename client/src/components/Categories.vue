@@ -22,7 +22,7 @@
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEditCategory(item)"></v-btn>
         <span
-          :title="item.inUse ? 'This category is in use and cannot be deleted' : 'Delete category'"
+          :title="item.inUse ? 'This laundry category is in use and cannot be deleted' : 'Delete category'"
           style="display: inline-block;"
         >
           <v-btn
@@ -150,7 +150,7 @@ async function loadCategories() {
     categories.value = res.items
     total.value = res.total
   } catch {
-    showToast('Failed to load categories', 'error')
+    showToast('Failed to load laundry categories', 'error')
   } finally {
     loading.value = false
   }
@@ -197,17 +197,17 @@ async function confirmDelete() {
   if (!categoryToDelete.value) return
   const target = categoryToDelete.value
   if (target.inUse) {
-    showToast('This category is in use and cannot be deleted', 'warning')
+    showToast('This laundry category is in use and cannot be deleted', 'warning')
     categoryToDelete.value = null
     showDeleteConfirm.value = false
     return
   }
   try {
     await deleteCategory(target._id)
-    showToast('Category deleted', 'success')
+    showToast('Laundry category deleted', 'success')
     await loadCategories()
   } catch (err: any) {
-    showToast(err?.response?.data?.message || 'Failed to delete category', 'error')
+    showToast(err?.response?.data?.message || 'Failed to delete laundry category', 'error')
   } finally {
     categoryToDelete.value = null
     showDeleteConfirm.value = false
@@ -228,16 +228,16 @@ async function handleSubmit() {
   try {
     if (editCategoryId.value) {
       await updateCategory(editCategoryId.value, payload)
-      showToast('Category updated', 'success')
+      showToast('Laundry category updated', 'success')
     } else {
       await createCategory(payload)
-      showToast('Category created', 'success')
+      showToast('Laundry category created', 'success')
     }
     showForm.value = false
     resetForm()
     await loadCategories()
   } catch (err: any) {
-    showToast(err?.response?.data?.message || 'Failed to save category', 'error')
+    showToast(err?.response?.data?.message || 'Failed to save laundry category', 'error')
   }
 }
 </script>
