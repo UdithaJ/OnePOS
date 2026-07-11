@@ -219,6 +219,7 @@
                     hide-details="auto"
                     clearable
                     required
+                    :disabled="isOrderDone"
                     :rules="[v => !!v || 'Customer is required']"
                     @update:model-value="onCustomerSelect"
                   >
@@ -244,6 +245,7 @@
                     type="date"
                     :rules="[v => !!v || 'Delivery date is required']"
                     required
+                    :disabled="isOrderDone"
                     variant="outlined"
                     density="compact"
                     hide-details="auto"
@@ -331,6 +333,7 @@
                       density="compact"
                       hide-details
                       style="max-width: 180px;"
+                      :disabled="isOrderDone"
                       @input="clampDiscount"
                     />
                   </div>
