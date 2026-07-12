@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { getPendingOrdersReport, type PendingOrdersRow } from '@/services/reportApiService'
+import { localToday, localDayStartISO, localDayEndISO, toLocalDateKey } from '@/utils/reportDate'
 
 export interface PendingTableRow {
   orderId: string
@@ -28,12 +29,12 @@ export const STATUS_OPTIONS = [
 const STATUS_DISPLAY: Record<string, string> = {
   todo: 'To Do',
   done: 'Done',
+  delivered: 'Delivered',
   cancelled: 'Cancelled',
 }
 
-function toDateKey(isoString: string): string {
-  return isoString.substring(0, 10)
-}
+// Group by the LOCAL delivery day, matching the displayed Due Date.
+const toDateKey = toLocalDateKey
 
 function transformRows(rawRows: PendingOrdersRow[]): PendingTableRow[] {
   if (!rawRows.length) return []
@@ -91,7 +92,7 @@ function transformRows(rawRows: PendingOrdersRow[]): PendingTableRow[] {
 }
 
 export function usePendingOrdersReport() {
-  const today = new Date().toISOString().substring(0, 10)
+  const today = localToday()
   const fromDate = ref(today)
   const toDate = ref(today)
   const statusFilter = ref('all')
@@ -109,8 +110,8 @@ export function usePendingOrdersReport() {
     hasSearched.value = true
     try {
       rawRows.value = await getPendingOrdersReport({
-        fromDate: fromDate.value,
-        toDate: toDate.value,
+        fromDate: localDayStartISO(fromDate.value),
+        toDate: localDayEndISO(toDate.value),
         status: statusFilter.value,
       })
     } catch (err: unknown) {

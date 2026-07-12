@@ -18,6 +18,26 @@ export async function getAllCustomers() {
   return response.data
 }
 
+export interface PaginationParams {
+  page: number
+  limit: number
+  sort?: string
+  order?: 'asc' | 'desc'
+}
+
+export interface Paginated<T = any> {
+  items: T[]
+  total: number
+  page: number
+  limit: number
+}
+
+export async function getCustomersPaginated(params: PaginationParams): Promise<Paginated> {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.get(`${baseUrl}/api/customers/paginated`, { params })
+  return response.data
+}
+
 export async function createCustomer(payload: CustomerPayload) {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
   const response = await axios.post(`${baseUrl}/api/customers`, payload)

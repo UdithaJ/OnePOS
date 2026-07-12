@@ -117,8 +117,9 @@ import { ref, computed } from 'vue'
 import { getBankTransferTrackingReport } from '@/services/reportApiService'
 import type { BankTransferTrackingRow } from '@/services/reportApiService'
 import { useBankTransferExport } from '@/composables/useBankTransferExport'
+import { localToday, localDayStartISO, localDayEndISO } from '@/utils/reportDate'
 
-const today = new Date().toISOString().substring(0, 10)
+const today = localToday()
 const fromDate = ref(today)
 const toDate = ref(today)
 const rawRows = ref<BankTransferTrackingRow[]>([])
@@ -136,8 +137,8 @@ async function fetchReport() {
   hasSearched.value = true
   try {
     rawRows.value = await getBankTransferTrackingReport({
-      fromDate: fromDate.value,
-      toDate: toDate.value,
+      fromDate: localDayStartISO(fromDate.value),
+      toDate: localDayEndISO(toDate.value),
     })
   } catch (err: unknown) {
     errorMsg.value = err instanceof Error ? err.message : 'Failed to load report'

@@ -5,7 +5,7 @@ exports.createCategory = async (req, res) => {
     const category = await categoryService.createCategory(req.body);
     res.status(201).json(category);
   } catch (err) {
-    if (err.code === 11000) return res.status(400).json({ message: 'A category with this name already exists.' });
+    if (err.code === 11000) return res.status(400).json({ message: 'A laundry category with this name already exists.' });
     res.status(400).json({ message: err.message });
   }
 };
@@ -16,7 +16,7 @@ exports.updateCategory = async (req, res) => {
     if (!category) return res.status(404).json({ message: 'Category not found' });
     res.json(category);
   } catch (err) {
-    if (err.code === 11000) return res.status(400).json({ message: 'A category with this name already exists.' });
+    if (err.code === 11000) return res.status(400).json({ message: 'A laundry category with this name already exists.' });
     res.status(400).json({ message: err.message });
   }
 };
@@ -25,6 +25,15 @@ exports.getAllCategories = async (req, res) => {
   try {
     const categories = await categoryService.getAllCategories();
     res.json(categories);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getCategoriesPaginated = async (req, res) => {
+  try {
+    const result = await categoryService.getCategoriesPaginated(req.query);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -13,7 +13,7 @@ async function createPending(mobileNumber, customerData) {
   pending.set(mobileNumber, { otp, expiresAt, data: customerData });
 
   // Send SMS (stubbed)
-  await messaging.sendSms({ to: mobileNumber, message: `Your verification code is ${otp} for SoftWash customer verification` });
+  await messaging.sendSms({ to: mobileNumber, message: `Your verification code is ${otp} for Softwash Laundry customer verification` });
 
   return { otpSent: true };
 }

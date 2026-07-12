@@ -6,6 +6,20 @@ export async function listUsers() {
   return await User.find().select(PUBLIC_FIELDS);
 }
 
+const USER_SORTABLE = new Set(['firstName', 'lastName', 'userName', 'userRole']);
+
+export async function listUsersPaginated({ page = 1, limit = 10, sort = 'firstName', order = 'asc' } = {}) {
+  const p = Math.max(1, parseInt(page) || 1);
+  const l = Math.max(1, parseInt(limit) || 10);
+  const field = USER_SORTABLE.has(sort) ? sort : 'firstName';
+  const dir = order === 'desc' ? -1 : 1;
+  const [items, total] = await Promise.all([
+    User.find().select(PUBLIC_FIELDS).sort({ [field]: dir }).skip((p - 1) * l).limit(l).lean(),
+    User.countDocuments(),
+  ]);
+  return { items, total, page: p, limit: l };
+}
+
 export async function getUserById(id) {
   return await User.findById(id).select(PUBLIC_FIELDS);
 }

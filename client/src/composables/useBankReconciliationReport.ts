@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { getBankReconciliationReport, type BankReconciliationRow } from '@/services/reportApiService'
+import { localToday, localDayStartISO, localDayEndISO, toLocalDateKey } from '@/utils/reportDate'
 
 export interface BankReconcileTableRow {
   expenseId: string
@@ -10,9 +11,8 @@ export interface BankReconcileTableRow {
   amount: number
 }
 
-function toDateKey(isoString: string): string {
-  return isoString.substring(0, 10)
-}
+// Group by the LOCAL date, matching the displayed Date.
+const toDateKey = toLocalDateKey
 
 function transformRows(rawRows: BankReconciliationRow[]): BankReconcileTableRow[] {
   if (!rawRows.length) return []
@@ -44,7 +44,7 @@ function transformRows(rawRows: BankReconciliationRow[]): BankReconcileTableRow[
 }
 
 export function useBankReconciliationReport() {
-  const today = new Date().toISOString().substring(0, 10)
+  const today = localToday()
   const fromDate = ref(today)
   const toDate = ref(today)
   const rawRows = ref<BankReconciliationRow[]>([])
@@ -61,8 +61,8 @@ export function useBankReconciliationReport() {
     hasSearched.value = true
     try {
       rawRows.value = await getBankReconciliationReport({
-        fromDate: fromDate.value,
-        toDate: toDate.value,
+        fromDate: localDayStartISO(fromDate.value),
+        toDate: localDayEndISO(toDate.value),
       })
     } catch (err: unknown) {
       errorMsg.value = err instanceof Error ? err.message : 'Failed to load report'

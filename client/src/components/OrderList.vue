@@ -45,6 +45,7 @@
               :sort-by="tableSortBy"
               :page="page"
               :items-per-page="itemsPerPage"
+              :items-per-page-options="[10, 25, 50, 100]"
               class="elevation-1"
               @update:options="handleTableOptions"
             >
@@ -218,6 +219,7 @@
                     hide-details="auto"
                     clearable
                     required
+                    :disabled="isOrderDone"
                     :rules="[v => !!v || 'Customer is required']"
                     @update:model-value="onCustomerSelect"
                   >
@@ -243,6 +245,7 @@
                     type="date"
                     :rules="[v => !!v || 'Delivery date is required']"
                     required
+                    :disabled="isOrderDone"
                     variant="outlined"
                     density="compact"
                     hide-details="auto"
@@ -330,6 +333,7 @@
                       density="compact"
                       hide-details
                       style="max-width: 180px;"
+                      :disabled="isOrderDone"
                       @input="clampDiscount"
                     />
                   </div>
@@ -367,6 +371,7 @@
                     />
                   </div>
                   <v-btn type="submit" block
+                    :disabled="isOrderFullyLocked"
                     style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600; height: 44px;">
                     {{ submitButtonLabel }}
                   </v-btn>
@@ -381,7 +386,7 @@
                 <div class="order-form-field">
                   <div class="field-group">
                     <label class="field-label">Title <span class="required-star">*</span></label>
-                    <v-select v-model="newCustomerForm.title" :items="['Mr','Mrs','Miss','Dr']" variant="outlined" density="compact" hide-details="auto" placeholder="Title" />
+                    <v-select v-model="newCustomerForm.title" :items="['Mr','Ms']" variant="outlined" density="compact" hide-details="auto" placeholder="Title" />
                   </div>
                 </div>
                 <div class="order-form-field">
@@ -550,6 +555,7 @@ const orderHeaders = [
 ]
 
 import { getOrders, getOrderById, updateOrder } from '@/services/orderApiService'
+import { localDayStartISO, localDayEndISO } from '@/utils/reportDate'
 import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
 import { checkOrderCapacity, getSystemSettings, type CapacityCheckResult } from '@/services/systemSettingsApiService'
 const payments = ref<any[]>([])
@@ -679,6 +685,11 @@ const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
 const showPaymentAffectWarning = ref(false)
 const originalSubordersSnapshot = ref('')
+// The order's status as loaded from the server (empty when creating). A Delivered
+// order is terminal — nothing on it may be edited, including the status and rack
+// number — so lock the whole form based on this, not the (editable) form status.
+const originalOrderStatus = ref('')
+const isOrderFullyLocked = computed(() => originalOrderStatus.value === 'delivered')
 const dueSoonLeadDays = ref<number>(1)
 const overdueCount = computed(() => orders.value.filter(o => o.overdue).length)
 const dueSoonCount = computed(() => orders.value.filter(o => o.dueSoon).length)
@@ -691,6 +702,15 @@ function removeSuborder(idx: number) {
 }
 function updateSuborderAmount(idx: number) {
   const sub = suborders.value[idx]
+  // Items loaded from an existing (already placed) order keep the amount that was
+  // stored when the order was placed — their category/weight inputs are always
+  // disabled, so they can never change. Only newly added items are priced with the
+  // current category rates. This keeps historical orders showing their original
+  // pricing even after a category's unitPrice/minimumPrice is modified.
+  if (sub.originalAmount != null) {
+    sub.amount = sub.originalAmount
+    return
+  }
   const cat = categories.value.find((c: any) => c.value === sub.category)
   if (cat && sub.weight) {
     const computed = Number(sub.weight) * Number(cat.unitPrice)
@@ -804,15 +824,27 @@ const ORDER_STATUSES = [
 const orderFormSchema = computed(() => ({
   fields: [
     ...(editOrderId.value ? [
-      { name: 'status', label: 'Status', type: 'select', required: true, options: ORDER_STATUSES },
-      { name: 'rackNumber', label: 'Rack Number', type: 'text' },
+      { name: 'status', label: 'Status', type: 'select', required: true, options: ORDER_STATUSES, disabled: isOrderFullyLocked.value },
+      // Rack Number is shown once the order is Done or Delivered, and is mandatory
+      // at that point (it identifies where the finished order is stored). It is
+      // read-only on a Delivered order, which is terminal.
+      ...(['done', 'delivered'].includes(String(form.value.status || '').toLowerCase()) ? [
+        {
+          name: 'rackNumber',
+          label: 'Rack Number',
+          type: 'text',
+          required: true,
+          disabled: isOrderFullyLocked.value,
+          rules: [(v: any) => (!!v && String(v).trim() !== '' ? true : 'Rack Number is required')],
+        },
+      ] : []),
     ] : [])
   ]
 }))
 
 const isOrderDone = computed(() => {
   const s = String(form.value.status || '').toLowerCase()
-  return s === 'done' || s === 'delivered'
+  return s === 'todo'|| s === 'done' || s === 'delivered' || s === 'cancelled' 
 })
 
 import type { CustomerPayload } from '@/services/customerApiService'
@@ -860,7 +892,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 function deliveryState(order: any): { overdue: boolean; dueSoon: boolean } {
   if (!order?.deliveryDate) return { overdue: false, dueSoon: false }
-  if (order.status === 'done' || order.status === 'cancelled') return { overdue: false, dueSoon: false }
+  if (order.status === 'done' || order.status === 'cancelled' || order.status === 'delivered') return { overdue: false, dueSoon: false }
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const due = new Date(order.deliveryDate)
@@ -887,7 +919,11 @@ function setOrdersFromData(orderData: any[]) {
       statusLabel: (ORDER_STATUSES.find(s => s.value === order.status) || { label: order.status }).label,
       deliveryDate: order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : '—',
       createdDate: order.createdDate ? new Date(order.createdDate).toLocaleDateString() : '—',
-      totalAmount: typeof order.totalAmount === 'number' ? `Rs ${order.totalAmount.toFixed(2)}` : order.totalAmount,
+      // Total reflects the amount after discount (subtotal − discount), matching
+      // the "Total After Discount" shown on the order form.
+      totalAmount: typeof order.totalAmount === 'number'
+        ? `Rs ${Math.max(order.totalAmount - Number(order.discount || 0), 0).toFixed(2)}`
+        : order.totalAmount,
       paymentStatus,
       overdue,
       dueSoon,
@@ -905,11 +941,11 @@ async function loadOrders() {
       sortBy: sortKey.value,
       sortOrder: sortOrder.value,
       status: filterStatus.value.length ? filterStatus.value.join(',') : undefined,
-      deliveryDateFrom: filterDeliveryDateFrom.value || undefined,
-      deliveryDateTo: filterDeliveryDateTo.value || undefined,
+      deliveryDateFrom: filterDeliveryDateFrom.value ? localDayStartISO(filterDeliveryDateFrom.value) : undefined,
+      deliveryDateTo: filterDeliveryDateTo.value ? localDayEndISO(filterDeliveryDateTo.value) : undefined,
       customerID: filterCustomerID.value || undefined,
-      createdDateFrom: filterCreatedDateFrom.value || undefined,
-      createdDateTo: filterCreatedDateTo.value || undefined,
+      createdDateFrom: filterCreatedDateFrom.value ? localDayStartISO(filterCreatedDateFrom.value) : undefined,
+      createdDateTo: filterCreatedDateTo.value ? localDayEndISO(filterCreatedDateTo.value) : undefined,
       search: searchQuery.value || undefined,
     })
     totalOrders.value = result.total
@@ -978,6 +1014,7 @@ function resetForm() {
   form.value.discount = 0
   form.value.status = ''
   form.value.rackNumber = ''
+  originalOrderStatus.value = ''
   suborders.value = []
   payments.value = []
   currentOrderDueAmount.value = 0
@@ -1192,24 +1229,25 @@ async function onEditOrder(order: any) {
   form.value.deliveryDate = data.deliveryDate?.substring(0, 10)
   form.value.discount = Number(data.discount || 0)
   form.value.status = data.status || 'todo'
+  originalOrderStatus.value = String(data.status || 'todo').toLowerCase()
   form.value.rackNumber = data.rackNumber || ''
   currentOrderDueAmount.value = Number(data.dueAmount || 0)
   currentOrderPaymentStatus.value = String(data.paymentStatus || 'unpaid')
-  // Map suborders to ensure category is the ID and amount is recalculated
+  // Map suborders keeping each item's ORIGINAL stored amount. Category prices
+  // (unitPrice/minimumPrice) may have changed since the order was placed, so we
+  // must not recompute from current prices here — doing so would show amounts
+  // that no longer match the payment/due amount recorded for this order.
+  // originalAmount marks an item as coming from a placed order so
+  // updateSuborderAmount preserves its stored amount instead of re-pricing it.
   const mapped = (data.suborders || []).map((sub: any) => {
-    let categoryId = sub.category?._id || sub.category;
-    const cat = categories.value.find((c: any) => c.value === categoryId);
-    let weight = sub.weight || '';
-    let amount = 0;
-    if (cat && weight) {
-      const computed = Number(weight) * Number(cat.unitPrice);
-      const floor = Number(cat.minimumPrice) || 0;
-      amount = Math.max(computed, floor);
-    }
+    const categoryId = sub.category?._id || sub.category;
+    const weight = sub.weight ?? '';
+    const amount = Number(sub.amount || 0);
     return {
       category: categoryId,
       weight,
-      amount
+      amount,
+      originalAmount: amount,
     };
   });
   suborders.value = mapped;
@@ -1235,7 +1273,20 @@ async function persistOrder() {
     discount: Number(form.value.discount || 0),
   };
   if (editOrderId.value) {
-    const editPayload = { ...payload, status: form.value.status, rackNumber: form.value.rackNumber }
+    const editPayload: Record<string, any> = {
+      customerID: form.value.customer,
+      deliveryDate: form.value.deliveryDate,
+      discount: Number(form.value.discount || 0),
+      status: form.value.status,
+      rackNumber: form.value.rackNumber,
+    }
+    // Only send order items when they actually changed. Finalized orders (Done/
+    // Delivered) reject item edits server-side and their item fields are locked,
+    // so a status-only change (e.g. Done → Delivered) must not resend suborders.
+    if (subordersChanged()) {
+      editPayload.suborders = suborders.value
+      editPayload.totalAmount = totalAmount.value
+    }
     await updateOrder(editOrderId.value, editPayload)
     showToast('Order updated successfully!', 'success')
     return
@@ -1272,6 +1323,17 @@ async function afterOrderPersist(createdOrder?: any) {
 
 async function handleSubmit() {
   try {
+    // A Delivered order is terminal — nothing on it can be changed.
+    if (isOrderFullyLocked.value) return
+    // Rack Number is required when marking an order as Done or Delivered.
+    if (
+      editOrderId.value &&
+      ['done', 'delivered'].includes(String(form.value.status || '').toLowerCase()) &&
+      !String(form.value.rackNumber || '').trim()
+    ) {
+      showToast('Rack Number is required when the order status is Done or Delivered.', 'error')
+      return
+    }
     if (!editOrderId.value && form.value.deliveryDate) {
       const totalKg = suborders.value.reduce((sum, s) => sum + (Number(s.weight) || 0), 0)
       try {

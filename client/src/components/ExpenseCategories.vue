@@ -10,8 +10,14 @@
       title="Cashflow Category List"
       :headers="headers"
       :items="categories"
+      server
+      :items-length="total"
+      :loading="loading"
+      :page="page"
+      :items-per-page="itemsPerPage"
       @add="onAdd"
       @edit="onEdit"
+      @update:options="handleOptions"
     >
       <template #item.type="{ item }">
         <v-chip
@@ -23,7 +29,7 @@
       </template>
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEdit(item)" />
-        <span :title="item.inUse ? 'This cash flow category is in use and cannot be deleted' : 'Delete cash flow category'" style="display:inline-block;">
+        <span :title="item.inUse ? 'This cashflow category is in use and cannot be deleted' : 'Delete cashflow category'" style="display:inline-block;">
           <v-btn
             icon="mdi-delete"
             size="small"
@@ -59,10 +65,13 @@
           </div>
           <div class="mb-5">
             <label class="field-label">Type <span class="req">*</span></label>
-            <v-radio-group v-model="form.type" inline hide-details class="mt-1">
+            <v-radio-group v-model="form.type" inline hide-details class="mt-1" :disabled="editInUse">
               <v-radio label="Inflow" value="inflow" color="#0f766e" />
               <v-radio label="Outflow" value="outflow" color="#7f1d1d" />
             </v-radio-group>
+            <p v-if="editInUse" class="text-xs text-gray-500 mt-1">
+              This cashflow category is in use, so its type cannot be changed.
+            </p>
           </div>
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <v-btn variant="outlined"
@@ -88,12 +97,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import BaseList from '@/components/BaseList.vue'
 import ConfirmationDialog from '@/components/ConfirmationDialog.vue'
 import { useToast } from '@/composables/useToast'
 import {
-  getAllExpenseCategories,
+  getExpenseCategoriesPaginated,
   createExpenseCategory,
   updateExpenseCategory,
   deleteExpenseCategory,
@@ -109,9 +118,15 @@ const headers = [
 ]
 
 const categories = ref<ExpenseCategory[]>([])
+const total = ref(0)
+const loading = ref(false)
+const page = ref(1)
+const itemsPerPage = ref(10)
+const sortBy = ref<{ key: string; order: 'asc' | 'desc' }[]>([])
 const showForm = ref(false)
 const showDeleteConfirm = ref(false)
 const editId = ref<string | null>(null)
+const editInUse = ref(false)
 const toDelete = ref<ExpenseCategory | null>(null)
 
 const form = reactive({ displayName: '', type: '' })
@@ -124,18 +139,36 @@ function generateName(displayName: string): string {
 }
 
 async function load() {
+  loading.value = true
   try {
-    categories.value = await getAllExpenseCategories()
+    const s = sortBy.value[0]
+    const res = await getExpenseCategoriesPaginated({
+      page: page.value,
+      limit: itemsPerPage.value,
+      sort: s?.key,
+      order: s?.order,
+    })
+    categories.value = res.items
+    total.value = res.total
   } catch {
     showToast('Failed to load cashflow categories', 'error')
+  } finally {
+    loading.value = false
   }
 }
-onMounted(load)
+
+function handleOptions(opts: any) {
+  page.value = opts.page
+  itemsPerPage.value = opts.itemsPerPage
+  sortBy.value = opts.sortBy || []
+  load()
+}
 
 function resetForm() {
   form.displayName = ''
   form.type = ''
   editId.value = null
+  editInUse.value = false
 }
 
 function onAdd() {
@@ -145,6 +178,7 @@ function onAdd() {
 
 function onEdit(category: ExpenseCategory) {
   editId.value = category._id
+  editInUse.value = !!category.inUse
   form.displayName = category.displayName
   form.type = category.type ?? 'outflow'
   showForm.value = true
@@ -163,7 +197,7 @@ function handleDeleteExpenseCategoryClick(category: ExpenseCategory) {
 async function confirmDelete() {
   if (!toDelete.value) return
   if (toDelete.value.inUse) {
-    showToast('This cash flow category is in use and cannot be deleted', 'warning')
+    showToast('This cashflow category is in use and cannot be deleted', 'warning')
     toDelete.value = null
     showDeleteConfirm.value = false
     return

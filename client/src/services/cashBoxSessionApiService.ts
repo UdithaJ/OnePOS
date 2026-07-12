@@ -8,6 +8,7 @@ export interface CashBoxSessionBalance {
   sessionId: string;
   openingAmount: number;
   totalPayments: number;
+  totalBankPayments: number;
   totalExpenses: number;
   totalDeposits: number;
   totalWithdrawals: number;

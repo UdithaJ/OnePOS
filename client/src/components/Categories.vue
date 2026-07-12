@@ -10,13 +10,19 @@
       title="Category List"
       :headers="categoryHeaders"
       :items="categories"
+      server
+      :items-length="total"
+      :loading="loading"
+      :page="page"
+      :items-per-page="itemsPerPage"
       @add="onAddCategory"
       @edit="onEditCategory"
+      @update:options="handleOptions"
     >
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEditCategory(item)"></v-btn>
         <span
-          :title="item.inUse ? 'This category is in use and cannot be deleted' : 'Delete category'"
+          :title="item.inUse ? 'This laundry category is in use and cannot be deleted' : 'Delete category'"
           style="display: inline-block;"
         >
           <v-btn
@@ -86,14 +92,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
 import ConfirmationDialog from '@/components/ConfirmationDialog.vue'
 import { useDynamicForm } from '@/composables/useDynamicForm'
 import { useToast } from '@/composables/useToast'
 import {
-  getAllCategories,
+  getCategoriesPaginated,
   createCategory,
   updateCategory,
   deleteCategory,
@@ -111,6 +117,11 @@ const categoryHeaders = [
 ]
 
 const categories = ref<Category[]>([])
+const total = ref(0)
+const loading = ref(false)
+const page = ref(1)
+const itemsPerPage = ref(10)
+const sortBy = ref<{ key: string; order: 'asc' | 'desc' }[]>([])
 const showForm = ref(false)
 const showDeleteConfirm = ref(false)
 const editCategoryId = ref<string | null>(null)
@@ -127,13 +138,30 @@ const categoryFormSchema = {
 const { form, isValid } = useDynamicForm(categoryFormSchema)
 
 async function loadCategories() {
+  loading.value = true
   try {
-    categories.value = await getAllCategories()
+    const s = sortBy.value[0]
+    const res = await getCategoriesPaginated({
+      page: page.value,
+      limit: itemsPerPage.value,
+      sort: s?.key,
+      order: s?.order,
+    })
+    categories.value = res.items
+    total.value = res.total
   } catch {
-    showToast('Failed to load categories', 'error')
+    showToast('Failed to load laundry categories', 'error')
+  } finally {
+    loading.value = false
   }
 }
-onMounted(loadCategories)
+
+function handleOptions(opts: any) {
+  page.value = opts.page
+  itemsPerPage.value = opts.itemsPerPage
+  sortBy.value = opts.sortBy || []
+  loadCategories()
+}
 
 function resetForm() {
   form.value.name = ''
@@ -169,17 +197,17 @@ async function confirmDelete() {
   if (!categoryToDelete.value) return
   const target = categoryToDelete.value
   if (target.inUse) {
-    showToast('This category is in use and cannot be deleted', 'warning')
+    showToast('This laundry category is in use and cannot be deleted', 'warning')
     categoryToDelete.value = null
     showDeleteConfirm.value = false
     return
   }
   try {
     await deleteCategory(target._id)
-    showToast('Category deleted', 'success')
+    showToast('Laundry category deleted', 'success')
     await loadCategories()
   } catch (err: any) {
-    showToast(err?.response?.data?.message || 'Failed to delete category', 'error')
+    showToast(err?.response?.data?.message || 'Failed to delete laundry category', 'error')
   } finally {
     categoryToDelete.value = null
     showDeleteConfirm.value = false
@@ -200,16 +228,16 @@ async function handleSubmit() {
   try {
     if (editCategoryId.value) {
       await updateCategory(editCategoryId.value, payload)
-      showToast('Category updated', 'success')
+      showToast('Laundry category updated', 'success')
     } else {
       await createCategory(payload)
-      showToast('Category created', 'success')
+      showToast('Laundry category created', 'success')
     }
     showForm.value = false
     resetForm()
     await loadCategories()
   } catch (err: any) {
-    showToast(err?.response?.data?.message || 'Failed to save category', 'error')
+    showToast(err?.response?.data?.message || 'Failed to save laundry category', 'error')
   }
 }
 </script>

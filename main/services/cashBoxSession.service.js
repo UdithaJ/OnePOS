@@ -33,14 +33,23 @@ exports.updateCashBoxSession = async (id, data) => {
 
   const isClosing = (data.closingAmount !== undefined || data.closedBy !== undefined) && data.status !== 'open';
   if (isClosing) {
+    const session = await CashBoxSession.findById(id);
+    if (!session) throw new Error('Cash box session not found');
+
+    // Validate the closing time falls after the session's start time
+    const closedAt = data.closedAt ? new Date(data.closedAt) : new Date();
+    const openedAt = new Date(session.openedAt);
+    if (!(closedAt > openedAt)) {
+      throw new Error('Closing time must be after the session start time.');
+    }
+
     update.status = 'closed';
-    update.closedAt = new Date();
+    update.closedAt = closedAt;
 
     // If closingAmount not provided or is 0, compute from ledger totals to avoid saving 0
     if (update.closingAmount === undefined || update.closingAmount === null || Number(update.closingAmount) === 0) {
-      const session = await CashBoxSession.findById(id);
       const totals = await getSessionLedgerTotals(id);
-      const openingAmount = Number(session?.openingAmount || 0);
+      const openingAmount = Number(session.openingAmount || 0);
       const computed =
         openingAmount +
         Number(totals.totalPayments || 0) +
@@ -80,6 +89,7 @@ exports.getCashBoxSessionBalance = async (id) => {
     sessionId: session._id,
     openingAmount,
     totalPayments: Number(totals.totalPayments || 0),
+    totalBankPayments: Number(totals.totalBankPayments || 0),
     totalExpenses: Number(totals.totalExpenses || 0),
     totalDeposits: Number(totals.totalDeposits || 0),
     totalWithdrawals: Number(totals.totalWithdrawals || 0),

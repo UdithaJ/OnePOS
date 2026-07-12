@@ -23,6 +23,25 @@ export async function getAllUsers(): Promise<User[]> {
   return response.data
 }
 
+export interface PaginationParams {
+  page: number
+  limit: number
+  sort?: string
+  order?: 'asc' | 'desc'
+}
+
+export interface Paginated<T> {
+  items: T[]
+  total: number
+  page: number
+  limit: number
+}
+
+export async function getUsersPaginated(params: PaginationParams): Promise<Paginated<User>> {
+  const response = await axios.get(`${baseUrl()}/api/users/paginated`, { params })
+  return response.data
+}
+
 export async function getUserById(id: string): Promise<User> {
   const response = await axios.get(`${baseUrl()}/api/users/${id}`)
   return response.data

@@ -14,6 +14,7 @@ router.delete('/:id', categoryController.deleteCategory);
 
 // Get all categories
 router.get('/', categoryController.getAllCategories);
+router.get('/paginated', categoryController.getCategoriesPaginated);
 
 // Get one category
 router.get('/:id', categoryController.getCategoryById);

@@ -1,12 +1,14 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailySalesRow } from '@/services/reportApiService'
+import { toLocalDateKey } from '@/utils/reportDate'
 
 const HEADERS = ['Date', 'Order No', 'Customer', 'Delivery Date', 'Status', 'Rack No', 'Laundry Category', 'Weight (kg)', 'Amount', 'Discount', 'Net Amount', 'Total Amount']
 
 const STATUS_DISPLAY: Record<string, string> = {
   todo: 'To Do',
   done: 'Done',
+  delivered: 'Delivered',
   cancelled: 'Cancelled',
 }
 
@@ -16,9 +18,10 @@ function formatDate(isoString: string): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function toDateKey(isoString: string): string {
-  return isoString.substring(0, 10)
-}
+// Group by the LOCAL calendar day (toLocalDateKey) so exported per-date totals
+// match the dates shown by formatDate. A raw UTC substring would mis-bucket
+// orders near the day boundary.
+const toDateKey = toLocalDateKey
 
 function buildFlatRows(rawRows: DailySalesRow[]): string[][] {
   // Compute net total per date (sum of netAmount per unique order per date)

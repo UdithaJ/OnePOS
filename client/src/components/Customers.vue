@@ -10,8 +10,14 @@
       title="Customer List"
       :headers="customerHeaders"
       :items="customers"
+      server
+      :items-length="total"
+      :loading="loading"
+      :page="page"
+      :items-per-page="itemsPerPage"
       @add="onAddCustomer"
       @edit="onEditCustomer"
+      @update:options="handleOptions"
     >
       <template #actions="{ item }">
         <v-btn icon="mdi-pencil" size="small" class="mr-2" @click="onEditCustomer(item)" />
@@ -92,10 +98,10 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useDynamicForm } from '@/composables/useDynamicForm'
-import { getAllCustomers, createCustomer, updateCustomer, deleteCustomer, sendOtp, verifyOtp } from '@/services/customerApiService'
+import { getCustomersPaginated, createCustomer, updateCustomer, deleteCustomer, sendOtp, verifyOtp } from '@/services/customerApiService'
 import { defineAsyncComponent } from 'vue'
 
 const BaseList = defineAsyncComponent(() => import('./BaseList.vue'))
@@ -111,6 +117,13 @@ const customerHeaders = [
 ]
 
 const customers = ref<any[]>([])
+
+// Server-side pagination state
+const total = ref(0)
+const loading = ref(false)
+const page = ref(1)
+const itemsPerPage = ref(10)
+const sortBy = ref<{ key: string; order: 'asc' | 'desc' }[]>([])
 
 function toItem(c: any) {
   return {
@@ -129,15 +142,32 @@ function toItem(c: any) {
 }
 
 async function loadCustomers() {
+  loading.value = true
   try {
-    const data = await getAllCustomers()
-    customers.value = data.map(toItem)
+    const s = sortBy.value[0]
+    // 'name' is a composed column; sort by firstName on the server
+    const sort = s ? (s.key === 'name' ? 'firstName' : s.key) : undefined
+    const res = await getCustomersPaginated({
+      page: page.value,
+      limit: itemsPerPage.value,
+      sort,
+      order: s?.order,
+    })
+    customers.value = (res.items || []).map(toItem)
+    total.value = res.total
   } catch {
     showToast('Failed to load customers', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(loadCustomers)
+function handleOptions(opts: any) {
+  page.value = opts.page
+  itemsPerPage.value = opts.itemsPerPage
+  sortBy.value = opts.sortBy || []
+  loadCustomers()
+}
 
 const showForm = ref(false)
 const editId = ref<string | null>(null)
@@ -146,9 +176,7 @@ const customerFormSchema = {
   fields: [
     { name: 'title', label: 'Title', type: 'select', required: true, options: [
       { label: 'Mr', value: 'Mr' },
-      { label: 'Mrs', value: 'Mrs' },
-      { label: 'Miss', value: 'Miss' },
-      { label: 'Dr', value: 'Dr' },
+      { label: 'Ms', value: 'Ms' },
     ] },
     { name: 'firstName', label: 'First Name', type: 'text', required: true },
     { name: 'lastName', label: 'Last Name', type: 'text' },
@@ -240,8 +268,8 @@ async function resendOtp() {
 async function verifyOtpAndCreate() {
   try {
     if (!pendingMobile.value) return showToast('No pending mobile number', 'error')
-    const saved = await verifyOtp(pendingMobile.value, otpCode.value)
-    customers.value.push(toItem(saved))
+    await verifyOtp(pendingMobile.value, otpCode.value)
+    await loadCustomers()
     showToast('Customer registered successfully!', 'success')
     showOtpDialog.value = false
     showForm.value = false
@@ -260,7 +288,7 @@ async function confirmDelete() {
   if (!toDelete.value) return
   try {
     await deleteCustomer(toDelete.value._id)
-    customers.value = customers.value.filter(c => c._id !== toDelete.value!._id)
+    await loadCustomers()
     showToast('Customer deleted successfully!', 'success')
   } catch {
     showToast('Failed to delete customer. Please try again.', 'error')
