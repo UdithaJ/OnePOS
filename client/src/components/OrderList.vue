@@ -386,7 +386,7 @@
                 <div class="order-form-field">
                   <div class="field-group">
                     <label class="field-label">Title <span class="required-star">*</span></label>
-                    <v-select v-model="newCustomerForm.title" :items="['Mr','Mrs','Miss','Dr']" variant="outlined" density="compact" hide-details="auto" placeholder="Title" />
+                    <v-select v-model="newCustomerForm.title" :items="['Mr','Ms']" variant="outlined" density="compact" hide-details="auto" placeholder="Title" />
                   </div>
                 </div>
                 <div class="order-form-field">

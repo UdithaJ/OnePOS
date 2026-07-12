@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const customerSchema = new mongoose.Schema({
   title: {
     type: String,
-    enum: ['Mr', 'Mrs', 'Miss', 'Dr']
+    enum: ['Mr', 'Ms']
   },
   firstName: {
     type: String,

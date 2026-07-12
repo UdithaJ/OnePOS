@@ -176,9 +176,7 @@ const customerFormSchema = {
   fields: [
     { name: 'title', label: 'Title', type: 'select', required: true, options: [
       { label: 'Mr', value: 'Mr' },
-      { label: 'Mrs', value: 'Mrs' },
-      { label: 'Miss', value: 'Miss' },
-      { label: 'Dr', value: 'Dr' },
+      { label: 'Ms', value: 'Ms' },
     ] },
     { name: 'firstName', label: 'First Name', type: 'text', required: true },
     { name: 'lastName', label: 'Last Name', type: 'text' },
