@@ -11,6 +11,7 @@ import 'vuetify/styles'
 
 export default createVuetify({
   theme: {
+    defaultTheme: 'light',
     utilities: false,
   },
 })
