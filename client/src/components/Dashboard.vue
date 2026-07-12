@@ -58,9 +58,10 @@
         </div>
       </div>
 
-      <!-- CashBox + Quick Actions -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <CashBox />
+      <!-- CashBox + Bank Transfers + Quick Actions -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <CashBox @session-changed="bankTransfersCard?.fetchBankTransfers()" />
+        <BankTransfersCard ref="bankTransfersCard" />
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="bg-[#0d3d38] px-5 py-3">
             <span class="text-white text-sm font-medium">Quick Access</span>
@@ -136,6 +137,9 @@ import {
   Filler,
 } from 'chart.js'
 import CashBox from './CashBox.vue'
+import BankTransfersCard from './BankTransfersCard.vue'
+
+const bankTransfersCard = ref<InstanceType<typeof BankTransfersCard> | null>(null)
 import DeliveryPending from './DeliveryPending.vue'
 import { getAllOrders } from '@/services/orderApiService'
 

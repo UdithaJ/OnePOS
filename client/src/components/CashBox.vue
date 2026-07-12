@@ -123,6 +123,8 @@ import { useToast } from '@/composables/useToast'
 import ConfirmationDialog from './ConfirmationDialog.vue'
 import ExpenseDialog from './ExpenseDialog.vue'
 
+const emit = defineEmits<{ (e: 'session-changed'): void }>()
+
 const loading = ref(true)
 const actionLoading = ref(false)
 const activeSession = ref<any | null>(null)
@@ -168,6 +170,9 @@ async function fetchSession() {
     }
   } finally {
     loading.value = false
+    // Notify siblings (e.g. the Bank Transfers card) that session state changed
+    // so they can re-fetch instead of showing stale values after open/close.
+    emit('session-changed')
   }
 }
 

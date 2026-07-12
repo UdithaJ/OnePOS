@@ -89,6 +89,7 @@ exports.getCashBoxSessionBalance = async (id) => {
     sessionId: session._id,
     openingAmount,
     totalPayments: Number(totals.totalPayments || 0),
+    totalBankPayments: Number(totals.totalBankPayments || 0),
     totalExpenses: Number(totals.totalExpenses || 0),
     totalDeposits: Number(totals.totalDeposits || 0),
     totalWithdrawals: Number(totals.totalWithdrawals || 0),
