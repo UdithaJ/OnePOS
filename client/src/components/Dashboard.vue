@@ -14,15 +14,15 @@
 
       <!-- Stat cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <!-- Total Sales -->
+        <!-- Completed Orders -->
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="bg-[#0d3d38] px-5 py-3 flex items-center gap-2">
-            <v-icon color="white" size="20">mdi-currency-inr</v-icon>
-            <span class="text-white text-sm font-medium">Total Sales</span>
+            <v-icon color="white" size="20">mdi-check-circle-outline</v-icon>
+            <span class="text-white text-sm font-medium">Completed Orders</span>
           </div>
           <div class="px-5 py-5">
-            <div class="text-3xl font-bold text-gray-900">Rs 2,350.00</div>
-            <div class="text-sm text-gray-500 mt-1">This month</div>
+            <div class="text-3xl font-bold text-gray-900">{{ doneCount }}</div>
+            <div class="text-sm text-gray-500 mt-1">Orders Done</div>
           </div>
         </div>
 
@@ -33,7 +33,7 @@
             <span class="text-white text-sm font-medium">Orders</span>
           </div>
           <div class="px-5 py-5">
-            <div class="text-3xl font-bold text-gray-900">27</div>
+            <div class="text-3xl font-bold text-gray-900">{{ ordersTodayCount }}</div>
             <div class="text-sm text-gray-500 mt-1">Orders Today</div>
           </div>
         </div>
@@ -143,6 +143,8 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 
 const router = useRouter()
 
+const ordersTodayCount = ref(0)
+const doneCount = ref(0)
 const pendingCount = ref(0)
 const pendingWeightKg = ref(0)
 const barChartData = ref<any>(null)
@@ -164,11 +166,16 @@ onMounted(async () => {
 
   const pending = all.filter((o: any) => o.status === 'todo')
   pendingCount.value = pending.length
+  doneCount.value = all.filter((o: any) => o.status === 'done').length
   pendingWeightKg.value = pending.reduce((sum: number, o: any) => {
     return sum + (o.suborders || []).reduce((s: number, sub: any) => s + (Number(sub.weight) || 0), 0)
   }, 0)
 
   const today = new Date().toDateString()
+  ordersTodayCount.value = all.filter(
+    (o: any) => new Date(o.createdDate).toDateString() === today
+  ).length
+
   const kgByCategory: Record<string, number> = {}
   for (const order of all) {
     if (new Date(order.createdDate).toDateString() !== today) continue
