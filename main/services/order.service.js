@@ -114,24 +114,19 @@ async function getOrdersPaginated({
 
   const filter = {}
   if (status && status.length) filter.status = { $in: status }
+  // Date filters arrive as absolute ISO instants representing the client's local
+  // start-of-day / end-of-day (see client utils/reportDate), so filter on them
+  // directly rather than re-deriving day boundaries here.
   if (deliveryDateFrom || deliveryDateTo) {
     filter.deliveryDate = {}
     if (deliveryDateFrom) filter.deliveryDate.$gte = new Date(deliveryDateFrom)
-    if (deliveryDateTo) {
-      const end = new Date(deliveryDateTo)
-      end.setHours(23, 59, 59, 999)
-      filter.deliveryDate.$lte = end
-    }
+    if (deliveryDateTo) filter.deliveryDate.$lte = new Date(deliveryDateTo)
   }
   if (customerID) filter.customerID = new mongoose.Types.ObjectId(customerID)
   if (createdDateFrom || createdDateTo) {
     filter.createdDate = {}
     if (createdDateFrom) filter.createdDate.$gte = new Date(createdDateFrom)
-    if (createdDateTo) {
-      const end = new Date(createdDateTo)
-      end.setHours(23, 59, 59, 999)
-      filter.createdDate.$lte = end
-    }
+    if (createdDateTo) filter.createdDate.$lte = new Date(createdDateTo)
   }
 
   // Full-text search across orderNo, customer name, and customer phone

@@ -555,6 +555,7 @@ const orderHeaders = [
 ]
 
 import { getOrders, getOrderById, updateOrder } from '@/services/orderApiService'
+import { localDayStartISO, localDayEndISO } from '@/utils/reportDate'
 import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
 import { checkOrderCapacity, getSystemSettings, type CapacityCheckResult } from '@/services/systemSettingsApiService'
 const payments = ref<any[]>([])
@@ -940,11 +941,11 @@ async function loadOrders() {
       sortBy: sortKey.value,
       sortOrder: sortOrder.value,
       status: filterStatus.value.length ? filterStatus.value.join(',') : undefined,
-      deliveryDateFrom: filterDeliveryDateFrom.value || undefined,
-      deliveryDateTo: filterDeliveryDateTo.value || undefined,
+      deliveryDateFrom: filterDeliveryDateFrom.value ? localDayStartISO(filterDeliveryDateFrom.value) : undefined,
+      deliveryDateTo: filterDeliveryDateTo.value ? localDayEndISO(filterDeliveryDateTo.value) : undefined,
       customerID: filterCustomerID.value || undefined,
-      createdDateFrom: filterCreatedDateFrom.value || undefined,
-      createdDateTo: filterCreatedDateTo.value || undefined,
+      createdDateFrom: filterCreatedDateFrom.value ? localDayStartISO(filterCreatedDateFrom.value) : undefined,
+      createdDateTo: filterCreatedDateTo.value ? localDayEndISO(filterCreatedDateTo.value) : undefined,
       search: searchQuery.value || undefined,
     })
     totalOrders.value = result.total
