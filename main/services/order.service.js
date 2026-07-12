@@ -377,8 +377,8 @@ async function sendOrderCompletionSms(order) {
     console.warn(`[SMS] order ${order.orderNo}: no customer/mobile, skipping completion SMS`);
     return;
   }
-  const greetName = [customer.title, customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Customer';
-  const message = `Dear ${greetName}, your order #${order.orderNo} is now ready for collection. Thank you.`;
+  const greetName = [customer.title, customer.firstName].filter(Boolean).join(' ') || 'Customer';
+  const message = `Dear ${greetName}, Your laundry is now ready for collection. Invoice #${order.orderNo}.\nThank you,\nSoftwash Laundry Mirihana.\nHotline: 0718 807 625`;
   await messaging.sendSms({ to: customer.mobileNumber, message });
 }
 
