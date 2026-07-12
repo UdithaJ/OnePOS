@@ -189,7 +189,8 @@ async function getExpensesReport(fromDate, toDate, expenseTypeId) {
       },
     },
     { $unwind: '$category' },
-    { $match: { 'category.displayName': { $not: { $regex: /^bank deposite$/i } } } },
+ 
+    { $match: { 'category.type': 'outflow', 'category.displayName': { $not: { $regex: /^bank deposite$/i } } } },
     {
       $project: {
         _id: 0,

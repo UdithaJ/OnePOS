@@ -84,6 +84,7 @@ export interface ExpenseCategory {
   _id: string
   name: string
   displayName: string
+  type?: 'inflow' | 'outflow'
   inUse?: boolean
 }
 

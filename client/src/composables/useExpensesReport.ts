@@ -55,7 +55,7 @@ export function useExpensesReport() {
 
   const categoryOptions = computed(() => {
     const filtered = categories.value.filter(
-      (c) => !/^bank deposite$/i.test(c.displayName)
+      (c) => c.type === 'outflow' && !/^bank deposite$/i.test(c.displayName)
     )
     return [
       { label: 'All', value: 'all' },
