@@ -3,8 +3,11 @@ const Order = require('../models/order.js');
 const Expense = require('../models/expense.js');
 
 async function getDailySalesReport(fromDate, toDate) {
-  const start = new Date(fromDate + 'T00:00:00.000Z');
-  const end = new Date(toDate + 'T23:59:59.999Z');
+  // fromDate/toDate arrive as absolute ISO instants representing the client's
+  // local start-of-day / end-of-day, so the window matches the shop's local day
+  // rather than UTC midnight. See client utils/reportDate for how they're built.
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
 
   const rows = await Order.aggregate([
     {
@@ -65,8 +68,11 @@ async function getDailySalesReport(fromDate, toDate) {
 }
 
 async function getPendingOrdersByDueDate(fromDate, toDate, status) {
-  const start = new Date(fromDate + 'T00:00:00.000Z');
-  const end = new Date(toDate + 'T23:59:59.999Z');
+  // fromDate/toDate arrive as absolute ISO instants representing the client's
+  // local start-of-day / end-of-day, so the window matches the shop's local day
+  // rather than UTC midnight. See client utils/reportDate for how they're built.
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
   const ACTIVE_STATUSES = ['todo', 'done'];
   const statusFilter = (status && status !== 'all') ? [status] : ACTIVE_STATUSES;
 
@@ -127,8 +133,11 @@ async function getPendingOrdersByDueDate(fromDate, toDate, status) {
 }
 
 async function getBankTransferReconciliation(fromDate, toDate) {
-  const start = new Date(fromDate + 'T00:00:00.000Z');
-  const end = new Date(toDate + 'T23:59:59.999Z');
+  // fromDate/toDate arrive as absolute ISO instants representing the client's
+  // local start-of-day / end-of-day, so the window matches the shop's local day
+  // rather than UTC midnight. See client utils/reportDate for how they're built.
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
 
   const rows = await Expense.aggregate([
     { $match: { date: { $gte: start, $lte: end } } },
@@ -158,8 +167,11 @@ async function getBankTransferReconciliation(fromDate, toDate) {
 }
 
 async function getExpensesReport(fromDate, toDate, expenseTypeId) {
-  const start = new Date(fromDate + 'T00:00:00.000Z');
-  const end = new Date(toDate + 'T23:59:59.999Z');
+  // fromDate/toDate arrive as absolute ISO instants representing the client's
+  // local start-of-day / end-of-day, so the window matches the shop's local day
+  // rather than UTC midnight. See client utils/reportDate for how they're built.
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
 
   const matchStage = { date: { $gte: start, $lte: end } };
   if (expenseTypeId && expenseTypeId !== 'all') {
@@ -247,8 +259,11 @@ async function getReturningCustomers(minOrderCount) {
 }
 
 async function getCashBoxSummary(fromDate, toDate) {
-  const start = new Date(fromDate + 'T00:00:00.000Z');
-  const end = new Date(toDate + 'T23:59:59.999Z');
+  // fromDate/toDate arrive as absolute ISO instants representing the client's
+  // local start-of-day / end-of-day, so the window matches the shop's local day
+  // rather than UTC midnight. See client utils/reportDate for how they're built.
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
 
   const rows = await Order.aggregate([
     { $match: { createdDate: { $gte: start, $lte: end },
@@ -333,8 +348,11 @@ async function getCashBoxSummary(fromDate, toDate) {
 }
 
 async function getBankTransferTracking(fromDate, toDate) {
-  const start = new Date(fromDate + 'T00:00:00.000Z');
-  const end = new Date(toDate + 'T23:59:59.999Z');
+  // fromDate/toDate arrive as absolute ISO instants representing the client's
+  // local start-of-day / end-of-day, so the window matches the shop's local day
+  // rather than UTC midnight. See client utils/reportDate for how they're built.
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
 
   const rows = await Order.aggregate([
     { $match: { createdDate: { $gte: start, $lte: end } } },

@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { BankReconciliationRow } from '@/services/reportApiService'
+import { toLocalDateKey } from '@/utils/reportDate'
 
 const HEADERS = ['Date', 'Description', 'Amount']
 
@@ -10,9 +11,8 @@ function formatDate(isoString: string): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function toDateKey(isoString: string): string {
-  return isoString.substring(0, 10)
-}
+// Group by the LOCAL date so exported dates match the on-screen report.
+const toDateKey = toLocalDateKey
 
 function buildFlatRows(rawRows: BankReconciliationRow[]): string[][] {
   const seenDates = new Set<string>()

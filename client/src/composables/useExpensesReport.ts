@@ -1,5 +1,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { getExpensesReport, getExpenseCategories, type ExpensesReportRow, type ExpenseCategory } from '@/services/reportApiService'
+import { localToday, localDayStartISO, localDayEndISO, toLocalDateKey } from '@/utils/reportDate'
 
 export interface ExpensesTableRow {
   expenseId: string
@@ -10,9 +11,8 @@ export interface ExpensesTableRow {
   amount: number
 }
 
-function toDateKey(isoString: string): string {
-  return isoString.substring(0, 10)
-}
+// Group by the LOCAL expense day, matching the displayed Date.
+const toDateKey = toLocalDateKey
 
 function transformRows(rawRows: ExpensesReportRow[]): ExpensesTableRow[] {
   if (!rawRows.length) return []
@@ -43,7 +43,7 @@ function transformRows(rawRows: ExpensesReportRow[]): ExpensesTableRow[] {
 }
 
 export function useExpensesReport() {
-  const today = new Date().toISOString().substring(0, 10)
+  const today = localToday()
   const fromDate = ref(today)
   const toDate = ref(today)
   const expenseTypeId = ref('all')
@@ -72,8 +72,8 @@ export function useExpensesReport() {
     hasSearched.value = true
     try {
       rawRows.value = await getExpensesReport({
-        fromDate: fromDate.value,
-        toDate: toDate.value,
+        fromDate: localDayStartISO(fromDate.value),
+        toDate: localDayEndISO(toDate.value),
         expenseTypeId: expenseTypeId.value,
       })
     } catch (err: unknown) {

@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { getDailySalesReport, type DailySalesRow } from '@/services/reportApiService'
+import { localToday, localDayStartISO, localDayEndISO, toLocalDateKey } from '@/utils/reportDate'
 
 export interface TableRow {
   orderId: string
@@ -26,11 +27,8 @@ export interface TableRow {
 const STATUS_DISPLAY: Record<string, string> = {
   todo: 'To Do',
   done: 'Done',
+  delivered: 'Delivered',
   cancelled: 'Cancelled',
-}
-
-function toDateKey(isoString: string): string {
-  return isoString.substring(0, 10)
 }
 
 function transformRows(rawRows: DailySalesRow[]): TableRow[] {
@@ -39,7 +37,7 @@ function transformRows(rawRows: DailySalesRow[]): TableRow[] {
   // Group by date key
   const dateGroups = new Map<string, DailySalesRow[]>()
   for (const row of rawRows) {
-    const key = toDateKey(row.createdDate)
+    const key = toLocalDateKey(row.createdDate)
     if (!dateGroups.has(key)) dateGroups.set(key, [])
     dateGroups.get(key)!.push(row)
   }
@@ -102,7 +100,7 @@ function transformRows(rawRows: DailySalesRow[]): TableRow[] {
 }
 
 export function useDailySalesReport() {
-  const today = new Date().toISOString().substring(0, 10)
+  const today = localToday()
   const fromDate = ref(today)
   const toDate = ref(today)
   const rawRows = ref<DailySalesRow[]>([])
@@ -123,8 +121,8 @@ export function useDailySalesReport() {
     hasSearched.value = true
     try {
       rawRows.value = await getDailySalesReport({
-        fromDate: fromDate.value,
-        toDate: toDate.value,
+        fromDate: localDayStartISO(fromDate.value),
+        toDate: localDayEndISO(toDate.value),
       })
     } catch (err: unknown) {
       errorMsg.value = err instanceof Error ? err.message : 'Failed to load report'

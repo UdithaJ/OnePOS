@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { getCashBoxSummaryReport, type CashBoxSummaryRow } from '@/services/reportApiService'
+import { localToday, localDayStartISO, localDayEndISO } from '@/utils/reportDate'
 
 export const PAYMENT_METHOD_DISPLAY: Record<string, string> = {
   cash: 'Cash',
@@ -7,7 +8,7 @@ export const PAYMENT_METHOD_DISPLAY: Record<string, string> = {
 }
 
 export function useCashBoxSummaryReport() {
-  const today = new Date().toISOString().substring(0, 10)
+  const today = localToday()
   const fromDate = ref(today)
   const toDate = ref(today)
   const rawRows = ref<CashBoxSummaryRow[]>([])
@@ -25,8 +26,8 @@ export function useCashBoxSummaryReport() {
     hasSearched.value = true
     try {
       rawRows.value = await getCashBoxSummaryReport({
-        fromDate: fromDate.value,
-        toDate: toDate.value,
+        fromDate: localDayStartISO(fromDate.value),
+        toDate: localDayEndISO(toDate.value),
       })
     } catch (err: unknown) {
       errorMsg.value = err instanceof Error ? err.message : 'Failed to load report'

@@ -157,6 +157,7 @@ function statusClass(status: string): string {
   const map: Record<string, string> = {
     todo: 'status-todo',
     done: 'status-done',
+    delivered: 'status-delivered',
     cancelled: 'status-cancelled',
   }
   return map[status] ?? ''
@@ -312,6 +313,7 @@ function rowClass(row: PendingTableRow, idx: number): string {
   &.status-todo        { background: #f3f4f6; color: #374151; }
   &.status-inprogress  { background: #dbeafe; color: #1d4ed8; }
   &.status-done        { background: #dcfce7; color: #15803d; }
+  &.status-delivered   { background: #ccfbf1; color: #0f766e; }
   &.status-cancelled   { background: #fef3c7; color: #b45309; }
 }
 
