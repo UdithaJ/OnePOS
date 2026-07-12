@@ -38,6 +38,18 @@ exports.createExpenseCategory = async (data) => {
 };
 
 exports.updateExpenseCategory = async (id, data) => {
+  // Prevent changing the cash flow direction (inflow <-> outflow) once the
+  // category is referenced by any Expense, since it would misclassify existing records.
+  if (data && (data.type === 'inflow' || data.type === 'outflow')) {
+    const existing = await ExpenseCategory.findById(id);
+    if (!existing) return null;
+    if (existing.type !== data.type) {
+      const inUse = await Expense.countDocuments({ expenseType: id });
+      if (inUse > 0) {
+        throw new Error('This cash flow category is in use and its type cannot be changed');
+      }
+    }
+  }
   return await ExpenseCategory.findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true });
 };
 

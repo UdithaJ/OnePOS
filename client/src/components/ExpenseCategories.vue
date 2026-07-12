@@ -65,10 +65,13 @@
           </div>
           <div class="mb-5">
             <label class="field-label">Type <span class="req">*</span></label>
-            <v-radio-group v-model="form.type" inline hide-details class="mt-1">
+            <v-radio-group v-model="form.type" inline hide-details class="mt-1" :disabled="editInUse">
               <v-radio label="Inflow" value="inflow" color="#0f766e" />
               <v-radio label="Outflow" value="outflow" color="#7f1d1d" />
             </v-radio-group>
+            <p v-if="editInUse" class="text-xs text-gray-500 mt-1">
+              This cashflow category is in use, so its type cannot be changed.
+            </p>
           </div>
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <v-btn variant="outlined"
@@ -123,6 +126,7 @@ const sortBy = ref<{ key: string; order: 'asc' | 'desc' }[]>([])
 const showForm = ref(false)
 const showDeleteConfirm = ref(false)
 const editId = ref<string | null>(null)
+const editInUse = ref(false)
 const toDelete = ref<ExpenseCategory | null>(null)
 
 const form = reactive({ displayName: '', type: '' })
@@ -164,6 +168,7 @@ function resetForm() {
   form.displayName = ''
   form.type = ''
   editId.value = null
+  editInUse.value = false
 }
 
 function onAdd() {
@@ -173,6 +178,7 @@ function onAdd() {
 
 function onEdit(category: ExpenseCategory) {
   editId.value = category._id
+  editInUse.value = !!category.inUse
   form.displayName = category.displayName
   form.type = category.type ?? 'outflow'
   showForm.value = true
