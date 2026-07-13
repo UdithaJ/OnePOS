@@ -59,10 +59,10 @@ const createWindow = () => {
 
   win.maximize(); // Open window maximized
 
-  win.webContents.openDevTools();
 
   // Load Vue dev server in development
   if (process.env.NODE_ENV === 'development') {
+    win.webContents.openDevTools();
     win.loadURL('http://localhost:3000');
   } else {
     // Remove the menu bar

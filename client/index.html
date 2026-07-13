@@ -5,6 +5,16 @@
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to Vuetify 4</title>
+    <!--
+      Establishes the CSS cascade order for Tailwind + Vuetify. This lives in
+      the HTML (not in a bundled .css) on purpose: rolldown flattens @import and
+      drops a bare `@layer a, b, c;` order statement from styles/layers.css, so
+      it never survives the build. An inline <style> in <head>, loaded before
+      the bundled stylesheet, registers the layer order authoritatively and
+      cannot be stripped. Without it, Tailwind's reset/utilities override
+      Vuetify layout in the packaged build (sidebar overlap). Later layers win.
+    -->
+    <style>@layer tailwind-theme, tailwind-reset, vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, tailwind-utilities, vuetify-final;</style>
   </head>
   <body>
     <div id="app"></div>

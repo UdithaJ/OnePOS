@@ -1,11 +1,13 @@
-@layer tailwind-theme;
-@layer tailwind-reset;
-
-@layer vuetify-core;
-@layer vuetify-components;
-@layer vuetify-overrides;
-@layer vuetify-utilities;
-
-@layer tailwind-utilities;
-
-@layer vuetify-final;
+/*
+ * CSS cascade order for Tailwind + Vuetify. Later layers win.
+ *
+ * NOTE: In the production build this statement does NOT survive — rolldown
+ * flattens @import and drops the bare `@layer a, b, c;` order declaration as
+ * dead code (confirmed: it is absent from the built CSS regardless of the
+ * minifier). The authoritative order is therefore declared in an inline
+ * <style> in client/index.html <head>, which loads before the bundled
+ * stylesheet and cannot be stripped. Keep the two lists in sync.
+ *
+ * This copy remains as documentation / dev-mode redundancy only.
+ */
+@layer tailwind-theme, tailwind-reset, vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, tailwind-utilities, vuetify-final;
