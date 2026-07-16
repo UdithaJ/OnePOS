@@ -11,16 +11,41 @@
       </header>
       <section class="orders-list">
         <v-alert v-if="errorMsg" type="error" class="mb-4 neomorphic-card">{{ errorMsg }}</v-alert>
-        <v-alert
-          v-if="!loading && !errorMsg && (overdueCount > 0 || dueSoonCount > 0)"
-          :type="overdueCount > 0 ? 'error' : 'warning'"
-          variant="tonal"
-          class="mb-4"
+        <div
+          v-if="!loading && !errorMsg && (overdueCount > 0 || dueSoonCount > 0 || filterDue)"
+          class="d-flex align-center flex-wrap gap-2 mb-4"
         >
-          <span v-if="dueSoonCount > 0">{{ dueSoonCount }} Order/s Due Soon</span>
-          <span v-if="dueSoonCount > 0 && overdueCount > 0"> • </span>
-          <span v-if="overdueCount > 0">{{ overdueCount }} Order/s Overdue</span>
-        </v-alert>
+          <v-chip
+            color="error"
+            :variant="filterDue === 'overdue' ? 'flat' : 'tonal'"
+            label
+            style="cursor: pointer;"
+            @click="toggleDueFilter('overdue')"
+          >
+            <v-icon start size="16">mdi-alert-circle-outline</v-icon>
+            {{ overdueCount }} Order/s Overdue
+          </v-chip>
+          <v-chip
+            color="warning"
+            :variant="filterDue === 'dueSoon' ? 'flat' : 'tonal'"
+            label
+            style="cursor: pointer;"
+            @click="toggleDueFilter('dueSoon')"
+          >
+            <v-icon start size="16">mdi-timer-sand</v-icon>
+            {{ dueSoonCount }} Order/s Due Soon
+          </v-chip>
+          <v-btn
+            v-if="filterDue"
+            variant="text"
+            size="small"
+            style="text-transform: none;"
+            @click="clearDueFilter"
+          >
+            <v-icon start size="16">mdi-close</v-icon>
+            Clear
+          </v-btn>
+        </div>
         <v-skeleton-loader v-if="loading" type="table" class="mb-4 neomorphic-card" :loading="loading" />
         <div v-if="!loading && !errorMsg">
           <v-card class="base-list-card base-list-card--teal">
@@ -577,7 +602,7 @@ const orderHeaders = [
 ]
 
 import { getOrders, getOrderById, updateOrder } from '@/services/orderApiService'
-import { localDayStartISO, localDayEndISO } from '@/utils/reportDate'
+import { localDayStartISO, localDayEndISO, localToday } from '@/utils/reportDate'
 import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
 import { checkOrderCapacity, getSystemSettings, type CapacityCheckResult } from '@/services/systemSettingsApiService'
 const payments = ref<any[]>([])
@@ -621,6 +646,9 @@ const filterDeliveryDateFrom = ref('')
 const filterDeliveryDateTo = ref('')
 const filterCustomerID = ref<string | null>('')
 const filterPhone = ref('')
+// Quick "due state" filter driven by the Overdue / Due Soon chips above the list.
+// Owns the status + delivery-date query dimensions while active (see loadOrders).
+const filterDue = ref<'' | 'overdue' | 'dueSoon'>('')
 const filterCreatedDateFrom = ref('')
 const filterCreatedDateTo = ref('')
 const showFilterDialog = ref(false)
@@ -729,8 +757,10 @@ const originalSubordersSnapshot = ref('')
 const originalOrderStatus = ref('')
 const isOrderFullyLocked = computed(() => originalOrderStatus.value === 'delivered')
 const dueSoonLeadDays = ref<number>(1)
-const overdueCount = computed(() => orders.value.filter(o => o.overdue).length)
-const dueSoonCount = computed(() => orders.value.filter(o => o.dueSoon).length)
+// Total overdue / due-soon counts across ALL orders (not just the current page).
+// Refreshed from the backend via fetchDueCounts() whenever the order set changes.
+const overdueCount = ref(0)
+const dueSoonCount = ref(0)
 
 function addSuborder() {
   suborders.value.push({ category: '', weight: '', amount: 0 })
@@ -918,6 +948,8 @@ async function loadCustomersAndOrders() {
     totalOrders.value = orderResult.total
     setOrdersFromData(orderResult.orders)
     console.log('[OrderList] orders after set:', orders.value.length)
+    // Populate the overdue / due-soon chip totals (dueSoonLeadDays is set above).
+    fetchDueCounts()
   } catch (err) {
     errorMsg.value = 'Failed to load orders or related data. Please try again.'
     console.error('Data load error:', err)
@@ -969,18 +1001,72 @@ function setOrdersFromData(orderData: any[]) {
   })
 }
 
+// Local calendar day ('YYYY-MM-DD') offset from today by `days`, in the browser
+// timezone — mirrors the boundaries used by deliveryState() for overdue/due-soon.
+function localDayOffset(days: number): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + days)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Query params that select overdue / due-soon orders, matching deliveryState():
+// only 'todo' orders qualify (delivered/done/cancelled are excluded); overdue =
+// delivery date before today, due-soon = today through today + dueSoonLeadDays.
+// Shared by the list filter and the total-count queries so they always agree.
+function dueFilterParams(kind: 'overdue' | 'dueSoon'): {
+  status: string; deliveryDateFrom: string | undefined; deliveryDateTo: string
+} {
+  if (kind === 'overdue') {
+    return { status: 'todo', deliveryDateFrom: undefined, deliveryDateTo: localDayEndISO(localDayOffset(-1)) }
+  }
+  return {
+    status: 'todo',
+    deliveryDateFrom: localDayStartISO(localToday()),
+    deliveryDateTo: localDayEndISO(localDayOffset(Math.max(0, Number(dueSoonLeadDays.value) || 0))),
+  }
+}
+
+// Fetch the total overdue / due-soon counts across all orders (independent of the
+// current page and of customer/phone/search filters), for the chip labels.
+async function fetchDueCounts() {
+  try {
+    const [ov, ds] = await Promise.all([
+      getOrders({ ...dueFilterParams('overdue'), page: 1, limit: 1 }),
+      getOrders({ ...dueFilterParams('dueSoon'), page: 1, limit: 1 }),
+    ])
+    overdueCount.value = ov.total
+    dueSoonCount.value = ds.total
+  } catch (err) {
+    console.error('fetchDueCounts error:', err)
+  }
+}
+
 async function loadOrders() {
   if (tableLoading.value) return
   tableLoading.value = true
   try {
+    // Base status + delivery-date window come from the filter panel, but when a
+    // due-state chip is active it owns those two dimensions (see dueFilterParams).
+    let statusParam = filterStatus.value.length ? filterStatus.value.join(',') : undefined
+    let deliveryDateFrom = filterDeliveryDateFrom.value ? localDayStartISO(filterDeliveryDateFrom.value) : undefined
+    let deliveryDateTo = filterDeliveryDateTo.value ? localDayEndISO(filterDeliveryDateTo.value) : undefined
+
+    if (filterDue.value) {
+      const due = dueFilterParams(filterDue.value)
+      statusParam = due.status
+      deliveryDateFrom = due.deliveryDateFrom
+      deliveryDateTo = due.deliveryDateTo
+    }
+
     const result = await getOrders({
       page: page.value,
       limit: itemsPerPage.value,
       sortBy: sortKey.value,
       sortOrder: sortOrder.value,
-      status: filterStatus.value.length ? filterStatus.value.join(',') : undefined,
-      deliveryDateFrom: filterDeliveryDateFrom.value ? localDayStartISO(filterDeliveryDateFrom.value) : undefined,
-      deliveryDateTo: filterDeliveryDateTo.value ? localDayEndISO(filterDeliveryDateTo.value) : undefined,
+      status: statusParam,
+      deliveryDateFrom,
+      deliveryDateTo,
       customerID: filterCustomerID.value || undefined,
       phone: filterPhone.value?.trim() || undefined,
       createdDateFrom: filterCreatedDateFrom.value ? localDayStartISO(filterCreatedDateFrom.value) : undefined,
@@ -989,6 +1075,8 @@ async function loadOrders() {
     })
     totalOrders.value = result.total
     setOrdersFromData(result.orders)
+    // Keep the chip totals fresh after any reload (create/update/status change).
+    fetchDueCounts()
   } catch (err) {
     errorMsg.value = 'Failed to load orders. Please try again.'
     console.error('loadOrders error:', err)
@@ -997,7 +1085,31 @@ async function loadOrders() {
   }
 }
 
+// Overdue / Due Soon chips: toggle the quick due-state filter. Clicking a chip
+// clears the panel's status + delivery-date fields (which the chip overrides) to
+// keep a single, obvious source of truth for those dimensions.
+function toggleDueFilter(kind: 'overdue' | 'dueSoon') {
+  if (filterDue.value === kind) {
+    filterDue.value = ''
+  } else {
+    filterDue.value = kind
+    filterStatus.value = []
+    filterDeliveryDateFrom.value = ''
+    filterDeliveryDateTo.value = ''
+  }
+  page.value = 1
+  loadOrders()
+}
+
+function clearDueFilter() {
+  filterDue.value = ''
+  page.value = 1
+  loadOrders()
+}
+
 function applyFilters() {
+  // The panel owns status + delivery date, so applying it clears the quick chip.
+  filterDue.value = ''
   showFilterDialog.value = false
   page.value = 1
   loadOrders()
@@ -1011,6 +1123,7 @@ function clearFilters() {
   filterPhone.value = ''
   filterCreatedDateFrom.value = ''
   filterCreatedDateTo.value = ''
+  filterDue.value = ''
   page.value = 1
   loadOrders()
 }
