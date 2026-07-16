@@ -41,6 +41,7 @@ export interface OrdersParams {
   createdDateFrom?: string
   createdDateTo?: string
   search?: string
+  phone?: string
 }
 
 export interface OrdersPage {

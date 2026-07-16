@@ -4,7 +4,7 @@
       <header class="header neomorphic-card">
         <div class="breadcrumbs">Softwash · Orders</div>
         <div class="title-search">
-          <input class="search" type="text" placeholder="Search by order #, customer, phone..." v-model="searchQuery" />
+          <input class="search" type="text" placeholder="Search by order #..." v-model="searchQuery" />
           <button class="new-order" @click="handleNewOrderClick">+ New order</button>
         </div>
         <!-- Status button filters removed as requested -->
@@ -97,6 +97,28 @@
                     density="compact"
                     hide-details
                   />
+                </div>
+                <div class="mb-4">
+                  <div class="text-subtitle-2 mb-1 text-medium-emphasis">Phone</div>
+                  <v-autocomplete
+                    v-model="filterPhone"
+                    :items="phoneItems"
+                    item-title="title"
+                    item-value="value"
+                    placeholder="Search by phone number"
+                    clearable
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  >
+                    <template #item="{ item, props: itemProps }">
+                      <v-list-item v-bind="itemProps">
+                        <template #subtitle>
+                          <span style="font-size: 12px; color: #6b7280;">{{ (item as any).raw?.name }}</span>
+                        </template>
+                      </v-list-item>
+                    </template>
+                  </v-autocomplete>
                 </div>
                 <div class="mb-4">
                   <div class="text-subtitle-2 mb-1 text-medium-emphasis">Delivery Date</div>
@@ -598,6 +620,7 @@ const filterStatus = ref<string[]>([])
 const filterDeliveryDateFrom = ref('')
 const filterDeliveryDateTo = ref('')
 const filterCustomerID = ref<string | null>('')
+const filterPhone = ref('')
 const filterCreatedDateFrom = ref('')
 const filterCreatedDateTo = ref('')
 const showFilterDialog = ref(false)
@@ -606,6 +629,7 @@ const activeFilterCount = computed(() => {
   let n = 0
   if (filterStatus.value.length) n++
   if (filterCustomerID.value) n++
+  if (filterPhone.value) n++
   if (filterDeliveryDateFrom.value || filterDeliveryDateTo.value) n++
   if (filterCreatedDateFrom.value || filterCreatedDateTo.value) n++
   return n
@@ -659,6 +683,20 @@ const customerSearchItems = computed(() => [
   ...customers.value,
   { label: '+ Add New Customer', value: '__add_new__', mobileNumber: '', isAction: true }
 ])
+
+// Phone-number suggestions for the filter panel, derived from the loaded
+// customers (deduped) so the Phone field offers typeahead like the Customer field.
+const phoneItems = computed(() => {
+  const seen = new Set<string>()
+  const items: Array<{ title: string; value: string; name: string }> = []
+  for (const c of customers.value) {
+    const phone = (c.mobileNumber || '').trim()
+    if (!phone || seen.has(phone)) continue
+    seen.add(phone)
+    items.push({ title: phone, value: phone, name: c.label })
+  }
+  return items
+})
 
 function customerFilter(_value: string, query: string, item?: any): boolean {
   if (item?.raw?.isAction) return true
@@ -944,6 +982,7 @@ async function loadOrders() {
       deliveryDateFrom: filterDeliveryDateFrom.value ? localDayStartISO(filterDeliveryDateFrom.value) : undefined,
       deliveryDateTo: filterDeliveryDateTo.value ? localDayEndISO(filterDeliveryDateTo.value) : undefined,
       customerID: filterCustomerID.value || undefined,
+      phone: filterPhone.value?.trim() || undefined,
       createdDateFrom: filterCreatedDateFrom.value ? localDayStartISO(filterCreatedDateFrom.value) : undefined,
       createdDateTo: filterCreatedDateTo.value ? localDayEndISO(filterCreatedDateTo.value) : undefined,
       search: searchQuery.value || undefined,
@@ -969,6 +1008,7 @@ function clearFilters() {
   filterDeliveryDateFrom.value = ''
   filterDeliveryDateTo.value = ''
   filterCustomerID.value = ''
+  filterPhone.value = ''
   filterCreatedDateFrom.value = ''
   filterCreatedDateTo.value = ''
   page.value = 1
