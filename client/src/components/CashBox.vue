@@ -31,7 +31,7 @@
       </template>
     </div>
 
-    <div class="px-5 pb-5 flex items-center justify-between">
+    <div class="px-5 pb-5 flex items-center justify-between flex-wrap gap-2">
       <template v-if="activeSession">
         <v-btn
           color="error"
@@ -41,7 +41,7 @@
           :loading="actionLoading"
           :disabled="actionLoading"
         >Close Cash Box</v-btn>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-shrink-0">
           <v-btn icon="mdi-plus" size="small"
             style="background: #0f766e; color: #ffffff;"
             @click="showInflowDialog = true" />

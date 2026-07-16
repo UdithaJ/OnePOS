@@ -13,7 +13,7 @@
       </h2>
 
       <!-- Stat cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <!-- Completed Orders -->
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="bg-[#0d3d38] px-5 py-3 flex items-center gap-2">
@@ -44,7 +44,7 @@
             <v-icon color="white" size="20">mdi-timer-sand</v-icon>
             <span class="text-white text-sm font-medium">Pending Orders</span>
           </div>
-          <div class="px-5 py-5 flex items-center justify-between">
+          <div class="px-5 py-5 flex items-center justify-between gap-3 flex-wrap">
             <div>
               <div class="text-3xl font-bold text-gray-900">{{ pendingCount }}</div>
               <div class="text-sm text-gray-500 mt-1">Orders Pending</div>
@@ -59,7 +59,7 @@
       </div>
 
       <!-- CashBox + Bank Transfers + Quick Actions -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <CashBox @session-changed="bankTransfersCard?.fetchBankTransfers()" />
         <BankTransfersCard ref="bankTransfersCard" />
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
