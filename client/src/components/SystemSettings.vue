@@ -42,6 +42,33 @@
             >Save Settings</v-btn>
           </div>
         </v-form>
+
+        <!-- Bill printer (desktop app only; stored per workstation) -->
+        <div v-if="isElectron" class="mt-8 pt-6" style="border-top: 1px solid #e5e7eb;">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-800">Bill Printer</span>
+            <v-btn
+              variant="text"
+              size="small"
+              :loading="loadingPrinters"
+              style="text-transform: none;"
+              @click="loadPrinters"
+            >Refresh</v-btn>
+          </div>
+          <v-select
+            v-model="billPrinter"
+            :items="printerItems"
+            item-title="title"
+            item-value="value"
+            label="Printer for bills"
+            :loading="loadingPrinters"
+            :disabled="savingPrinter"
+            hint="Bills print silently to this printer on this computer. Leave on 'System default' to use the Windows default."
+            persistent-hint
+            variant="outlined"
+            @update:model-value="savePrinter"
+          />
+        </div>
       </div>
     </v-card>
 
@@ -178,6 +205,52 @@ async function save() {
   }
 }
 
+// Bill printer state (desktop app only — persisted in machine-local electron-store)
+const electronStore = (window as any).electronStore
+const isElectron = !!(electronStore && electronStore.getPrinters)
+const billPrinter = ref<string>('')
+const printerItems = ref<{ title: string; value: string }[]>([{ title: 'System default', value: '' }])
+const loadingPrinters = ref(false)
+const savingPrinter = ref(false)
+
+async function loadPrinters() {
+  if (!isElectron) return
+  loadingPrinters.value = true
+  try {
+    const printers = (await electronStore.getPrinters()) || []
+    printerItems.value = [
+      { title: 'System default', value: '' },
+      ...printers.map((p: any) => ({
+        title: p.displayName || p.name,
+        value: p.name,
+      })),
+    ]
+    // Load the saved choice (may be a printer that's no longer connected).
+    const saved = (await electronStore.get('billPrinter')) || ''
+    billPrinter.value = saved
+    if (saved && !printerItems.value.some(i => i.value === saved)) {
+      printerItems.value.push({ title: `${saved} (not connected)`, value: saved })
+    }
+  } catch {
+    showToast('Failed to load printers', 'error')
+  } finally {
+    loadingPrinters.value = false
+  }
+}
+
+async function savePrinter(value: string) {
+  if (!isElectron) return
+  savingPrinter.value = true
+  try {
+    await electronStore.set('billPrinter', value || '')
+    showToast(value ? `Bills will print to "${value}"` : 'Bills will use the system default printer', 'success')
+  } catch {
+    showToast('Failed to save printer', 'error')
+  } finally {
+    savingPrinter.value = false
+  }
+}
+
 // Bulk SMS state
 const customers = ref<any[]>([])
 const selectedCustomers = ref<string[]>([])
@@ -228,5 +301,6 @@ async function sendSms() {
 onMounted(() => {
   load()
   loadCustomers()
+  loadPrinters()
 })
 </script>

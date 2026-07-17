@@ -7,10 +7,29 @@ async function getPrinters(event) {
   return event.sender.getPrintersAsync();
 }
 
-async function printBill(event, htmlContent, copies = 1) {
+async function printBill(event, htmlContent, copies = 1, printerName = '') {
   const printers = await event.sender.getPrintersAsync();
-  const printer = printers.find(p => p.isDefault) || printers[0];
-  console.log('[print-bill] printers:', printers.length, '| using:', printer?.name || 'system default');
+
+  // Selection priority:
+  //  1. The printer the operator explicitly saved for this workstation (matched
+  //     by exact then case-insensitive name).
+  //  2. Otherwise defer to the OS default by leaving deviceName empty.
+  // We deliberately do NOT fall back to printers[0]/isDefault: on Windows,
+  // Electron's isDefault flag is unreliable and printers[0] can resolve to a
+  // virtual device such as "Microsoft Print to PDF", sending the bill there
+  // instead of the real default printer.
+  let printer = null;
+  if (printerName) {
+    printer =
+      printers.find(p => p.name === printerName) ||
+      printers.find(p => p.name.toLowerCase() === printerName.toLowerCase());
+  }
+  const deviceName = printer ? printer.name : '';
+  console.log(
+    '[print-bill] printers:', printers.length,
+    '| requested:', printerName || '(none)',
+    '| using:', deviceName || 'OS default'
+  );
 
   // Write HTML to a temp file so Chromium loads it via a single clean navigation.
   // The about:blank + executeJavaScript(document.write) approach causes a second
@@ -33,7 +52,7 @@ async function printBill(event, htmlContent, copies = 1) {
         // Allow CSS layout to complete before printing
         await new Promise(r => setTimeout(r, 500));
 
-        console.log('[print-bill] sending to printer:', printer?.name || 'system default');
+        console.log('[print-bill] sending to printer:', deviceName || 'OS default');
 
         // Use the callback form — Electron calls it even in builds where the return
         // is void. The callback is the only reliable signal that the job was submitted.
@@ -41,7 +60,7 @@ async function printBill(event, htmlContent, copies = 1) {
           {
             silent: true,
             printBackground: true,
-            deviceName: printer?.name || '',
+            deviceName,
             copies: Math.max(1, parseInt(copies) || 1),
           },
           (success, failureReason) => {
@@ -50,7 +69,7 @@ async function printBill(event, htmlContent, copies = 1) {
             // Keep the window alive so the OS can fully spool before it closes
             setTimeout(() => { try { printWindow.close(); } catch (_) {} }, 3000);
             if (success) {
-              resolve({ success: true, printer: printer?.name || 'default' });
+              resolve({ success: true, printer: deviceName || 'OS default' });
             } else {
               reject(new Error(failureReason || 'Print failed'));
             }

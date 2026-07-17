@@ -1348,7 +1348,9 @@ async function printBill(order: any, copies = 1) {
   const electronStore = (window as any).electronStore
   if (electronStore?.printBill) {
     try {
-      await electronStore.printBill(htmlContent, copies)
+      // Per-workstation printer chosen in System Settings (stored in electron-store).
+      const savedPrinter = electronStore.get ? await electronStore.get('billPrinter') : ''
+      await electronStore.printBill(htmlContent, copies, savedPrinter || '')
       showToast('Bill sent to printer!', 'success')
     } catch (e) {
       console.error('Auto-print failed:', e)
