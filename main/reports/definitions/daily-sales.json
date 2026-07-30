@@ -1,0 +1,59 @@
+{
+  "id": "daily-sales",
+  "title": "Daily Sales Report",
+  "menuTitle": "Daily Sales",
+  "group": "Reports",
+  "icon": "mdi-chart-timeline-variant",
+  "permission": "admin",
+  "order": 10,
+
+  "exportTitle": "Daily Sales Report",
+  "exportBasename": "daily-sales-report",
+  "sheetName": "Daily Sales",
+  "orientation": "landscape",
+  "emptyMessage": "No orders found for the selected date range.",
+
+  "params": [
+    { "name": "fromDate", "type": "date", "label": "From Date", "default": "today", "required": true, "bind": "dayStart" },
+    { "name": "toDate", "type": "date", "label": "To Date", "default": "today", "required": true, "bind": "dayEnd" }
+  ],
+
+  "source": { "model": "order", "processor": "daily-sales" },
+
+  "groups": [
+    {
+      "name": "date",
+      "by": "createdDate",
+      "granularity": "day",
+      "aggregates": [
+        { "key": "dateTotalAmount", "fn": "sum", "of": "netAmount", "distinctBy": "order" }
+      ]
+    },
+    { "name": "order", "by": "orderId" }
+  ],
+
+  "columns": [
+    { "key": "createdDate", "label": "Date", "type": "date", "span": "order" },
+    { "key": "orderNo", "label": "Order No", "type": "text", "pad": 4, "span": "order" },
+    { "key": "customerName", "label": "Customer", "type": "text", "span": "order" },
+    { "key": "deliveryDate", "label": "Delivery Date", "type": "date", "span": "order" },
+    { "key": "status", "label": "Status", "type": "badge", "valueMap": "orderStatus", "span": "order" },
+    { "key": "rackNumber", "label": "Rack No", "type": "text", "align": "center", "emptyAs": "-", "span": "order" },
+    { "key": "categoryName", "label": "Laundry Category", "type": "text" },
+    { "key": "weight", "label": "Weight (kg)", "type": "number", "align": "right", "format": "plain" },
+    { "key": "amount", "label": "Amount", "type": "number", "align": "right", "format": "fixed", "decimals": 2 },
+    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "fixed", "decimals": 2, "zeroAs": "-", "span": "order" },
+    { "key": "netAmount", "label": "Net Amount", "type": "number", "align": "right", "format": "fixed", "decimals": 2, "span": "order" },
+    { "key": "dateTotalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "fixed", "decimals": 2, "span": "date", "emphasis": true }
+  ],
+
+  "footer": {
+    "label": "Total for the given period",
+    "column": "dateTotalAmount",
+    "fn": "sum",
+    "of": "netAmount",
+    "distinctBy": "order",
+    "format": "fixed",
+    "decimals": 2
+  }
+}

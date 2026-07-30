@@ -1,0 +1,48 @@
+{
+  "id": "bank-reconciliation",
+  "title": "Bank Transfer Reconciliation",
+  "menuTitle": "Bank Reconciliation",
+  "group": "Reports",
+  "icon": "mdi-bank-transfer",
+  "permission": "admin",
+  "order": 30,
+
+  "exportTitle": "Bank Transfer Reconciliation",
+  "exportBasename": "bank-reconciliation",
+  "sheetName": "Bank Reconciliation",
+  "orientation": "portrait",
+  "emptyMessage": "No bank deposit records found for the selected date range.",
+
+  "params": [
+    { "name": "fromDate", "type": "date", "label": "From Date", "default": "today", "required": true, "bind": "dayStart" },
+    { "name": "toDate", "type": "date", "label": "To Date", "default": "today", "required": true, "bind": "dayEnd" }
+  ],
+
+  "source": { "model": "expense", "processor": "bank-reconciliation" },
+
+  "groups": [{ "name": "date", "by": "date", "granularity": "day" }],
+
+  "columns": [
+    { "key": "date", "label": "Date", "type": "date", "span": "date" },
+    { "key": "description", "label": "Description", "type": "text" },
+    {
+      "key": "amount",
+      "label": "Amount",
+      "type": "number",
+      "align": "right",
+      "format": "grouped",
+      "exportFormat": "fixed",
+      "exportDecimals": 2
+    }
+  ],
+
+  "footer": {
+    "label": "Total Reconcile Value",
+    "column": "amount",
+    "fn": "sum",
+    "of": "amount",
+    "format": "grouped",
+    "exportFormat": "fixed",
+    "exportDecimals": 2
+  }
+}

@@ -83,6 +83,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { useReportCatalog } from '../composables/useReport'
 
 const drawer = ref(true)
 const router = useRouter()
@@ -138,25 +139,29 @@ const allMenuItems: MenuItem[] = [
       { title: 'Cashflow Categories', to: '/expense-categories', icon: 'mdi-cash-sync' },
     ],
   },
-  {
-    title: 'Reports',
-    icon: 'mdi-chart-bar',
-    adminOnly: true,
-    children: [
-      { title: 'Daily Sales', to: '/reports/daily-sales', icon: 'mdi-chart-timeline-variant' },
-      { title: 'Pending Orders', to: '/reports/pending-orders', icon: 'mdi-clock-alert-outline' },
-      { title: 'Bank Reconciliation', to: '/reports/bank-reconciliation', icon: 'mdi-bank-transfer' },
-      { title: 'Expenses', to: '/reports/expenses', icon: 'mdi-cash-minus' },
-      { title: 'Returning Customers', to: '/reports/returning-customers', icon: 'mdi-account-reactivate' },
-      { title: 'Cash Box Summary', to: '/reports/cash-box-summary', icon: 'mdi-cash-register' },
-      { title: 'Bank Transfer Tracking', to: '/reports/bank-transfer-tracking', icon: 'mdi-bank-transfer-in' },
-    ],
-  },
 ]
 
-const menuItems = computed(() =>
-  isAdmin.value ? allMenuItems : allMenuItems.filter(item => !item.adminOnly)
-)
+// The Reports submenu is built from GET /api/reports, so adding a definition
+// file on the backend adds a menu entry with no change here.
+const { catalog, loadCatalog } = useReportCatalog()
+onMounted(loadCatalog)
+
+const reportsMenu = computed<MenuItem>(() => ({
+  title: 'Reports',
+  icon: 'mdi-chart-bar',
+  adminOnly: true,
+  children: catalog.value.map(report => ({
+    title: report.menuTitle,
+    to: `/reports/${report.id}`,
+    icon: report.icon,
+  })),
+}))
+
+const menuItems = computed(() => {
+  const items = [...allMenuItems]
+  if (reportsMenu.value.children?.length) items.push(reportsMenu.value)
+  return isAdmin.value ? items : items.filter(item => !item.adminOnly)
+})
 
 function isActive(to?: string) {
   return !!to && route.path === to

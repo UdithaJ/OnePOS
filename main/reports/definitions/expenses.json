@@ -1,0 +1,62 @@
+{
+  "id": "expenses",
+  "title": "Expenses Report (Cash Outflow)",
+  "menuTitle": "Expenses",
+  "group": "Reports",
+  "icon": "mdi-cash-minus",
+  "permission": "admin",
+  "order": 40,
+
+  "exportTitle": "Expenses Report",
+  "exportBasename": "expenses-report",
+  "sheetName": "Expenses",
+  "orientation": "portrait",
+  "emptyMessage": "No expenses found for the selected date range and type.",
+
+  "params": [
+    { "name": "fromDate", "type": "date", "label": "From Date", "default": "today", "required": true, "bind": "dayStart" },
+    { "name": "toDate", "type": "date", "label": "To Date", "default": "today", "required": true, "bind": "dayEnd" },
+    {
+      "name": "expenseTypeId",
+      "type": "select",
+      "label": "Expense Type",
+      "default": "all",
+      "width": 220,
+      "optionsFrom": {
+        "endpoint": "/api/expense-categories",
+        "valueField": "_id",
+        "labelField": "displayName",
+        "includeAll": { "label": "All", "value": "all" },
+        "filter": { "type": "outflow", "labelNotMatching": "^bank deposite$" }
+      }
+    }
+  ],
+
+  "source": { "model": "expense", "processor": "expenses" },
+
+  "groups": [{ "name": "date", "by": "date", "granularity": "day" }],
+
+  "columns": [
+    { "key": "date", "label": "Date", "type": "date", "span": "date" },
+    { "key": "description", "label": "Description", "type": "text" },
+    {
+      "key": "amount",
+      "label": "Amount",
+      "type": "number",
+      "align": "right",
+      "format": "grouped",
+      "exportFormat": "fixed",
+      "exportDecimals": 2
+    }
+  ],
+
+  "footer": {
+    "label": "Total Expenses for the Given Period",
+    "column": "amount",
+    "fn": "sum",
+    "of": "amount",
+    "format": "grouped",
+    "exportFormat": "fixed",
+    "exportDecimals": 2
+  }
+}

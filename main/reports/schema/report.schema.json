@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://onepos/report.schema.json",
+  "title": "Report definition",
+  "description": "Authored contract for main/reports/definitions/*.json. Runtime enforcement lives in engine/validateDefinition.js (hand-rolled so the engine needs no ajv dependency); this file is the reference and the source for client/src/types/report.ts.",
+  "type": "object",
+  "required": ["id", "title", "source", "columns"],
+  "additionalProperties": false,
+
+  "properties": {
+    "id": { "type": "string", "description": "Also the URL segment: /reports/:id" },
+    "title": { "type": "string" },
+    "menuTitle": { "type": "string", "description": "Shorter label for the nav; defaults to title" },
+    "group": { "type": "string", "default": "Reports" },
+    "icon": { "type": "string", "description": "mdi- icon name for the nav entry" },
+    "permission": { "type": ["string", "null"] },
+    "order": { "type": "integer", "description": "Sort position within the nav group" },
+
+    "exportTitle": { "type": "string", "description": "Heading printed on the PDF" },
+    "exportBasename": { "type": "string", "description": "Export filename stem" },
+    "sheetName": { "type": "string", "description": "Excel worksheet name" },
+    "orientation": { "enum": ["portrait", "landscape"], "default": "landscape" },
+    "emptyMessage": {
+      "type": "string",
+      "description": "Shown when the report returns no rows. {paramName} is interpolated from the current filter values."
+    },
+
+    "params": { "type": "array", "items": { "$ref": "#/definitions/param" } },
+    "source": { "$ref": "#/definitions/source" },
+    "groups": { "type": "array", "items": { "$ref": "#/definitions/group" } },
+    "columns": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/column" } },
+    "footer": {
+      "oneOf": [
+        { "$ref": "#/definitions/footer" },
+        { "type": "array", "items": { "$ref": "#/definitions/footer" } }
+      ]
+    }
+  },
+
+  "definitions": {
+    "source": {
+      "type": "object",
+      "required": ["model", "processor"],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string", "description": "File stem under main/models/" },
+        "processor": { "type": "string", "description": "File stem under main/reports/processors/" }
+      }
+    },
+
+    "param": {
+      "type": "object",
+      "required": ["name", "type", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "enum": ["date", "number", "text", "select"] },
+        "label": { "type": "string" },
+        "default": { "type": ["string", "number"], "description": "'today' resolves to the local date" },
+        "required": { "type": "boolean" },
+        "bind": {
+          "enum": ["dayStart", "dayEnd"],
+          "description": "Marks a date param as the local start/end of the chosen day. The client converts before sending; the server receives an absolute instant."
+        },
+        "options": { "type": "array", "items": { "$ref": "#/definitions/option" } },
+        "optionsFrom": { "$ref": "#/definitions/optionsFrom" },
+        "min": { "type": "number" },
+        "width": { "type": "number" },
+        "placeholder": { "type": "string" },
+        "serverDefault": { "type": ["string", "number"] }
+      }
+    },
+
+    "option": {
+      "type": "object",
+      "required": ["label", "value"],
+      "additionalProperties": false,
+      "properties": { "label": { "type": "string" }, "value": { "type": "string" } }
+    },
+
+    "optionsFrom": {
+      "type": "object",
+      "required": ["endpoint", "valueField", "labelField"],
+      "additionalProperties": false,
+      "properties": {
+        "endpoint": { "type": "string" },
+        "valueField": { "type": "string" },
+        "labelField": { "type": "string" },
+        "includeAll": { "$ref": "#/definitions/option" },
+        "filter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string" },
+            "labelNotMatching": { "type": "string", "description": "Case-insensitive regex; matching options are dropped" }
+          }
+        }
+      }
+    },
+
+    "group": {
+      "type": "object",
+      "required": ["name", "by"],
+      "additionalProperties": false,
+      "description": "Groups are declared outer-to-inner. Rows are ordered by first appearance of each group key.",
+      "properties": {
+        "name": { "type": "string" },
+        "by": { "type": "string", "description": "Row field the group key is taken from" },
+        "granularity": { "enum": ["day"], "description": "Bucket the key by local calendar day in the request timezone" },
+        "aggregates": { "type": "array", "items": { "$ref": "#/definitions/aggregate" } }
+      }
+    },
+
+    "aggregate": {
+      "type": "object",
+      "required": ["key", "fn"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string", "description": "Field the result is written to on every row of the group" },
+        "fn": { "enum": ["sum", "count"] },
+        "of": { "type": "string", "description": "Row field to sum; required for fn: sum" },
+        "distinctBy": {
+          "type": "string",
+          "description": "Name of another group. Counts each instance of that group once, taking the value from its first row — e.g. sum net amount once per order, not once per order line."
+        }
+      }
+    },
+
+    "column": {
+      "type": "object",
+      "required": ["key", "label", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string" },
+        "label": { "type": "string" },
+        "type": { "enum": ["text", "number", "date", "badge"] },
+        "align": { "enum": ["left", "right", "center"] },
+        "span": { "type": "string", "description": "Name of the group this column's cells merge across" },
+        "format": { "enum": ["fixed", "grouped", "plain"] },
+        "decimals": { "type": "integer" },
+        "pad": { "type": "integer", "description": "Zero-pad a value rendered as text, e.g. 12 -> '0012'" },
+        "zeroAs": { "type": "string", "description": "Rendered instead of a value <= 0" },
+        "emptyAs": { "type": "string", "description": "Rendered instead of null/undefined/''" },
+        "suffix": { "type": "string" },
+        "emphasis": { "type": "boolean", "description": "Highlighted cell styling" },
+        "valueMap": { "type": "string", "description": "Named map in engine/valueMaps.js; required for type badge" },
+        "exportLabel": { "type": "string" },
+        "exportFormat": { "enum": ["fixed", "grouped", "plain"] },
+        "exportDecimals": { "type": "integer" },
+        "exportZeroAs": { "type": "string" }
+      }
+    },
+
+    "footer": {
+      "type": "object",
+      "required": ["label", "column", "fn"],
+      "additionalProperties": false,
+      "description": "The label's colspan is derived from the column's index — never authored.",
+      "properties": {
+        "label": { "type": "string" },
+        "column": { "type": "string", "description": "Column the value is placed under" },
+        "fn": { "enum": ["sum", "count"] },
+        "of": { "type": "string" },
+        "distinctBy": { "type": "string" },
+        "format": { "enum": ["fixed", "grouped", "plain"] },
+        "decimals": { "type": "integer" },
+        "suffix": { "type": "string" },
+        "exportFormat": { "enum": ["fixed", "grouped", "plain"] },
+        "exportDecimals": { "type": "integer" },
+        "exportSuffix": { "type": "string" }
+      }
+    }
+  }
+}

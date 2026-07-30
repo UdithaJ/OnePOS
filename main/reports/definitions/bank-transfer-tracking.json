@@ -1,0 +1,42 @@
+{
+  "id": "bank-transfer-tracking",
+  "title": "Bank Transfer Tracking",
+  "menuTitle": "Bank Transfer Tracking",
+  "group": "Reports",
+  "icon": "mdi-bank-transfer-in",
+  "permission": "admin",
+  "order": 70,
+
+  "exportTitle": "Bank Transfer Tracking Report",
+  "exportBasename": "bank-transfer-tracking",
+  "sheetName": "Bank Transfer Tracking",
+  "orientation": "landscape",
+  "emptyMessage": "No bank transfers found for the selected date range.",
+
+  "params": [
+    { "name": "fromDate", "type": "date", "label": "From Date", "default": "today", "required": true, "bind": "dayStart" },
+    { "name": "toDate", "type": "date", "label": "To Date", "default": "today", "required": true, "bind": "dayEnd" }
+  ],
+
+  "source": { "model": "order", "processor": "bank-transfer" },
+
+  "columns": [
+    { "key": "orderNo", "label": "Order No", "type": "text", "pad": 4 },
+    { "key": "createdDate", "label": "Order Created Date", "type": "date" },
+    { "key": "bankTransferDate", "label": "Bank Transfer Date", "type": "date", "emptyAs": "-" },
+    { "key": "customerName", "label": "Customer", "type": "text" },
+    { "key": "totalAmount", "label": "Order Amount", "type": "number", "align": "right", "format": "grouped", "exportFormat": "fixed", "exportDecimals": 2 },
+    { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "exportFormat": "fixed", "exportDecimals": 2 },
+    { "key": "bankTransferAmount", "label": "Bank Transfer Amount", "type": "number", "align": "right", "format": "grouped", "exportFormat": "fixed", "exportDecimals": 2 }
+  ],
+
+  "footer": {
+    "label": "Total Amount Received",
+    "column": "bankTransferAmount",
+    "fn": "sum",
+    "of": "bankTransferAmount",
+    "format": "grouped",
+    "exportFormat": "fixed",
+    "exportDecimals": 2
+  }
+}
