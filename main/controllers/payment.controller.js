@@ -19,7 +19,21 @@ exports.createPayment = async (req, res) => {
     if (req.body.paymentMethod === 'bank' && !req.body.transactionId) {
       return res.status(400).json({ message: 'Transaction ID is required for bank transfers.' });
     }
-    const payment = new Payment(req.body);
+    // Freeze the order's money state onto the payment. Applied after the spread
+    // so a client cannot post its own snapshot, and never rewritten later — this
+    // is what makes a historical report row reproducible.
+    const orderTotalAmount = Number(order.totalAmount || 0);
+    const orderDiscount = Number(order.discount || 0);
+    const dueBefore = Math.max(due, 0);
+    const dueAfter = Math.max(dueBefore - Number(req.body.amount || 0), 0);
+
+    const payment = new Payment({
+      ...req.body,
+      orderTotalAmount,
+      orderDiscount,
+      dueBefore,
+      dueAfter,
+    });
     await payment.save();
 
     // Record bank transfer details in a separate collection
@@ -32,7 +46,7 @@ exports.createPayment = async (req, res) => {
 
     // Keep order-level payment state in sync after every payment.
     const newPaid = paid + Number(payment.amount || 0);
-    const newDue = Math.max(Number(order.totalAmount || 0) - Number(order.discount || 0) - newPaid, 0);
+    const newDue = dueAfter;
     let newPaymentStatus = 'unpaid';
     if (newDue <= 0) {
       newPaymentStatus = 'paid';
