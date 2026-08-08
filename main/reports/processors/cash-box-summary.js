@@ -1,16 +1,17 @@
 // Cash Box Summary (Cash Inflow) — non-bank payments against orders in the
 // period, joined through the cash ledger to the session that recorded them.
+//
+// Each row is a payment *event*, so its money columns come from the snapshot
+// frozen onto the payment when it was taken, not from the live order. Reading
+// the order made every re-run show today's figures: settle an order and last
+// month's report retroactively showed Due Amount 0. Payments predating the
+// snapshot fall back to the order fields — run
+// `node main/scripts/backfillPaymentSnapshots.js` to fill them in.
 
 exports.buildPipeline = ({ params }) => [
-  {
-    $match: {
-      createdDate: { $gte: params.fromDate, $lte: params.toDate },
-      $expr: {
-        $ne: ['$dueAmount', { $subtract: ['$totalAmount', { $ifNull: ['$discount', 0] }] }],
-      },
-    },
-  },
-  // Left join payments — one order may have multiple payments
+  { $match: { createdDate: { $gte: params.fromDate, $lte: params.toDate } } },
+  // Join payments — one order may have multiple payments. A plain $unwind drops
+  // orders with no payments, which is why no order-state prefilter is needed.
   {
     $lookup: {
       from: 'payments',
@@ -19,7 +20,7 @@ exports.buildPipeline = ({ params }) => [
       as: 'payments',
     },
   },
-  { $unwind: { path: '$payments', preserveNullAndEmptyArrays: true } },
+  { $unwind: '$payments' },
   { $match: { 'payments.paymentMethod': { $ne: 'bank' } } },
   {
     $lookup: {
@@ -61,6 +62,15 @@ exports.buildPipeline = ({ params }) => [
     },
   },
   { $unwind: { path: '$session', preserveNullAndEmptyArrays: true } },
+  // Resolve the frozen figures once; fall back to the live order for payments
+  // recorded before snapshots existed.
+  {
+    $addFields: {
+      frozenTotal: { $ifNull: ['$payments.orderTotalAmount', '$totalAmount'] },
+      frozenDiscount: { $ifNull: ['$payments.orderDiscount', { $ifNull: ['$discount', 0] }] },
+      frozenDue: { $ifNull: ['$payments.dueAfter', '$dueAmount'] },
+    },
+  },
   {
     $project: {
       _id: 0,
@@ -80,10 +90,10 @@ exports.buildPipeline = ({ params }) => [
           },
         ],
       },
-      totalAmount: 1,
-      discount: { $ifNull: ['$discount', 0] },
-      orderAmountAfterDiscount: { $subtract: ['$totalAmount', { $ifNull: ['$discount', 0] }] },
-      dueAmount: 1,
+      totalAmount: '$frozenTotal',
+      discount: '$frozenDiscount',
+      orderAmountAfterDiscount: { $subtract: ['$frozenTotal', '$frozenDiscount'] },
+      dueAmount: '$frozenDue',
       paymentMethod: '$payments.paymentMethod',
       paymentReceived: '$payments.amount',
     },
