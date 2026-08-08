@@ -1,89 +1,22 @@
-const reportService = require('../services/report.service.js');
+const { runReport, listDefinitions } = require('../reports/engine/index.js');
 
-exports.getDailySalesReport = async (req, res) => {
+// Catalog — drives the Reports menu in the client nav.
+exports.listReports = async (req, res) => {
   try {
-    const { fromDate, toDate } = req.query;
-    if (!fromDate || !toDate) {
-      return res.status(400).json({ message: 'fromDate and toDate are required (YYYY-MM-DD)' });
-    }
-    const rows = await reportService.getDailySalesReport(fromDate, toDate);
-    res.json(rows);
+    res.json(listDefinitions());
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-exports.getPendingOrdersByDueDate = async (req, res) => {
+// Runs any report by id. Replaces the seven per-report handlers; parameter
+// validation now comes from each report's definition rather than being
+// hand-written here.
+exports.runReport = async (req, res) => {
   try {
-    const { fromDate, toDate, status } = req.query;
-    if (!fromDate || !toDate) {
-      return res.status(400).json({ message: 'fromDate and toDate are required (YYYY-MM-DD)' });
-    }
-    const rows = await reportService.getPendingOrdersByDueDate(fromDate, toDate, status);
-    res.json(rows);
+    const envelope = await runReport(req.params.id, req.query);
+    res.json(envelope);
   } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.getBankTransferReconciliation = async (req, res) => {
-  try {
-    const { fromDate, toDate } = req.query;
-    if (!fromDate || !toDate) {
-      return res.status(400).json({ message: 'fromDate and toDate are required (YYYY-MM-DD)' });
-    }
-    const rows = await reportService.getBankTransferReconciliation(fromDate, toDate);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.getExpensesReport = async (req, res) => {
-  try {
-    const { fromDate, toDate, expenseTypeId } = req.query;
-    if (!fromDate || !toDate) {
-      return res.status(400).json({ message: 'fromDate and toDate are required (YYYY-MM-DD)' });
-    }
-    const rows = await reportService.getExpensesReport(fromDate, toDate, expenseTypeId);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.getReturningCustomers = async (req, res) => {
-  try {
-    const { minOrderCount } = req.query;
-    const rows = await reportService.getReturningCustomers(minOrderCount ?? '0');
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.getCashBoxSummary = async (req, res) => {
-  try {
-    const { fromDate, toDate } = req.query;
-    if (!fromDate || !toDate) {
-      return res.status(400).json({ message: 'fromDate and toDate are required (YYYY-MM-DD)' });
-    }
-    const rows = await reportService.getCashBoxSummary(fromDate, toDate);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.getBankTransferTracking = async (req, res) => {
-  try {
-    const { fromDate, toDate } = req.query;
-    if (!fromDate || !toDate) {
-      return res.status(400).json({ message: 'fromDate and toDate are required (YYYY-MM-DD)' });
-    }
-    const rows = await reportService.getBankTransferTracking(fromDate, toDate);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };

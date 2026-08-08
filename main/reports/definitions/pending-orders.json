@@ -1,0 +1,59 @@
+{
+  "id": "pending-orders",
+  "title": "Pending Orders by Due Date",
+  "menuTitle": "Pending Orders",
+  "group": "Reports",
+  "icon": "mdi-clock-alert-outline",
+  "permission": "admin",
+  "order": 20,
+
+  "exportTitle": "Pending Orders by Due Date",
+  "exportBasename": "pending-orders-report",
+  "sheetName": "Pending Orders",
+  "orientation": "landscape",
+  "emptyMessage": "No pending orders found for the selected date range and status.",
+
+  "params": [
+    { "name": "fromDate", "type": "date", "label": "From Date", "default": "today", "required": true, "bind": "dayStart" },
+    { "name": "toDate", "type": "date", "label": "To Date", "default": "today", "required": true, "bind": "dayEnd" },
+    {
+      "name": "status",
+      "type": "select",
+      "label": "Status",
+      "default": "all",
+      "options": [
+        { "label": "All", "value": "all" },
+        { "label": "To Do", "value": "todo" },
+        { "label": "Done", "value": "done" }
+      ]
+    }
+  ],
+
+  "source": { "model": "order", "processor": "pending-orders" },
+
+  "groups": [
+    { "name": "date", "by": "deliveryDate", "granularity": "day" },
+    { "name": "order", "by": "orderId" }
+  ],
+
+  "columns": [
+    { "key": "deliveryDate", "label": "Due Date", "type": "date", "span": "date" },
+    { "key": "orderNo", "label": "Order No", "type": "text", "pad": 4, "span": "order" },
+    { "key": "customerName", "label": "Customer", "type": "text", "span": "order" },
+    { "key": "mobileNumber", "label": "Mobile No", "type": "text", "span": "order" },
+    { "key": "status", "label": "Status", "type": "badge", "valueMap": "orderStatus", "span": "order" },
+    { "key": "rackNumber", "label": "Rack No", "type": "text", "align": "center", "emptyAs": "-", "span": "order" },
+    { "key": "categoryName", "label": "Laundry Category", "type": "text" },
+    { "key": "weight", "label": "Weight (kg)", "type": "number", "align": "right", "format": "plain" }
+  ],
+
+  "footer": {
+    "label": "Total Pending Weight",
+    "column": "weight",
+    "fn": "sum",
+    "of": "weight",
+    "format": "plain",
+    "suffix": " kg",
+    "exportSuffix": ""
+  }
+}

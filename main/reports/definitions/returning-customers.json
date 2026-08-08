@@ -1,0 +1,42 @@
+{
+  "id": "returning-customers",
+  "title": "Returning Customers",
+  "menuTitle": "Returning Customers",
+  "group": "Reports",
+  "icon": "mdi-account-reactivate",
+  "permission": "admin",
+  "order": 50,
+
+  "exportTitle": "Returning Customers Report",
+  "exportBasename": "returning-customers-report",
+  "sheetName": "Returning Customers",
+  "orientation": "portrait",
+  "emptyMessage": "No customers found with more than {minOrderCount} order(s).",
+
+  "params": [
+    {
+      "name": "minOrderCount",
+      "type": "number",
+      "label": "Order Count Greater Than",
+      "default": 1,
+      "min": 0,
+      "placeholder": "0"
+    }
+  ],
+
+  "source": { "model": "order", "processor": "returning-customers" },
+
+  "columns": [
+    { "key": "customerName", "label": "Customer Name", "type": "text" },
+    { "key": "mobileNumber", "label": "Mobile No", "type": "text" },
+    {
+      "key": "orderCount",
+      "label": "No of Orders until Today",
+      "exportLabel": "No of Orders",
+      "type": "number",
+      "align": "right",
+      "format": "plain"
+    },
+    { "key": "totalWeight", "label": "Total No of Kilos", "type": "number", "align": "right", "format": "plain" }
+  ]
+}

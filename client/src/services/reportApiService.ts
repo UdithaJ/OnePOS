@@ -1,83 +1,26 @@
 import axios from 'axios'
-
-export interface DailySalesRow {
-  orderId: string
-  orderNo: number
-  createdDate: string
-  deliveryDate: string
-  status: string
-  rackNumber: string | null
-  customerName: string
-  categoryName: string
-  weight: number
-  amount: number
-  totalAmount: number
-  discount: number
-}
-
-export interface DailySalesReportParams {
-  fromDate: string
-  toDate: string
-}
+import type { ReportCatalogEntry, ReportEnvelope } from '@/types/report'
 
 const baseUrl = () => import.meta.env.VITE_API_BASE_URL || ''
 
-export async function getDailySalesReport(params: DailySalesReportParams): Promise<DailySalesRow[]> {
-  const response = await axios.get(`${baseUrl()}/api/reports/daily-sales`, { params })
+/** Catalog of every report the backend defines — drives the nav menu and the
+ *  filter bar. Adding a definition file adds a report here with no frontend
+ *  change. */
+export async function getReportCatalog(): Promise<ReportCatalogEntry[]> {
+  const response = await axios.get(`${baseUrl()}/api/reports`)
   return response.data
 }
 
-export interface PendingOrdersRow {
-  orderId: string
-  orderNo: number
-  deliveryDate: string
-  status: string
-  rackNumber: string | null
-  customerName: string
-  mobileNumber: string
-  categoryName: string
-  weight: number
-}
-
-export interface PendingOrdersReportParams {
-  fromDate: string
-  toDate: string
-  status?: string
-}
-
-export async function getPendingOrdersReport(params: PendingOrdersReportParams): Promise<PendingOrdersRow[]> {
-  const response = await axios.get(`${baseUrl()}/api/reports/pending-orders`, { params })
+/** Runs any report. Params are whatever the definition declares; `tz` lets the
+ *  engine bucket rows by the same local day the UI displays. */
+export async function runReport(
+  id: string,
+  params: Record<string, string | number>,
+): Promise<ReportEnvelope> {
+  const response = await axios.get(`${baseUrl()}/api/reports/${id}`, {
+    params: { ...params, tz: Intl.DateTimeFormat().resolvedOptions().timeZone },
+  })
   return response.data
-}
-
-export interface BankReconciliationRow {
-  expenseId: string
-  date: string
-  description: string
-  amount: number
-}
-
-export interface BankReconciliationParams {
-  fromDate: string
-  toDate: string
-}
-
-export async function getBankReconciliationReport(params: BankReconciliationParams): Promise<BankReconciliationRow[]> {
-  const response = await axios.get(`${baseUrl()}/api/reports/bank-reconciliation`, { params })
-  return response.data
-}
-
-export interface ExpensesReportRow {
-  expenseId: string
-  date: string
-  description: string
-  amount: number
-}
-
-export interface ExpensesReportParams {
-  fromDate: string
-  toDate: string
-  expenseTypeId?: string
 }
 
 export interface ExpenseCategory {
@@ -88,74 +31,8 @@ export interface ExpenseCategory {
   inUse?: boolean
 }
 
-export async function getExpensesReport(params: ExpensesReportParams): Promise<ExpensesReportRow[]> {
-  const response = await axios.get(`${baseUrl()}/api/reports/expenses`, { params })
-  return response.data
-}
-
-export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
-  const response = await axios.get(`${baseUrl()}/api/expense-categories`)
-  return response.data
-}
-
-export interface ReturningCustomerRow {
-  customerId: string
-  customerName: string
-  mobileNumber: string
-  orderCount: number
-  totalWeight: number
-}
-
-export interface ReturningCustomersParams {
-  minOrderCount?: number
-}
-
-export async function getReturningCustomersReport(params: ReturningCustomersParams): Promise<ReturningCustomerRow[]> {
-  const response = await axios.get(`${baseUrl()}/api/reports/returning-customers`, { params })
-  return response.data
-}
-
-export interface CashBoxSummaryRow {
-  orderId: string
-  orderNo: number
-  createdDate: string
-  businessDate: string | null
-  customerName: string
-  totalAmount: number
-  discount: number
-  orderAmountAfterDiscount: number
-  dueAmount: number
-  paymentMethod: string | null
-  paymentReceived: number | null
-}
-
-export interface CashBoxSummaryParams {
-  fromDate: string
-  toDate: string
-}
-
-export async function getCashBoxSummaryReport(params: CashBoxSummaryParams): Promise<CashBoxSummaryRow[]> {
-  const response = await axios.get(`${baseUrl()}/api/reports/cash-box-summary`, { params })
-  return response.data
-}
-
-export interface BankTransferTrackingRow {
-  orderId: string
-  orderNo: number
-  createdDate: string
-  bankTransferDate: string | null
-  customerName: string
-  totalAmount: number
-  dueAmount: number
-  bankTransferAmount: number
-}
-
-export interface BankTransferTrackingParams {
-  fromDate: string
-  toDate: string
-}
-
-export async function getBankTransferTrackingReport(params: BankTransferTrackingParams): Promise<BankTransferTrackingRow[]> {
-  const response = await axios.get(`${baseUrl()}/api/reports/bank-transfer-tracking`, { params })
+/** Backs `optionsFrom` params (currently the Expenses report's type filter). */
+export async function getOptionsFromEndpoint(endpoint: string): Promise<Record<string, unknown>[]> {
+  const response = await axios.get(`${baseUrl()}${endpoint}`)
   return response.data
 }

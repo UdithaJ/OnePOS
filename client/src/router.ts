@@ -56,46 +56,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/components/SystemSettings.vue'),
       },
       {
-        path: 'reports/daily-sales',
-        name: 'DailySalesReport',
+        // One route serves every report. Which report is rendered comes from
+        // the backend definition matching :reportId — adding a definition file
+        // adds a working page with no change here.
+        path: 'reports/:reportId',
+        name: 'Report',
         meta: ADMIN_ONLY,
-        component: () => import('@/components/reports/DailySalesReport.vue'),
-      },
-      {
-        path: 'reports/pending-orders',
-        name: 'PendingOrdersReport',
-        meta: ADMIN_ONLY,
-        component: () => import('@/components/reports/PendingOrdersReport.vue'),
-      },
-      {
-        path: 'reports/bank-reconciliation',
-        name: 'BankReconciliationReport',
-        meta: ADMIN_ONLY,
-        component: () => import('@/components/reports/BankReconciliationReport.vue'),
-      },
-      {
-        path: 'reports/expenses',
-        name: 'ExpensesReport',
-        meta: ADMIN_ONLY,
-        component: () => import('@/components/reports/ExpensesReport.vue'),
-      },
-      {
-        path: 'reports/returning-customers',
-        name: 'ReturningCustomersReport',
-        meta: ADMIN_ONLY,
-        component: () => import('@/components/reports/ReturningCustomersReport.vue'),
-      },
-      {
-        path: 'reports/cash-box-summary',
-        name: 'CashBoxSummaryReport',
-        meta: ADMIN_ONLY,
-        component: () => import('@/components/reports/CashBoxSummaryReport.vue'),
-      },
-      {
-        path: 'reports/bank-transfer-tracking',
-        name: 'BankTransferReport',
-        meta: ADMIN_ONLY,
-        component: () => import('@/components/reports/BankTransferReport.vue'),
+        component: () => import('@/components/reports/ReportView.vue'),
       },
     ],
   },
