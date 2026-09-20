@@ -35,7 +35,43 @@ function getOrderStatuses() {
 }
 
 // Example: create order (status defaults to 'To Do')
+// A delivery date is a calendar day, not an instant. The date input sends
+// 'YYYY-MM-DD', and Mongo stores that as UTC midnight — so comparing the day
+// as text avoids the timezone shift that turns "today" into yesterday for
+// anyone east or west of UTC. The shop is at +05:30, where that shift is real.
+function toCalendarDay(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  // A date-only value is stored as UTC midnight, so read the day back in UTC.
+  return d.toISOString().slice(0, 10);
+}
+
+// Today where the shop is, not where the database thinks it is.
+function todayCalendarDay() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// An order cannot be promised for a day that has already passed.
+function assertDeliveryDateNotPast(value) {
+  const day = toCalendarDay(value);
+  if (!day) {
+    const err = new Error('A delivery date is required.');
+    err.status = 422;
+    throw err;
+  }
+  if (day < todayCalendarDay()) {
+    const err = new Error('The delivery date cannot be in the past.');
+    err.status = 422;
+    throw err;
+  }
+}
+
 async function createOrder(orderData) {
+  assertDeliveryDateNotPast(orderData.deliveryDate);
+
   // TODO: Replace with actual logged-in user ID
   const createdUser = '000000000000000000000000';
 
@@ -276,6 +312,16 @@ async function updateOrder(id, updateData) {
   const actingUserId = updateData.actingUserId;
   delete updateData.actingUserId;
 
+  // Only when the date is actually being moved. An order whose delivery date
+  // has already passed is simply overdue, and must stay editable — rejecting
+  // it here would make every overdue order impossible to save.
+  if (updateData.deliveryDate !== undefined) {
+    const proposed = toCalendarDay(updateData.deliveryDate);
+    if (proposed && proposed !== toCalendarDay(order.deliveryDate)) {
+      assertDeliveryDateNotPast(updateData.deliveryDate);
+    }
+  }
+
   // Detect transition into the 'done' status so we can notify the customer.
   // The !wasDone guard keeps this idempotent (re-saving a done order sends nothing).
   const wasDone = String(order.status) === 'done';
@@ -415,6 +461,9 @@ async function deleteOrder(id) {
 }
 
 module.exports = {
+  toCalendarDay,
+  todayCalendarDay,
+  assertDeliveryDateNotPast,
   getAllowedTransitions,
   getOrderStatuses,
   createOrder,

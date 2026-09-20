@@ -290,7 +290,8 @@
                   <v-text-field
                     v-model="form.deliveryDate"
                     type="date"
-                    :rules="[v => !!v || 'Delivery date is required']"
+                    :min="deliveryDateMin"
+                    :rules="deliveryDateRules"
                     required
                     :disabled="isOrderDone"
                     variant="outlined"
@@ -1031,6 +1032,18 @@ function setOrdersFromData(orderData: any[]) {
 
 // Local calendar day ('YYYY-MM-DD') offset from today by `days`, in the browser
 // timezone — mirrors the boundaries used by deliveryState() for overdue/due-soon.
+// A new order cannot be promised for a day that has already passed. Applied
+// only when creating: an existing order whose delivery date is in the past is
+// simply overdue, and locking its form would make it impossible to edit.
+const deliveryDateMin = computed(() => (editOrderId.value ? undefined : localDayOffset(0)))
+
+const deliveryDateRules = computed(() => [
+  (v: string) => !!v || 'Delivery date is required',
+  (v: string) =>
+    !!editOrderId.value || !v || v >= localDayOffset(0) ||
+    'Delivery date must be today or a future date',
+])
+
 function localDayOffset(days: number): string {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
