@@ -29,18 +29,19 @@ async function test(name, fn) {
 // --- part 1: the table ------------------------------------------------------
 
 const wf = require('../workflow/orderWorkflow');
+const T = wf.DEFAULT_TRANSITIONS;
 const PAID = { paymentStatus: 'paid' };
 const UNPAID = { paymentStatus: 'unpaid' };
 
 function expectBlocked(from, to, role, context, status) {
-  const { allowed, error } = wf.canTransition(from, to, role, context);
+  const { allowed, error } = wf.canTransition(T, from, to, role, context);
   assert.strictEqual(allowed, false, `${from} -> ${to} as ${role} should be blocked`);
   assert.strictEqual(error.status, status, `expected ${status}, got ${error.status}: ${error.message}`);
   return error;
 }
 
 function expectAllowed(from, to, role, context) {
-  const { allowed, error } = wf.canTransition(from, to, role, context);
+  const { allowed, error } = wf.canTransition(T, from, to, role, context);
   assert.strictEqual(allowed, true, `${from} -> ${to} as ${role} should be allowed (${error && error.message})`);
 }
 
@@ -92,13 +93,44 @@ function expectAllowed(from, to, role, context) {
   });
 
   await test('describeTargets explains why a blocked option is blocked', async () => {
-    const rows = wf.describeTargets('done', 'cashier', UNPAID);
+    const rows = wf.describeTargets(T, 'done', 'cashier', UNPAID);
     const byValue = Object.fromEntries(rows.map(r => [r.value, r]));
     assert.strictEqual(byValue.done.allowed, true);
     assert.strictEqual(byValue.cancelled.allowed, false);
     assert.match(byValue.cancelled.reason, /admin/i);
     assert.strictEqual(byValue.delivered.allowed, false);
     assert.match(byValue.delivered.reason, /Paid/i);
+  });
+
+  // The table is data now, so these cover a table that differs from the shipped
+  // one — which is the whole point of storing it.
+
+  await test('a stored table may open a transition the shipped rules restrict', async () => {
+    const permissive = { todo: { cancelled: {} } };
+    const { allowed } = wf.canTransition(permissive, 'todo', 'cancelled', 'cashier', PAID);
+    assert.strictEqual(allowed, true, 'no roles on the rule means anyone may make the move');
+  });
+
+  await test('a stored table may restrict a transition the shipped rules allow', async () => {
+    const strict = { todo: { done: { roles: ['admin'] } } };
+    const { allowed, error } = wf.canTransition(strict, 'todo', 'done', 'cashier', PAID);
+    assert.strictEqual(allowed, false);
+    assert.strictEqual(error.status, 403);
+  });
+
+  await test('a missing row means the move is not permitted at all', async () => {
+    const { allowed, error } = wf.canTransition({ todo: { done: {} } }, 'todo', 'delivered', 'admin', PAID);
+    assert.strictEqual(allowed, false);
+    assert.strictEqual(error.status, 422);
+    assert.match(error.message, /cannot move/i);
+  });
+
+  await test('a rule naming an unknown guard blocks rather than ignoring it', async () => {
+    const typo = { todo: { delivered: { guards: ['requirePayed'] } } };
+    const { allowed, error } = wf.canTransition(typo, 'todo', 'delivered', 'admin', PAID);
+    assert.strictEqual(allowed, false, 'an unrecognised guard must not be skipped');
+    assert.strictEqual(error.status, 422);
+    assert.match(error.message, /unknown condition/i);
   });
 
   // --- part 2: updateOrder enforcing the table ------------------------------
@@ -140,6 +172,13 @@ function expectAllowed(from, to, role, context) {
     static async deleteMany(q) { deleteManyCalls.push(q); return { deletedCount: 0 }; }
   });
   stub('models/payment.js', { find: async () => paymentRows });
+  // Rows the loader reads. Empty means "nothing stored for this entity", which
+  // must fall back to the shipped rules rather than locking every order down.
+  let transitionRows = [];
+  let lastQuery = null;
+  stub('models/workflowStateMachine.js', {
+    find: (q) => { lastQuery = q; return { lean: async () => transitionRows }; },
+  });
   stub('models/user.js', { default: { findById: async (id) => users[String(id)] || null } });
   stub('models/customer.js', { findById: async () => null });
   stub('models/category.js', { find: async () => categoryRows });
@@ -148,6 +187,8 @@ function expectAllowed(from, to, role, context) {
   const orderService = require('../services/order.service');
 
   function reset() {
+    transitionRows = [];
+    lastQuery = null;
     updateCalls = [];
     deleteManyCalls = [];
     createdSuborders = [];
@@ -290,6 +331,39 @@ function expectAllowed(from, to, role, context) {
     await orderService.updateOrder('order1', { rackNumber: 'A12' });
     assert.strictEqual(updateCalls.length, 1);
     assert.strictEqual(updateCalls[0].data.rackNumber, 'A12');
+  });
+
+  await test('an unseeded collection falls back to the shipped rules', async () => {
+    reset();
+    transitionRows = [];
+    await expectRejected(
+      () => orderService.updateOrder('order1', { status: 'cancelled', actingUserId: 'cash1' }),
+      403,
+    );
+  });
+
+  await test('stored rules are what is enforced, not the shipped ones', async () => {
+    reset();
+    // The shipped rules restrict cancelling to admins; this table does not.
+    transitionRows = [{ entity: 'order', from: 'todo', to: 'cancelled', roles: [], guards: [], enabled: true }];
+    await orderService.updateOrder('order1', { status: 'cancelled', actingUserId: 'cash1' });
+    assert.strictEqual(updateCalls.length, 1, 'the stored rule should have permitted this');
+  });
+
+  await test('the machine is loaded for the order entity only', async () => {
+    reset();
+    await orderService.updateOrder('order1', { status: 'done', actingUserId: 'cash1' });
+    assert.deepStrictEqual(lastQuery, { entity: 'order', enabled: true },
+      'the loader must scope the query to this entity and skip disabled rows');
+  });
+
+  await test('a transition absent from the stored table is refused', async () => {
+    reset();
+    transitionRows = [{ entity: 'order', from: 'todo', to: 'done', roles: [], guards: [], enabled: true }];
+    await expectRejected(
+      () => orderService.updateOrder('order1', { status: 'cancelled', actingUserId: 'admin1' }),
+      422,
+    );
   });
 
   console.log(failures === 0 ? '\nall passed' : `\n${failures} failed`);

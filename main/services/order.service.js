@@ -224,6 +224,12 @@ const UserModule = require('../models/user')
 const User = UserModule.default || UserModule
 
 const orderWorkflow = require('../workflow/orderWorkflow')
+const { loadTransitionTable } = require('./workflowStateMachine.service')
+
+// The order state machine, as stored for entity 'order', falling back to the
+// rules shipped in orderWorkflow when nothing is stored.
+const loadOrderTransitions = () =>
+  loadTransitionTable(orderWorkflow.ORDER_ENTITY, orderWorkflow.DEFAULT_TRANSITIONS)
 
 // The acting user's role is read from the database, never taken from the
 // request, so a caller cannot simply claim to be an admin. Note there is no
@@ -242,11 +248,14 @@ async function resolveActingRole(actingUserId) {
 async function getAllowedTransitions(orderId, actingUserId) {
   const order = await Order.findById(orderId);
   if (!order) throw new Error('Order not found');
-  const role = await resolveActingRole(actingUserId);
+  const [role, table] = await Promise.all([
+    resolveActingRole(actingUserId),
+    loadOrderTransitions(),
+  ]);
   return {
     current: order.status,
     paymentStatus: order.paymentStatus,
-    statuses: orderWorkflow.describeTargets(order.status, role, {
+    statuses: orderWorkflow.describeTargets(table, order.status, role, {
       paymentStatus: order.paymentStatus,
     }),
   };
@@ -343,8 +352,11 @@ async function updateOrder(id, updateData) {
   // the payment status computed above, not the stored one, so a payment or
   // discount applied in this same save counts towards Delivered.
   if (updateData.status !== undefined && String(updateData.status) !== String(order.status)) {
-    const role = await resolveActingRole(actingUserId);
-    orderWorkflow.assertTransition(order.status, updateData.status, role, { paymentStatus });
+    const [role, table] = await Promise.all([
+      resolveActingRole(actingUserId),
+      loadOrderTransitions(),
+    ]);
+    orderWorkflow.assertTransition(table, order.status, updateData.status, role, { paymentStatus });
   }
 
   // --- phase 2: commit ------------------------------------------------------
