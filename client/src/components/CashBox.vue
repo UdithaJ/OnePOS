@@ -11,7 +11,7 @@
       </template>
       <template v-else-if="activeSession">
         <div class="flex items-center gap-2 mb-3">
-          <v-icon color="#0f766e">mdi-currency-rupee</v-icon>
+          <v-icon color="#0f766e">mdi-cash</v-icon>
           <span class="text-3xl font-bold text-gray-900">
             Rs {{ displayAmount.toFixed(2) }}
           </span>
