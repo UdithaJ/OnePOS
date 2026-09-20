@@ -5,6 +5,23 @@ export async function getOrderById(orderId: string) {
   return response.data
 }
 
+export interface StatusOption {
+  value: string
+  label: string
+  allowed: boolean
+  reason: string | null
+}
+
+// Which statuses this user may move this order to, and why the rest are not
+// available. The server owns the rules; the form only renders them.
+export async function getAllowedTransitions(orderId: string, actingUserId?: string) {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const response = await axios.get(`${baseUrl}/api/orders/${orderId}/allowed-transitions`, {
+    params: { actingUserId },
+  })
+  return response.data as { current: string; paymentStatus: string; statuses: StatusOption[] }
+}
+
 export async function updateOrder(orderId: string, payload: Partial<OrderPayload>) {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
   const response = await axios.put(`${baseUrl}/api/orders/${orderId}`, payload)

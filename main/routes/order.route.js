@@ -16,6 +16,9 @@ router.get('/:id', orderController.getOrderById);
 // Create an order
 router.post('/', orderController.createOrder);
 
+// Status options for an order (drives the form's status dropdown)
+router.get('/:id/allowed-transitions', orderController.getAllowedTransitions);
+
 // Update an order
 router.put('/:id', orderController.updateOrder);
 

@@ -60,6 +60,7 @@
             :items="field.options"
             item-title="label"
             item-value="value"
+            :item-props="field.itemProps"
             :required="field.required"
             :disabled="field.disabled"
             variant="outlined"

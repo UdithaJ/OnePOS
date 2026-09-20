@@ -218,15 +218,66 @@ async function getOrderById(id) {
 
 // Update order
 const Payment = require('../models/payment')
+
+// models/user.js is an ES module, so the namespace comes back under .default.
+const UserModule = require('../models/user')
+const User = UserModule.default || UserModule
+
+const orderWorkflow = require('../workflow/orderWorkflow')
+
+// The acting user's role is read from the database, never taken from the
+// request, so a caller cannot simply claim to be an admin. Note there is no
+// session or token in this app: this stops the UI and a signed-in cashier, not
+// a request crafted with a known admin's id.
+async function resolveActingRole(actingUserId) {
+  if (!actingUserId) return null;
+  const actingUser = await User.findById(actingUserId);
+  return actingUser ? actingUser.userRole : null;
+}
+
+// Every status the order form should offer, each marked allowed or not with the
+// reason, so the form can disable the blocked ones instead of hiding them.
+// Guards read the order's stored payment status here; the form is only deciding
+// what to show, and updateOrder re-checks against the recomputed value on save.
+async function getAllowedTransitions(orderId, actingUserId) {
+  const order = await Order.findById(orderId);
+  if (!order) throw new Error('Order not found');
+  const role = await resolveActingRole(actingUserId);
+  return {
+    current: order.status,
+    paymentStatus: order.paymentStatus,
+    statuses: orderWorkflow.describeTargets(order.status, role, {
+      paymentStatus: order.paymentStatus,
+    }),
+  };
+}
+
+// updateOrder runs in two phases. Everything that reads or calculates happens
+// first, so a rejected status transition leaves the database untouched; only
+// once the update is known to be valid does anything get written. Before this
+// split the suborder rewrite ran first, so a later throw — a bad category id,
+// and now a blocked transition — left the order pointing at deleted items.
 async function updateOrder(id, updateData) {
   const order = await Order.findById(id);
   if (!order) throw new Error('Order not found');
+
+  // Who is performing the update. Carried alongside the order fields the way
+  // cash box sessions carry openedBy/closedBy, and removed before the update so
+  // it is never written onto the order document.
+  const actingUserId = updateData.actingUserId;
+  delete updateData.actingUserId;
 
   // Detect transition into the 'done' status so we can notify the customer.
   // The !wasDone guard keeps this idempotent (re-saving a done order sends nothing).
   const wasDone = String(order.status) === 'done';
   const willBeDone = updateData.status === 'done';
   const justCompleted = willBeDone && !wasDone;
+
+  // --- phase 1: compute, no writes -----------------------------------------
+
+  // Planned suborder rows, worked out without touching the existing ones.
+  let planned = null;
+  let plannedTotal = null;
 
   if (Array.isArray(updateData.suborders)) {
     // Disallow editing of order items if the order is finalized (Done or Delivered)
@@ -249,14 +300,10 @@ async function updateOrder(id, updateData) {
       existingMap.get(key).push(Number(ex.amount || 0));
     }
 
-    // Remove old suborders
-    if (existingSuborders.length) {
-      await OrderCategory.deleteMany({ _id: { $in: order.suborders } });
-    }
-
-    // Create new suborders, reusing original amounts when category+weight match, otherwise compute
-    const suborderIds = [];
-    let recomputedTotal = 0;
+    // Work out each row's amount, reusing the original when category+weight
+    // match, otherwise computing it. Nothing is created or deleted yet.
+    planned = [];
+    plannedTotal = 0;
     for (const sub of updateData.suborders) {
       const cat = catMap.get(String(sub.category));
       if (!cat) throw new Error(`Category ${sub.category} not found`);
@@ -269,38 +316,56 @@ async function updateOrder(id, updateData) {
         amount = computeAmount(sub.weight, cat);
       }
 
-      recomputedTotal += amount;
-
-      const suborder = new OrderCategory({
-        category: sub.category,
-        weight: sub.weight,
-        amount,
-        order: id
-      });
-      await suborder.save();
-      suborderIds.push(suborder._id);
+      plannedTotal += amount;
+      planned.push({ category: sub.category, weight: sub.weight, amount, order: id });
     }
-    updateData.suborders = suborderIds;
-    updateData.totalAmount = recomputedTotal;
   }
 
-  // Recalculate dueAmount whenever total or discount changes
-  const newTotal = updateData.totalAmount ?? order.totalAmount
+  // Totals and payment standing as they will be once this update lands. The
+  // server's recomputed total wins over any total the client sent.
+  const newTotal = plannedTotal ?? updateData.totalAmount ?? order.totalAmount
   const newDiscount = 'discount' in updateData
     ? Math.min(Math.max(Number(updateData.discount) || 0, 0), newTotal)
     : Number(order.discount || 0)
-  updateData.discount = newDiscount
   const payments = await Payment.find({ orderId: id })
   const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
-  updateData.dueAmount = Math.max(newTotal - newDiscount - paid, 0)
 
-  // Recalculate paymentStatus based on collected payments and new totals
   const netTotal = Math.max(newTotal - newDiscount, 0)
   let paymentStatus = 'unpaid'
   if (paid <= 0) paymentStatus = 'unpaid'
   else if (paid >= netTotal && netTotal > 0) paymentStatus = 'paid'
   else if (paid > 0 && paid < netTotal) paymentStatus = 'partial'
   else if (netTotal === 0 && paid > 0) paymentStatus = 'paid'
+
+  // Validate the status move against the workflow table. `undefined` means the
+  // caller isn't touching status at all, and an unchanged value is not a
+  // transition (the order form resends `status` on every save). The guards read
+  // the payment status computed above, not the stored one, so a payment or
+  // discount applied in this same save counts towards Delivered.
+  if (updateData.status !== undefined && String(updateData.status) !== String(order.status)) {
+    const role = await resolveActingRole(actingUserId);
+    orderWorkflow.assertTransition(order.status, updateData.status, role, { paymentStatus });
+  }
+
+  // --- phase 2: commit ------------------------------------------------------
+
+  if (planned) {
+    // Replace the old suborders now that the update is known to be valid.
+    if (Array.isArray(order.suborders) && order.suborders.length) {
+      await OrderCategory.deleteMany({ _id: { $in: order.suborders } });
+    }
+    const suborderIds = [];
+    for (const row of planned) {
+      const suborder = new OrderCategory(row);
+      await suborder.save();
+      suborderIds.push(suborder._id);
+    }
+    updateData.suborders = suborderIds;
+    updateData.totalAmount = plannedTotal;
+  }
+
+  updateData.discount = newDiscount
+  updateData.dueAmount = Math.max(newTotal - newDiscount - paid, 0)
   updateData.paymentStatus = paymentStatus
 
   const updated = await Order.findByIdAndUpdate(id, updateData, { new: true }).populate({
@@ -338,6 +403,7 @@ async function deleteOrder(id) {
 }
 
 module.exports = {
+  getAllowedTransitions,
   getOrderStatuses,
   createOrder,
   getAllOrders,

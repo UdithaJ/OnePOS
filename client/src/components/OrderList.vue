@@ -601,7 +601,7 @@ const orderHeaders = [
   { title: 'Actions',       key: 'actions',      align: 'end'   as const, sortable: false },
 ]
 
-import { getOrders, getOrderById, updateOrder } from '@/services/orderApiService'
+import { getOrders, getOrderById, updateOrder, getAllowedTransitions, type StatusOption } from '@/services/orderApiService'
 import { localDayStartISO, localDayEndISO, localToday } from '@/utils/reportDate'
 import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
 import { checkOrderCapacity, getSystemSettings, type CapacityCheckResult } from '@/services/systemSettingsApiService'
@@ -756,6 +756,21 @@ const originalSubordersSnapshot = ref('')
 // number — so lock the whole form based on this, not the (editable) form status.
 const originalOrderStatus = ref('')
 const isOrderFullyLocked = computed(() => originalOrderStatus.value === 'delivered')
+
+// Status options for the order being edited, as the server allows them. Blocked
+// ones are kept in the list but disabled and annotated, so an absent Delivered
+// reads as "payment outstanding" rather than as a missing feature.
+const statusOptions = ref<StatusOption[]>([])
+
+async function loadStatusOptions(orderId: string) {
+  try {
+    const res = await getAllowedTransitions(orderId, getUser()?._id)
+    statusOptions.value = res.statuses
+  } catch {
+    // Fall back to the full list; the server rejects anything it shouldn't allow.
+    statusOptions.value = ORDER_STATUSES.map(s => ({ ...s, allowed: true, reason: null }))
+  }
+}
 const dueSoonLeadDays = ref<number>(1)
 // Total overdue / due-soon counts across ALL orders (not just the current page).
 // Refreshed from the backend via fetchDueCounts() whenever the order set changes.
@@ -892,7 +907,18 @@ const ORDER_STATUSES = [
 const orderFormSchema = computed(() => ({
   fields: [
     ...(editOrderId.value ? [
-      { name: 'status', label: 'Status', type: 'select', required: true, options: ORDER_STATUSES, disabled: isOrderFullyLocked.value },
+      {
+        name: 'status', label: 'Status', type: 'select', required: true,
+        disabled: isOrderFullyLocked.value,
+        // itemProps lets each option carry its own disabled state + reason.
+        itemProps: true,
+        options: (statusOptions.value.length ? statusOptions.value : ORDER_STATUSES.map(o => ({ ...o, allowed: true, reason: null })))
+          .map(o => ({
+            value: o.value,
+            label: o.label,
+            props: { disabled: !o.allowed, subtitle: o.reason || undefined },
+          })),
+      },
       // Rack Number is shown once the order is Done or Delivered, and is mandatory
       // at that point (it identifies where the finished order is stored). It is
       // read-only on a Delivered order, which is terminal.
@@ -1168,6 +1194,7 @@ function resetForm() {
   form.value.status = ''
   form.value.rackNumber = ''
   originalOrderStatus.value = ''
+  statusOptions.value = []
   suborders.value = []
   payments.value = []
   currentOrderDueAmount.value = 0
@@ -1383,6 +1410,7 @@ async function onEditOrder(order: any) {
   form.value.discount = Number(data.discount || 0)
   form.value.status = data.status || 'todo'
   originalOrderStatus.value = String(data.status || 'todo').toLowerCase()
+  await loadStatusOptions(orderId)
   form.value.rackNumber = data.rackNumber || ''
   currentOrderDueAmount.value = Number(data.dueAmount || 0)
   currentOrderPaymentStatus.value = String(data.paymentStatus || 'unpaid')
@@ -1432,6 +1460,9 @@ async function persistOrder() {
       discount: Number(form.value.discount || 0),
       status: form.value.status,
       rackNumber: form.value.rackNumber,
+      // Who is making the change, so the server can check status transitions
+      // against this user's role (same shape as the cash box openedBy/closedBy).
+      actingUserId: getUser()?._id,
     }
     // Only send order items when they actually changed. Finalized orders (Done/
     // Delivered) reject item edits server-side and their item fields are locked,

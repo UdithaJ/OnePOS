@@ -4,9 +4,12 @@ export interface FormField {
   name: string
   label: string
   type: string
-  options?: { label: string; value: any }[]
+  options?: { label: string; value: any; props?: Record<string, any> }[]
   required?: boolean
   disabled?: boolean
+  // Opt in to per-option props (e.g. a disabled option carrying its reason as a
+  // subtitle). Off by default, so existing selects are unaffected.
+  itemProps?: boolean
   rules?: Array<(v: any) => true | string>
 }
 
