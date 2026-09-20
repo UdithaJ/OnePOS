@@ -1,6 +1,7 @@
 const ApplicationLog = require('../models/applicationLog');
 const { preview, apply } = require('../upgrades/runner');
 const { validateScript } = require('../upgrades/validate');
+const { redact } = require('../upgrades/redact');
 const { ROLES } = require('../constants/roles');
 
 // models/user.js is an ES module, so the namespace arrives under .default.
@@ -85,7 +86,9 @@ async function applyUpgrade({ script, actingUserId }) {
     status,
     detail,
     durationMs: Date.now() - startedAt,
-    payload: script,
+    // The script is kept so that what an upgrade did stays answerable, but a
+    // script that sets a password must not put it in the log in plain text.
+    payload: redact(script),
     results,
     actedBy: actor._id,
   });

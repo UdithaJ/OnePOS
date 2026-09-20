@@ -8,6 +8,7 @@
 
 const assert = require('assert');
 const { validateScript, FORBIDDEN_OPERATORS } = require('../upgrades/validate');
+const { redact } = require('../upgrades/redact');
 
 let failures = 0;
 function test(name, fn) {
@@ -160,6 +161,39 @@ test('a non-whole or zero version is refused', () => {
 test('an insert with no documents is refused', () => {
   expectRejected(script([{ op: 'insertMany', collection: 'categories', documents: [] }]), /at least one document/i);
   expectRejected(script([{ op: 'insertOne', collection: 'categories' }]), /"document" object/i);
+});
+
+// --- redaction ---------------------------------------------------------------
+//
+// The preview hands back sample documents from whatever collection a script
+// names, and the applied script is stored for audit. Both would otherwise
+// expose secrets.
+
+test('a password is redacted wherever it appears', () => {
+  const out = redact({ userName: 'sysadmin', password: '$2b$10$abc', nested: { passwd: 'x' } });
+  assert.strictEqual(out.password, '[redacted]');
+  assert.strictEqual(out.nested.passwd, '[redacted]');
+  assert.strictEqual(out.userName, 'sysadmin', 'ordinary fields must survive');
+});
+
+test('tokens, keys and secrets are redacted too', () => {
+  const out = redact({ apiKey: 'k', api_key: 'k', token: 't', secret: 's', otp: '123456', privateKey: 'p' });
+  for (const [k, v] of Object.entries(out)) {
+    assert.strictEqual(v, '[redacted]', `${k} should have been redacted`);
+  }
+});
+
+test('redaction reaches inside arrays and nested documents', () => {
+  const out = redact({
+    operations: [{ op: 'insertMany', documents: [{ userName: 'a', password: 'p' }] }],
+  });
+  assert.strictEqual(out.operations[0].documents[0].password, '[redacted]');
+  assert.strictEqual(out.operations[0].documents[0].userName, 'a');
+});
+
+test('non-sensitive data is returned unchanged', () => {
+  const input = { entity: 'order', roles: ['admin', 'cashier'], count: 3, on: true, missing: null };
+  assert.deepStrictEqual(redact(input), input);
 });
 
 console.log(failures === 0 ? '\nall passed' : `\n${failures} failed`);

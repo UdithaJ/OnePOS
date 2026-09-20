@@ -12,6 +12,7 @@
 
 const mongoose = require('mongoose');
 const { validateScript, UPDATE_OPS, DELETE_OPS, INSERT_OPS } = require('./validate');
+const { redact } = require('./redact');
 
 const SAMPLE_LIMIT = 3;
 
@@ -59,14 +60,19 @@ async function preview(rawScript) {
     if (INSERT_OPS.includes(operation.op)) {
       const docs = operation.op === 'insertOne' ? [operation.document] : operation.documents;
       row.willInsert = docs.length;
-      row.sample = docs.slice(0, SAMPLE_LIMIT);
+      // Redacted: a preview must not become a way to read secrets back out,
+      // whether they are already in the collection or being written by this
+      // script.
+      row.sample = redact(docs.slice(0, SAMPLE_LIMIT));
       // An insert is not filtered, so nothing existing is at risk.
       row.note = 'adds new documents; nothing existing is changed';
     } else {
       row.matched = await collection.countDocuments(operation.filter);
-      row.sample = await collection.find(operation.filter).limit(SAMPLE_LIMIT).toArray();
+      // A script may name any collection, so without redaction this would hand
+      // back password hashes from the users collection.
+      row.sample = redact(await collection.find(operation.filter).limit(SAMPLE_LIMIT).toArray());
       if (UPDATE_OPS.includes(operation.op)) {
-        row.update = operation.update;
+        row.update = redact(operation.update);
         if (operation.op === 'updateOne' && row.matched > 1) {
           row.note = `${row.matched} documents match but updateOne changes only the first`;
         }
