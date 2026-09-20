@@ -910,8 +910,10 @@ const orderFormSchema = computed(() => ({
       {
         name: 'status', label: 'Status', type: 'select', required: true,
         disabled: isOrderFullyLocked.value,
-        // itemProps lets each option carry its own disabled state + reason.
-        itemProps: true,
+        // Each option carries its own disabled state and the reason, shown as a
+        // subtitle. Vuetify reads the `props` key of an option by default —
+        // passing item-props="true" instead spreads the whole option and the
+        // disabled flag never reaches the list item.
         options: (statusOptions.value.length ? statusOptions.value : ORDER_STATUSES.map(o => ({ ...o, allowed: true, reason: null })))
           .map(o => ({
             value: o.value,

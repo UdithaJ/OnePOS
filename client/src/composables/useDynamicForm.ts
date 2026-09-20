@@ -4,12 +4,12 @@ export interface FormField {
   name: string
   label: string
   type: string
+  // An option's `props` is passed through to the rendered list item, so an
+  // option can disable itself and carry a subtitle explaining why. Vuetify
+  // reads this key by default; it must not be flattened into the option.
   options?: { label: string; value: any; props?: Record<string, any> }[]
   required?: boolean
   disabled?: boolean
-  // Opt in to per-option props (e.g. a disabled option carrying its reason as a
-  // subtitle). Off by default, so existing selects are unaffected.
-  itemProps?: boolean
   rules?: Array<(v: any) => true | string>
 }
 
