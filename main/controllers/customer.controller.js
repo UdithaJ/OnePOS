@@ -37,7 +37,7 @@ exports.createCustomer = async (req, res) => {
     const newCustomer = await customerService.createCustomer(req.body);
     res.status(201).json(newCustomer);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
 
@@ -48,7 +48,7 @@ exports.updateCustomer = async (req, res) => {
     if (!updatedCustomer) return res.status(404).json({ message: 'Customer not found' });
     res.json(updatedCustomer);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
 

@@ -234,8 +234,10 @@ async function handleSubmit() {
     }
     showForm.value = false
     resetForm()
-  } catch {
-    showToast('Failed to save customer. Please try again.', 'error')
+  } catch (err) {
+    // Keep the dialog open so the entered details survive a rejection
+    // (e.g. a mobile number already registered to another customer).
+    showToast((err as any)?.response?.data?.message || 'Failed to save customer. Please try again.', 'error')
   }
 }
 
@@ -247,7 +249,8 @@ async function startOtpFlow(payload: any) {
     showOtpDialog.value = true
     showToast('OTP sent to mobile number. Please verify.', 'info')
   } catch (err) {
-    showToast('Failed to send OTP. Please try again.', 'error')
+    showToast((err as any)?.response?.data?.message || 'Failed to send OTP. Please try again.', 'error')
+    throw err
   }
 }
 
@@ -258,8 +261,8 @@ async function resendOtp() {
     await sendOtp(pendingMobile.value, pendingPayload.value)
     otpCode.value = ''
     showToast('A new OTP has been sent.', 'info')
-  } catch {
-    showToast('Failed to resend OTP. Please try again.', 'error')
+  } catch (err) {
+    showToast((err as any)?.response?.data?.message || 'Failed to resend OTP. Please try again.', 'error')
   } finally {
     resendingOtp.value = false
   }
