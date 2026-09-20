@@ -1,8 +1,10 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import { ADMIN_ROLES } from '@/constants/roles'
 
-const ADMIN_ONLY = { requiresAuth: true, roles: ['admin'] }
+// Both admin and the built-in sysadmin satisfy an admin-only route.
+const ADMIN_ONLY = { requiresAuth: true, roles: ADMIN_ROLES }
 
 const routes: RouteRecordRaw[] = [
   {

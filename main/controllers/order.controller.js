@@ -48,7 +48,7 @@ exports.createOrder = async (req, res) => {
     const newOrder = await orderService.createOrder(req.body);
     res.status(201).json(newOrder);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
 
@@ -73,13 +73,24 @@ exports.checkCapacity = async (req, res) => {
 };
 
 // Update an order
+// Status options for the order form: which moves this user may make on this
+// order, and why the others are unavailable.
+exports.getAllowedTransitions = async (req, res) => {
+  try {
+    const result = await orderService.getAllowedTransitions(req.params.id, req.query.actingUserId);
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 404).json({ message: err.message });
+  }
+};
+
 exports.updateOrder = async (req, res) => {
   try {
     const updatedOrder = await orderService.updateOrder(req.params.id, req.body);
     if (!updatedOrder) return res.status(404).json({ message: 'Order not found' });
     res.json(updatedOrder);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
 

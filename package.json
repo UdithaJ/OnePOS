@@ -12,8 +12,11 @@
     "clear-cache": "node clear-electron-cache.js",
     "dist": "npm run clear-cache && npm run build:client && electron-builder",
     "dist:win": "npm run build:client && electron-builder --win",
-    "test": "npm run test:reports",
-    "test:reports": "node main/reports/__tests__/definitions.test.js && node main/reports/__tests__/grouping-parity.test.js && node main/reports/__tests__/csv-parity.test.js"
+    "test": "npm run test:reports && npm run test:customers && npm run test:orders && npm run test:delivery-date",
+    "test:customers": "node main/__tests__/customer-duplicate-mobile.test.js",
+    "test:orders": "node main/__tests__/order-workflow.test.js",
+    "test:reports": "node main/reports/__tests__/definitions.test.js && node main/reports/__tests__/grouping-parity.test.js && node main/reports/__tests__/csv-parity.test.js",
+    "test:delivery-date": "node main/__tests__/order-delivery-date.test.js"
   },
   "keywords": [],
   "author": "",

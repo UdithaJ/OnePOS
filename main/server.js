@@ -5,6 +5,8 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
+// CommonJS module, so its exports arrive as the default import.
+import bootstrap from './bootstrap/index.js';
 
 // Routes
 
@@ -33,6 +35,13 @@ app.use(cors());
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+// Lets the window show setup progress instead of appearing to hang while the
+// first-run seed runs. Deliberately not behind /api/orders etc. so it is
+// reachable before anything else is ready.
+app.get('/api/bootstrap/status', (req, res) => {
+  res.json(bootstrap.getStatus());
 });
 
 // Mount routes
@@ -75,7 +84,12 @@ mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-  .then(() => console.log('✅ Connected to MongoDB'))
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    // First-run data. Never awaited and never fatal: the application starts
+    // regardless, and everything seeded has a working fallback.
+    return bootstrap.runBootstrap();
+  })
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Start the server

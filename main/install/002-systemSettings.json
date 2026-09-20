@@ -1,0 +1,13 @@
+{
+  "action": "seed:systemSettings",
+  "version": 1,
+  "description": "The single settings document, with the shipped defaults.",
+  "model": "SystemSettings",
+  "match": [],
+  "documents": [
+    {
+      "dailyCapacityKg": 0,
+      "dueSoonLeadDays": 1
+    }
+  ]
+}

@@ -1,6 +1,26 @@
 <template>
   <v-app>
     <v-main>
+      <!-- First run: the database is being populated. Shown only while that is
+           happening, which on every launch after the first is never. -->
+      <div v-if="setupVisible" class="setup-overlay">
+        <div class="setup-card">
+          <h2 class="setup-title">{{ setupFailed ? 'Setup could not finish' : 'Setting up OnePOS' }}</h2>
+          <p class="setup-subtitle">
+            {{ setupFailed
+              ? 'The application will still run, but some initial data is missing.'
+              : 'Preparing the database. This only happens once.' }}
+          </p>
+          <v-progress-linear v-if="!setupFailed" indeterminate color="#0f766e" class="mb-4" />
+          <ul class="setup-steps">
+            <li v-for="step in setupSteps" :key="step.action + step.version" :class="`step-${step.status}`">
+              <span class="step-name">{{ stepLabel(step.action) }}</span>
+              <span class="step-detail">{{ step.detail || step.status }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
       <router-view />
 
       <!-- Toast notification -->
@@ -37,9 +57,80 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
-import { toast } from './composables/useToast'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { toast, useToast } from './composables/useToast'
+import { useRouter } from 'vue-router'
+import { useAuth } from './composables/useAuth'
+import { getBootstrapStatus, type BootstrapStep } from './services/bootstrapApiService'
 import './styles/neomorphic.scss'
+
+// --- first-run setup ------------------------------------------------------
+
+const setupSteps = ref<BootstrapStep[]>([])
+const setupVisible = ref(false)
+const setupFailed = ref(false)
+let pollTimer: ReturnType<typeof setTimeout> | undefined
+
+const { showToast } = useToast()
+
+const STEP_LABELS: Record<string, string> = {
+  'seed:workflowStateMachine': 'Order workflow rules',
+  'seed:systemSettings': 'System settings',
+}
+function stepLabel(action: string) {
+  return STEP_LABELS[action] || action.replace(/^seed:/, '')
+}
+
+// Poll until setup settles. The overlay only appears if setup is actually
+// running — on a normal launch the first response is already 'ready' and
+// nothing is shown.
+async function pollSetup() {
+  try {
+    const status = await getBootstrapStatus()
+    setupSteps.value = status.steps
+
+    if (status.state === 'seeding' || status.state === 'pending') {
+      setupVisible.value = true
+      pollTimer = setTimeout(pollSetup, 400)
+      return
+    }
+
+    if (status.state === 'failed') {
+      setupFailed.value = true
+      setupVisible.value = true
+      return
+    }
+
+    // Ready. Say so only on the launch that actually seeded something.
+    if (setupVisible.value || status.justSeeded) {
+      setupVisible.value = false
+      if (status.justSeeded) showToast('Setup complete. OnePOS is ready to use.', 'success')
+    }
+  } catch {
+    // The API isn't answering yet, or has no status endpoint. Neither is worth
+    // blocking the app for — keep quiet and let it start.
+    setupVisible.value = false
+  }
+}
+
+// The account behind a remembered session may have been removed or changed
+// while the app was closed. Check before anything reads the cached role.
+const router = useRouter()
+const { revalidate } = useAuth()
+
+async function checkSession() {
+  const stillValid = await revalidate()
+  if (!stillValid) {
+    showToast('Your session has ended. Please sign in again.', 'warning')
+    router.push({ name: 'Login' })
+  }
+}
+
+onMounted(() => {
+  pollSetup()
+  checkSession()
+})
+onUnmounted(() => { if (pollTimer) clearTimeout(pollTimer) })
 
 const toastTitle = computed(() => {
   if (toast.value.type === 'success') return toast.value.message || 'Saved successfully'
@@ -49,6 +140,59 @@ const toastTitle = computed(() => {
 </script>
 
 <style scoped>
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 61, 56, 0.96);
+  padding: 24px;
+}
+
+.setup-card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+.setup-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.setup-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+.setup-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.setup-steps li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.8125rem;
+  padding: 7px 0;
+  border-top: 1px solid #f3f4f6;
+}
+
+.step-name { color: #374151; }
+.step-detail { color: #9ca3af; text-align: right; }
+.step-failed .step-detail { color: #b45309; }
+.step-applied .step-detail { color: #0f766e; }
+
 .toast-wrapper {
   position: fixed;
   top: 24px;
