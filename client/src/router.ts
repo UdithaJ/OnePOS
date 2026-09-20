@@ -1,10 +1,13 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
-import { ADMIN_ROLES } from '@/constants/roles'
+import { ADMIN_ROLES, SYSADMIN_ROLES } from '@/constants/roles'
 
 // Both admin and the built-in sysadmin satisfy an admin-only route.
 const ADMIN_ONLY = { requiresAuth: true, roles: ADMIN_ROLES }
+
+// Upgrades can rewrite any collection, so an ordinary admin cannot reach them.
+const SYSADMIN_ONLY = { requiresAuth: true, roles: SYSADMIN_ROLES }
 
 const routes: RouteRecordRaw[] = [
   {
@@ -32,6 +35,12 @@ const routes: RouteRecordRaw[] = [
         name: 'Customers',
         meta: ADMIN_ONLY,
         component: () => import('@/components/Customers.vue'),
+      },
+      {
+        path: 'system-upgrades',
+        name: 'SystemUpgrades',
+        meta: SYSADMIN_ONLY,
+        component: () => import('@/components/SystemUpgrades.vue'),
       },
       {
         path: 'users',

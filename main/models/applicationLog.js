@@ -34,6 +34,20 @@ const applicationLogSchema = new mongoose.Schema({
   durationMs: {
     type: Number,
   },
+  // For an upgrade, the script exactly as submitted and what each of its
+  // operations reported. Without these, "what did this upgrade actually do"
+  // is unanswerable later, which is most of the reason for recording it.
+  payload: {
+    type: mongoose.Schema.Types.Mixed,
+  },
+  results: {
+    type: mongoose.Schema.Types.Mixed,
+  },
+  // Who ran it, when it was a person rather than the application starting up.
+  actedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
 }, {
   collection: 'applicationLog',
 });
