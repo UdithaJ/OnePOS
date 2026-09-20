@@ -209,10 +209,38 @@ async function onFileChosen(value: File | File[] | null) {
   const file = Array.isArray(value) ? value[0] : value
   if (!file) return
 
+  // Reading and parsing are reported separately, and the parser's own message
+  // is passed through: "not valid JSON" on its own leaves you guessing at which
+  // character the file went wrong.
+  let text: string
   try {
-    script.value = JSON.parse(await file.text())
+    text = await file.text()
   } catch {
-    fileError.value = 'That file is not valid JSON.'
+    fileError.value = `"${file.name}" could not be read.`
+    return
+  }
+
+  if (!text.trim()) {
+    fileError.value = `"${file.name}" is empty.`
+    return
+  }
+
+  try {
+    const parsed = JSON.parse(text)
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      fileError.value = 'An upgrade script must be a JSON object, starting with {.'
+      return
+    }
+    script.value = parsed
+  } catch (err: any) {
+    // JSON has no comments and no trailing commas, which is what trips up a
+    // script pasted from documentation.
+    const hint = /\/\//.test(text) || /\/\*/.test(text)
+      ? ' JSON does not allow // or /* */ comments — remove them.'
+      : /,\s*[}\]]/.test(text)
+        ? ' There is a comma before a } or ] — JSON does not allow trailing commas.'
+        : ''
+    fileError.value = `"${file.name}" is not valid JSON: ${err?.message || 'could not be parsed'}.${hint}`
   }
 }
 
