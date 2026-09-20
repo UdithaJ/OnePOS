@@ -1,0 +1,75 @@
+{
+  "action": "seed:workflowStateMachine",
+  "version": 1,
+  "description": "Order status transitions: who may make each move and what the order must satisfy first.",
+  "model": "WorkflowStateMachine",
+  "match": [
+    "entity",
+    "from",
+    "to"
+  ],
+  "documents": [
+    {
+      "entity": "order",
+      "from": "cancelled",
+      "to": "todo",
+      "roles": [
+        "admin"
+      ],
+      "guards": [],
+      "enabled": true
+    },
+    {
+      "entity": "order",
+      "from": "done",
+      "to": "cancelled",
+      "roles": [
+        "admin"
+      ],
+      "guards": [],
+      "enabled": true
+    },
+    {
+      "entity": "order",
+      "from": "done",
+      "to": "delivered",
+      "guards": [
+        "requirePaid"
+      ],
+      "enabled": true
+    },
+    {
+      "entity": "order",
+      "from": "done",
+      "to": "todo",
+      "guards": [],
+      "enabled": true
+    },
+    {
+      "entity": "order",
+      "from": "todo",
+      "to": "cancelled",
+      "roles": [
+        "admin"
+      ],
+      "guards": [],
+      "enabled": true
+    },
+    {
+      "entity": "order",
+      "from": "todo",
+      "to": "delivered",
+      "guards": [
+        "requirePaid"
+      ],
+      "enabled": true
+    },
+    {
+      "entity": "order",
+      "from": "todo",
+      "to": "done",
+      "guards": [],
+      "enabled": true
+    }
+  ]
+}

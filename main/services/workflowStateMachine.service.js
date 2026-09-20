@@ -1,4 +1,5 @@
 const WorkflowStateMachine = require('../models/workflowStateMachine');
+const { rowsToTable } = require('../workflow/orderWorkflow');
 
 // Loads one entity's state machine from the workflowStateMachine collection
 // into the nested shape the workflow functions expect:
@@ -25,26 +26,17 @@ async function loadTransitionTable(entity, fallback) {
     return fallback;
   }
 
-  // Nothing stored for this entity falls back rather than locking it down. Note
-  // this cannot be told apart from a deliberately emptied machine: to withdraw a
-  // transition set enabled:false or delete that row, don't empty the entity.
+  // Nothing stored for this entity falls back rather than locking it down.
+  // After the bootstrap seed has run on startup this should not happen; it
+  // covers the window before it completes and a database that cannot be
+  // written to. Withdraw a transition with enabled:false — a deleted row is
+  // reinstated the next time the seed runs.
   if (!rows.length) {
-    console.warn(
-      `[workflow] no stored transitions for "${entity}" — using the built-in rules. ` +
-      'Run: node main/scripts/seedWorkflowStateMachine.js'
-    );
+    console.warn(`[workflow] no stored transitions for "${entity}" — using the built-in rules`);
     return fallback;
   }
 
-  const table = {};
-  for (const row of rows) {
-    if (!table[row.from]) table[row.from] = {};
-    const rule = {};
-    if (row.roles && row.roles.length) rule.roles = row.roles;
-    if (row.guards && row.guards.length) rule.guards = row.guards;
-    table[row.from][row.to] = rule;
-  }
-  return table;
+  return rowsToTable(rows);
 }
 
 module.exports = { loadTransitionTable };

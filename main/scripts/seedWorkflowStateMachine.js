@@ -1,20 +1,19 @@
-// Seeds the workflowStateMachine collection with the rules shipped in code.
+// Runs the same first-run seeding the application performs on startup, from a
+// terminal — useful on a server install, or to inspect/repair an existing
+// database without restarting the app.
 //
-// Today one entity has a machine — 'order', from DEFAULT_TRANSITIONS in
-// main/workflow/orderWorkflow.js. Add an entry to MACHINES below when another
-// entity gains one.
+// The application seeds itself when it starts (main/bootstrap/index.js), so
+// this is not required for a packaged install and in fact cannot be used
+// inside one: it resolves .env relative to itself, while a packaged build reads
+// .env from process.resourcesPath.
 //
-// Until this has run, nothing is stored and the application falls back to those
-// same built-in rules — so seeding does not change behaviour, it makes the rules
-// editable. This is a deploy step for each environment, alongside
-// checkDuplicateCustomerMobiles.js.
-//
-// Idempotent: existing rows are left exactly as they are, so a re-run never
-// overwrites a rule someone has changed. --reset restores the shipped rules.
+// What gets seeded is defined by the files in main/install/, not by this
+// script. --reset clears the stored rules and the ledger entries for them so
+// the next run (here or at startup) reinstates the shipped rules.
 //
 // Usage: node main/scripts/seedWorkflowStateMachine.js
-//        node main/scripts/seedWorkflowStateMachine.js --reset
 //        node main/scripts/seedWorkflowStateMachine.js --list
+//        node main/scripts/seedWorkflowStateMachine.js --reset
 
 const mongoose = require('mongoose');
 const path = require('path');
@@ -46,59 +45,31 @@ async function main() {
   console.log('Database:', mongoose.connection.name);
 
   const WorkflowStateMachine = require('../models/workflowStateMachine');
-  const orderWorkflow = require('../workflow/orderWorkflow');
-
-  // Every entity that ships a state machine.
-  const MACHINES = [
-    { entity: orderWorkflow.ORDER_ENTITY, transitions: orderWorkflow.DEFAULT_TRANSITIONS },
-  ];
+  const ApplicationLog = require('../models/applicationLog');
+  const { runBootstrap } = require('../bootstrap');
 
   try {
     if (LIST_ONLY) {
       const rows = await WorkflowStateMachine.find().sort({ entity: 1, from: 1, to: 1 }).lean();
       console.log(rows.length ? `\n${rows.length} stored transition(s):` : '\nNothing stored — the built-in rules apply.');
       rows.forEach(r => console.log(describe(r)));
+      const log = await ApplicationLog.find().sort({ runAt: 1 }).lean();
+      console.log(`\n${log.length} ledger entr(ies):`);
+      log.forEach(l => console.log(`  ${l.action} v${l.version}  ${l.status}  ${l.detail || ''}`));
       return;
     }
 
     if (RESET) {
-      const entities = MACHINES.map(m => m.entity);
-      const { deletedCount } = await WorkflowStateMachine.deleteMany({ entity: { $in: entities } });
-      console.log(`--reset: removed ${deletedCount} existing row(s) for ${entities.join(', ')}.`);
+      const removed = await WorkflowStateMachine.deleteMany({});
+      // The ledger entry has to go too, or the seed considers itself done.
+      const clearedLog = await ApplicationLog.deleteMany({ action: 'seed:workflowStateMachine' });
+      console.log(`--reset: removed ${removed.deletedCount} transition(s) and ${clearedLog.deletedCount} ledger entr(ies).`);
     }
 
-    // Flatten each machine into one row per permitted move.
-    const wanted = [];
-    for (const { entity, transitions } of MACHINES) {
-      for (const [from, targets] of Object.entries(transitions)) {
-        for (const [to, rule] of Object.entries(targets)) {
-          wanted.push({
-            entity,
-            from,
-            to,
-            roles: rule.roles && rule.roles.length ? rule.roles : undefined,
-            guards: rule.guards || [],
-            enabled: true,
-          });
-        }
-      }
-    }
+    const status = await runBootstrap();
+    console.log('');
+    status.steps.forEach(s => console.log(`  ${s.action} v${s.version}: ${s.status} — ${s.detail}`));
 
-    let inserted = 0;
-    let kept = 0;
-    for (const row of wanted) {
-      const existing = await WorkflowStateMachine.findOne({
-        entity: row.entity, from: row.from, to: row.to,
-      });
-      if (existing) {
-        kept += 1;
-        continue;
-      }
-      await WorkflowStateMachine.create(row);
-      inserted += 1;
-    }
-
-    console.log(`\nSeed complete. ${inserted} inserted, ${kept} left untouched.`);
     const rows = await WorkflowStateMachine.find().sort({ entity: 1, from: 1, to: 1 }).lean();
     console.log(`\n${rows.length} transition(s) now stored:`);
     rows.forEach(r => console.log(describe(r)));

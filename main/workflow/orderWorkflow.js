@@ -37,26 +37,29 @@ const ORDER_STATUS_LABELS = {
 
 const { GUARDS } = require('./guards');
 
-// The rules as shipped. Seeded into the orderTransitions collection, and used
-// verbatim when that collection is empty or unreadable.
-const DEFAULT_TRANSITIONS = {
-  todo: {
-    done: {},
-    delivered: { guards: ['requirePaid'] },
-    cancelled: { roles: ['admin'] },
-  },
-  done: {
-    todo: {},
-    delivered: { guards: ['requirePaid'] },
-    cancelled: { roles: ['admin'] },
-  },
-  cancelled: {
-    // Reopening a cancelled order is itself an admin action.
-    todo: { roles: ['admin'] },
-  },
-  // Delivered is terminal: the goods have left the shop.
-  delivered: {},
-};
+// The rules as shipped, read from the same file the installer seeds into the
+// database (main/install/001-workflowStateMachine.json). One definition serves
+// both, so the seed and the fallback cannot drift apart.
+const seedFile = require('../install/001-workflowStateMachine.json');
+
+// Rows -> the nested { from: { to: rule } } shape. Used for the shipped rules
+// here and for the stored rows in workflowStateMachine.service.js, so both go
+// through the same conversion.
+function rowsToTable(rows, entity) {
+  const table = {};
+  for (const row of rows) {
+    if (entity && row.entity !== entity) continue;
+    if (row.enabled === false) continue;
+    if (!table[row.from]) table[row.from] = {};
+    const rule = {};
+    if (row.roles && row.roles.length) rule.roles = row.roles;
+    if (row.guards && row.guards.length) rule.guards = row.guards;
+    table[row.from][row.to] = rule;
+  }
+  return table;
+}
+
+const DEFAULT_TRANSITIONS = rowsToTable(seedFile.documents, ORDER_ENTITY);
 
 function normalize(status) {
   return String(status ?? '').trim().toLowerCase();
@@ -162,6 +165,7 @@ function describeTargets(table, from, role, context = {}) {
 
 module.exports = {
   ORDER_ENTITY,
+  rowsToTable,
   ORDER_STATUS_VALUES,
   ORDER_STATUS_LABELS,
   DEFAULT_TRANSITIONS,
