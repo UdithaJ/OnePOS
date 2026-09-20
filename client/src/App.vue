@@ -59,6 +59,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { toast, useToast } from './composables/useToast'
+import { useRouter } from 'vue-router'
+import { useAuth } from './composables/useAuth'
 import { getBootstrapStatus, type BootstrapStep } from './services/bootstrapApiService'
 import './styles/neomorphic.scss'
 
@@ -111,7 +113,23 @@ async function pollSetup() {
   }
 }
 
-onMounted(pollSetup)
+// The account behind a remembered session may have been removed or changed
+// while the app was closed. Check before anything reads the cached role.
+const router = useRouter()
+const { revalidate } = useAuth()
+
+async function checkSession() {
+  const stillValid = await revalidate()
+  if (!stillValid) {
+    showToast('Your session has ended. Please sign in again.', 'warning')
+    router.push({ name: 'Login' })
+  }
+}
+
+onMounted(() => {
+  pollSetup()
+  checkSession()
+})
 onUnmounted(() => { if (pollTimer) clearTimeout(pollTimer) })
 
 const toastTitle = computed(() => {

@@ -82,6 +82,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { isAdminRole } from '@/constants/roles'
 import { useAuth } from '../composables/useAuth'
 import { useReportCatalog } from '../composables/useReport'
 
@@ -102,7 +103,9 @@ const userInitials = computed(() => {
   return (first + last).toUpperCase() || 'U'
 })
 
-const isAdmin = computed(() => getUser()?.userRole === 'admin')
+// sysadmin counts as an admin here too, or the built-in account cannot reach
+// the screens it exists to recover.
+const isAdmin = computed(() => isAdminRole(getUser()?.userRole))
 
 onMounted(() => {
   document.body.classList.remove('dark-theme')

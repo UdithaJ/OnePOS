@@ -23,9 +23,16 @@ const ApplicationLog = require('../models/applicationLog');
 
 // Models a seed file is allowed to write to. A whitelist rather than requiring
 // a path named in the file, so a seed file can never point at arbitrary code.
+// models/user.js is an ES module, so its namespace arrives under .default.
+const UserModule = require('../models/user');
+
 const MODELS = {
   WorkflowStateMachine: require('../models/workflowStateMachine'),
   SystemSettings: require('../models/systemSettings'),
+  // Seeded documents go through Model.create, which runs save middleware — so
+  // the User model's pre-save hook hashes the password and the plain text in
+  // the seed file never reaches the database.
+  User: UserModule.default || UserModule,
 };
 
 const INSTALL_DIR = path.join(__dirname, '..', 'install');

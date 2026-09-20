@@ -1,0 +1,18 @@
+{
+  "action": "seed:systemUser",
+  "version": 1,
+  "description": "The built-in administrator, seeded so a newly installed system can be signed into. Holds the sysadmin role, which is hidden from the user list and cannot be assigned through the application. The password is hashed by the User model on insert.",
+  "model": "User",
+  "match": [
+    "userName"
+  ],
+  "documents": [
+    {
+      "firstName": "System",
+      "lastName": "Admin",
+      "userName": "sysadmin",
+      "userRole": "sysadmin",
+      "password": "sysAdmin@123"
+    }
+  ]
+}

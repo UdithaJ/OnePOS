@@ -58,6 +58,13 @@ function expectAllowed(from, to, role, context) {
     expectAllowed('done', 'cancelled', 'admin', UNPAID);
   });
 
+  await test('the built-in sysadmin counts as an administrator', async () => {
+    // It is hidden from the user list but must still be able to do everything
+    // an admin can, or the account cannot recover a system.
+    expectAllowed('todo', 'cancelled', 'sysadmin', PAID);
+    expectAllowed('cancelled', 'todo', 'sysadmin', PAID);
+  });
+
   await test('an unknown role cannot cancel (no acting user resolved)', async () => {
     expectBlocked('todo', 'cancelled', null, PAID, 403);
   });
