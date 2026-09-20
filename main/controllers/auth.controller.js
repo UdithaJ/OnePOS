@@ -16,6 +16,6 @@ export const registerUser = async (req, res) => {
     const result = await register(req.body);
     res.status(201).json(result);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
