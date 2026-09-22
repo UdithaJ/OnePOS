@@ -98,7 +98,8 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useDynamicForm } from '@/composables/useDynamicForm'
 import { getCustomersPaginated, createCustomer, updateCustomer, deleteCustomer, sendOtp, verifyOtp } from '@/services/customerApiService'
@@ -297,4 +298,17 @@ async function confirmDelete() {
     showDeleteConfirm.value = false
   }
 }
+
+// Opens the register-customer modal straight from the dashboard's "New
+// Customer" shortcut, which lands here with ?new=1.
+const route = useRoute()
+const router = useRouter()
+
+onMounted(() => {
+  // Read the flag before the replace clears it — route.query is reactive.
+  if (route.query.new !== '1') return
+  // Drop the flag so a refresh or a back-navigation does not reopen the modal.
+  router.replace({ name: 'Customers' })
+  onAddCustomer()
+})
 </script>
