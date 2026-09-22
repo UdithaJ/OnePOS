@@ -230,7 +230,10 @@
         <template #default>
           <v-card class="rounded-xl overflow-hidden" style="border: none;">
             <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
-              <h3 class="text-lg font-semibold">{{ editOrderId ? 'Edit Order' : 'New Order' }}</h3>
+              <h3 class="text-lg font-semibold">
+                {{ editOrderId ? 'Edit Order' : 'New Order' }}
+                <span v-if="editOrderNo" class="ml-2" style="color: rgba(255,255,255,0.75); font-weight: 500;">Order No: {{ editOrderNo }}</span>
+              </h3>
               <v-btn icon="mdi-close" size="small" variant="text"
                 style="color: rgba(255,255,255,0.8);" @click="showForm = false" />
             </div>
@@ -673,6 +676,10 @@ const tableSortBy = computed(() =>
 
 const showForm = ref(false)
 const editOrderId = ref<string|null>(null)
+// The order number shown in the modal header. Kept separately from
+// editOrderId, which holds the mongo _id — orderNo is the sequential number
+// the Orders table lists, and the only one that means anything to staff.
+const editOrderNo = ref<number|string|null>(null)
 const activeOrderModalTab = ref<'order' | 'payments' | 'new-customer'>('order')
 
 const customerSearchQuery = ref('')
@@ -1187,6 +1194,7 @@ function resetForm() {
   currentOrderDueAmount.value = 0
   currentOrderPaymentStatus.value = 'unpaid'
   activeOrderModalTab.value = 'order'
+  editOrderNo.value = null
   printBillOnCreate.value = true
   printCopies.value = 1
   makePaymentOnCreate.value = false
@@ -1391,6 +1399,7 @@ async function onEditOrder(order: any) {
   if (!orderId) return
   const data = await getOrderById(orderId)
   editOrderId.value = orderId
+  editOrderNo.value = data.orderNo ?? order.orderNo ?? null
   activeOrderModalTab.value = 'order'
   form.value.customer = data.customerID?._id || data.customerID
   form.value.deliveryDate = data.deliveryDate?.substring(0, 10)
@@ -1473,6 +1482,7 @@ async function persistOrder() {
 async function afterOrderPersist(createdOrder?: any) {
   if (createdOrder && makePaymentOnCreate.value) {
     editOrderId.value = createdOrder._id
+    editOrderNo.value = createdOrder.orderNo ?? null
     currentOrderDueAmount.value = Number(createdOrder.dueAmount ?? createdOrder.totalAmount ?? totalAmount.value ?? 0)
     currentOrderPaymentStatus.value = String(createdOrder.paymentStatus || 'unpaid')
     payments.value = []
@@ -1486,6 +1496,7 @@ async function afterOrderPersist(createdOrder?: any) {
   await loadOrders()
   showForm.value = false
   editOrderId.value = null
+  editOrderNo.value = null
 }
 
 async function handleSubmit() {
