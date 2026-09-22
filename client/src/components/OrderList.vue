@@ -583,6 +583,7 @@
 <script lang="ts" setup>
 
 import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
 import OrderPaymentDialog from './OrderPaymentDialog.vue'
@@ -590,6 +591,9 @@ import { useDynamicForm } from '@/composables/useDynamicForm'
 import { getActiveCashBoxSession } from '../services/cashBoxSessionApiService'
 import { useAuth } from '../composables/useAuth'
 const { getUser } = useAuth()
+
+const route = useRoute()
+const router = useRouter()
 
 const orderHeaders = [
   { title: 'Order #',       key: 'orderNo',      align: 'start' as const, sortable: true },
@@ -1190,7 +1194,17 @@ function handleTableOptions(options: any) {
   loadOrders()
 }
 
-onMounted(loadCustomersAndOrders)
+onMounted(async () => {
+  // Read the flag before the replace below clears it — route.query is reactive.
+  const openNew = route.query.new === '1'
+  await loadCustomersAndOrders()
+  if (!openNew) return
+  // Drop the flag so a refresh or a back-navigation does not reopen the modal.
+  router.replace({ name: 'OrderList' })
+  // Goes through the same entry point as the "+ New order" button, so the
+  // shortcut still gets the active-cash-box-session check.
+  await handleNewOrderClick()
+})
 
 const { form, isValid } = useDynamicForm({ fields: [] })
 // Initialize all possible fields upfront
