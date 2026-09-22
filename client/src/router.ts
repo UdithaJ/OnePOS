@@ -59,9 +59,11 @@ const routes: RouteRecordRaw[] = [
         // One route serves every report. Which report is rendered comes from
         // the backend definition matching :reportId — adding a definition file
         // adds a working page with no change here.
+        //
+        // Open to every signed-in role: cashiers read reports too. The parent
+        // route's requiresAuth still applies, so this is not public.
         path: 'reports/:reportId',
         name: 'Report',
-        meta: ADMIN_ONLY,
         component: () => import('@/components/reports/ReportView.vue'),
       },
     ],

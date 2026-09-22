@@ -146,10 +146,11 @@ const allMenuItems: MenuItem[] = [
 const { catalog, loadCatalog } = useReportCatalog()
 onMounted(loadCatalog)
 
+// No adminOnly: every signed-in role gets the Reports menu, matching the
+// route, which is open to cashiers too.
 const reportsMenu = computed<MenuItem>(() => ({
   title: 'Reports',
   icon: 'mdi-chart-bar',
-  adminOnly: true,
   children: catalog.value.map(report => ({
     title: report.menuTitle,
     to: `/reports/${report.id}`,
