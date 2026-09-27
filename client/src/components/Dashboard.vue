@@ -72,18 +72,22 @@
               height="80"
               stacked
               style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-              @click="router.push('/order-list')"
+              @click="router.push({ name: 'OrderList', query: { new: '1' } })"
             >
               <v-icon size="24" class="mb-1">mdi-clipboard-plus-outline</v-icon>
               New Order
             </v-btn>
+            <!-- Registering a customer is an admin action, and /customers is
+                 admin-only, so a cashier gets the button disabled rather than a
+                 shortcut that bounces them back here. -->
             <v-btn
               block
               height="80"
               stacked
               variant="outlined"
+              :disabled="!isAdmin"
               style="border-color: #0f766e; color: #0f766e; text-transform: none; font-weight: 600;"
-              @click="router.push('/customers')"
+              @click="router.push({ name: 'Customers', query: { new: '1' } })"
             >
               <v-icon size="24" class="mb-1">mdi-account-plus-outline</v-icon>
               New Customer
@@ -121,7 +125,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bar, Line } from 'vue-chartjs'
 import {
@@ -142,10 +146,14 @@ import BankTransfersCard from './BankTransfersCard.vue'
 const bankTransfersCard = ref<InstanceType<typeof BankTransfersCard> | null>(null)
 import DeliveryPending from './DeliveryPending.vue'
 import { getAllOrders } from '@/services/orderApiService'
+import { useAuth } from '@/composables/useAuth'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler)
 
 const router = useRouter()
+const { getUser } = useAuth()
+
+const isAdmin = computed(() => getUser()?.userRole === 'admin')
 
 const ordersTodayCount = ref(0)
 const doneCount = ref(0)

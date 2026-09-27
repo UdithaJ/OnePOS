@@ -85,6 +85,9 @@ try {
 
 // --- fixture ----------------------------------------------------------------
 
+// One order per payment status, so the label mapping is exercised.
+const PAYMENT_STATUS_BY_ORDER = { o1: 'paid', o2: 'partial', o3: 'unpaid' };
+
 function row(createdDate, orderId, orderNo, categoryName, weight, amount, totalAmount, discount) {
   return {
     createdDate,
@@ -92,6 +95,7 @@ function row(createdDate, orderId, orderNo, categoryName, weight, amount, totalA
     orderId,
     orderNo,
     status: 'done',
+    paymentStatus: PAYMENT_STATUS_BY_ORDER[orderId],
     rackNumber: 'R1',
     customerName: `Customer ${orderNo}`,
     mobileNumber: '0771234567',
@@ -144,8 +148,13 @@ function toLocalDateKey(iso) {
 
 const STATUS_DISPLAY = { todo: 'To Do', done: 'Done', delivered: 'Delivered', cancelled: 'Cancelled' };
 
-// from useDailySalesExport.ts
-const DAILY_HEADERS = ['Date', 'Order No', 'Customer', 'Delivery Date', 'Status', 'Rack No', 'Laundry Category', 'Weight (kg)', 'Amount', 'Discount', 'Net Amount', 'Total Amount'];
+// Payment Status postdates the legacy exporter. It is the one addition to the
+// otherwise verbatim copy below: an order-level column after Status, using the
+// labels OrderList.vue shows.
+const PAYMENT_STATUS_DISPLAY = { paid: 'Paid', partial: 'Partially Paid', unpaid: 'Not Paid' };
+
+// from useDailySalesExport.ts (+ Payment Status)
+const DAILY_HEADERS = ['Date', 'Order No', 'Customer', 'Delivery Date', 'Status', 'Payment Status', 'Rack No', 'Laundry Category', 'Weight (kg)', 'Amount', 'Discount', 'Net Amount', 'Total Amount'];
 
 function legacyDailyFlatRows(rows) {
   const dateTotals = new Map();
@@ -178,6 +187,7 @@ function legacyDailyFlatRows(rows) {
       isFirstOrder ? r.customerName : '',
       isFirstOrder ? formatDate(r.deliveryDate) : '',
       isFirstOrder ? (STATUS_DISPLAY[r.status] ?? r.status) : '',
+      isFirstOrder ? PAYMENT_STATUS_DISPLAY[r.paymentStatus] : '',
       isFirstOrder ? (r.rackNumber ?? '-') : '',
       r.categoryName,
       String(r.weight),
@@ -213,7 +223,7 @@ function legacyDailyCSV(rows) {
   const all = [
     DAILY_HEADERS,
     ...legacyDailyFlatRows(rows),
-    ['', '', '', '', '', '', '', '', '', '', 'Total for the given period', legacyDailyGrandTotal(rows).toFixed(2)],
+    ['', '', '', '', '', '', '', '', '', '', '', 'Total for the given period', legacyDailyGrandTotal(rows).toFixed(2)],
   ];
   return all.map((r) => r.map(escapeCell).join(',')).join('\r\n');
 }
@@ -226,7 +236,7 @@ const dailyDef = require('../definitions/daily-sales.json');
 const produced = newCSV(dailyDef);
 const legacy = legacyDailyCSV(rawRows);
 
-test('CSV is byte-identical to the old useDailySalesExport output', () => {
+test('CSV is byte-identical to the old useDailySalesExport output (+ Payment Status)', () => {
   if (produced !== legacy) {
     const a = produced.split('\r\n');
     const b = legacy.split('\r\n');
@@ -252,6 +262,13 @@ test('Due Date is suppressed per date group, matching the table', () => {
   assert.deepStrictEqual(dateCells, ['01/03/2026', '', '', '', '02/03/2026', '']);
 });
 
+test('Order Created Date follows Order No and prints once per order', () => {
+  const [header, ...rest] = pendingCSV.split('\r\n');
+  assert.strictEqual(header.split(',')[2], 'Order Created Date');
+  const createdCells = rest.slice(0, -1).map((line) => line.split(',')[2]);
+  assert.deepStrictEqual(createdCells, ['01/03/2026', '', '', '01/03/2026', '02/03/2026', '']);
+});
+
 test('Total Pending Weight has no unit suffix in CSV (table shows " kg")', () => {
   const footer = pendingCSV.split('\r\n').pop();
   assert.ok(footer.endsWith(',24'), `footer was: ${footer}`);
@@ -261,7 +278,7 @@ console.log('\nCash Box Summary — legacy display/export split preserved');
 
 const cashBoxDef = require('../definitions/cash-box-summary.json');
 const cashRows = [
-  { orderNo: 1, createdDate: '2026-03-01T04:00:00.000Z', businessDate: null, customerName: 'A',
+  { orderNo: 1, createdDate: '2026-03-01T04:00:00.000Z', paymentDate: '2026-03-02T04:00:00.000Z', customerName: 'A',
     totalAmount: 1500.5, discount: 0, orderAmountAfterDiscount: 1500.5, dueAmount: 0,
     paymentMethod: 'cash', paymentReceived: 1500.5 },
 ];

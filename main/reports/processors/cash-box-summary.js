@@ -1,5 +1,8 @@
-// Cash Box Summary (Cash Inflow) — non-bank payments against orders in the
-// period, joined through the cash ledger to the session that recorded them.
+// Cash Box Summary (Cash Inflow) — one row per non-bank payment taken in the
+// period. The period is the payment's own date (or, with dateBasis=business,
+// the business day of the drawer session it was taken in), never the order's
+// creation date, so a settlement taken today counts today even for an order
+// from last week. The Payment Date column always shows the payment's own date.
 //
 // Each row is a payment *event*, so its money columns come from the snapshot
 // frozen onto the payment when it was taken, not from the live order. Reading
@@ -8,76 +11,50 @@
 // snapshot fall back to the order fields — run
 // `node main/scripts/backfillPaymentSnapshots.js` to fill them in.
 
+const { resolveDateBasis, periodStages } = require('./shared/businessDay.js');
+
 exports.buildPipeline = ({ params }) => [
-  { $match: { createdDate: { $gte: params.fromDate, $lte: params.toDate } } },
-  // Join payments — one order may have multiple payments. A plain $unwind drops
-  // orders with no payments, which is why no order-state prefilter is needed.
+  { $match: { paymentMethod: { $ne: 'bank' } } },
+  ...periodStages({
+    basis: resolveDateBasis(params.dateBasis),
+    dateField: 'date',
+    fromDate: params.fromDate,
+    toDate: params.toDate,
+  }),
   {
     $lookup: {
-      from: 'payments',
-      localField: '_id',
-      foreignField: 'orderId',
-      as: 'payments',
+      from: 'orders',
+      localField: 'orderId',
+      foreignField: '_id',
+      as: 'order',
     },
   },
-  { $unwind: '$payments' },
-  { $match: { 'payments.paymentMethod': { $ne: 'bank' } } },
+  { $unwind: '$order' },
   {
     $lookup: {
       from: 'customers',
-      localField: 'customerID',
+      localField: 'order.customerID',
       foreignField: '_id',
       as: 'customer',
     },
   },
   { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
-  // Left join cashledgers — only PAYMENT event type matching this payment's _id
-  {
-    $lookup: {
-      from: 'cashledgers',
-      let: { paymentId: '$payments._id' },
-      pipeline: [
-        {
-          $match: {
-            $expr: {
-              $and: [
-                { $eq: ['$source_id', '$$paymentId'] },
-                { $eq: ['$event_type', 'PAYMENT'] },
-              ],
-            },
-          },
-        },
-      ],
-      as: 'ledger',
-    },
-  },
-  { $unwind: { path: '$ledger', preserveNullAndEmptyArrays: true } },
-  // Left join cashboxsessions to get openedAt (business date)
-  {
-    $lookup: {
-      from: 'cashboxsessions',
-      localField: 'ledger.sessionId',
-      foreignField: '_id',
-      as: 'session',
-    },
-  },
-  { $unwind: { path: '$session', preserveNullAndEmptyArrays: true } },
   // Resolve the frozen figures once; fall back to the live order for payments
   // recorded before snapshots existed.
   {
     $addFields: {
-      frozenTotal: { $ifNull: ['$payments.orderTotalAmount', '$totalAmount'] },
-      frozenDiscount: { $ifNull: ['$payments.orderDiscount', { $ifNull: ['$discount', 0] }] },
-      frozenDue: { $ifNull: ['$payments.dueAfter', '$dueAmount'] },
+      frozenTotal: { $ifNull: ['$orderTotalAmount', '$order.totalAmount'] },
+      frozenDiscount: { $ifNull: ['$orderDiscount', { $ifNull: ['$order.discount', 0] }] },
+      frozenDue: { $ifNull: ['$dueAfter', '$order.dueAmount'] },
     },
   },
   {
     $project: {
       _id: 0,
-      orderId: '$_id',
-      orderNo: 1,
-      createdDate: 1,
-      businessDate: '$session.openedAt',
+      orderId: '$order._id',
+      orderNo: '$order.orderNo',
+      createdDate: '$order.createdDate',
+      paymentDate: '$date',
       customerName: {
         $concat: [
           '$customer.firstName',
@@ -94,9 +71,9 @@ exports.buildPipeline = ({ params }) => [
       discount: '$frozenDiscount',
       orderAmountAfterDiscount: { $subtract: ['$frozenTotal', '$frozenDiscount'] },
       dueAmount: '$frozenDue',
-      paymentMethod: '$payments.paymentMethod',
-      paymentReceived: '$payments.amount',
+      paymentMethod: 1,
+      paymentReceived: '$amount',
     },
   },
-  { $sort: { createdDate: 1, orderNo: 1 } },
+  { $sort: { paymentDate: 1, orderNo: 1 } },
 ];

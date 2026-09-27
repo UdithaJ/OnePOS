@@ -230,7 +230,10 @@
         <template #default>
           <v-card class="rounded-xl overflow-hidden" style="border: none;">
             <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
-              <h3 class="text-lg font-semibold">{{ editOrderId ? 'Edit Order' : 'New Order' }}</h3>
+              <h3 class="text-lg font-semibold">
+                {{ editOrderId ? 'Edit Order' : 'New Order' }}
+                <span v-if="editOrderNo" class="ml-2" style="color: rgba(255,255,255,0.75); font-weight: 500;">Order No: {{ editOrderNo }}</span>
+              </h3>
               <v-btn icon="mdi-close" size="small" variant="text"
                 style="color: rgba(255,255,255,0.8);" @click="showForm = false" />
             </div>
@@ -573,7 +576,9 @@
         :show="showPaymentDialog"
         :order-id="editOrderId"
         :due-amount="effectiveDueAmount"
+        :print-bill="makePaymentOnCreate && printBillOnCreate"
         @close="showPaymentDialog = false"
+        @cancel="onPaymentCancelled"
         @paid="onPaymentMade"
       />
     </main>
@@ -583,6 +588,7 @@
 <script lang="ts" setup>
 
 import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import BaseList from '@/components/BaseList.vue'
 import DynamicForm from '@/components/DynamicForm.vue'
 import OrderPaymentDialog from './OrderPaymentDialog.vue'
@@ -590,6 +596,9 @@ import { useDynamicForm } from '@/composables/useDynamicForm'
 import { getActiveCashBoxSession } from '../services/cashBoxSessionApiService'
 import { useAuth } from '../composables/useAuth'
 const { getUser } = useAuth()
+
+const route = useRoute()
+const router = useRouter()
 
 const orderHeaders = [
   { title: 'Order #',       key: 'orderNo',      align: 'start' as const, sortable: true },
@@ -670,6 +679,10 @@ const tableSortBy = computed(() =>
 
 const showForm = ref(false)
 const editOrderId = ref<string|null>(null)
+// The order number shown in the modal header. Kept separately from
+// editOrderId, which holds the mongo _id — orderNo is the sequential number
+// the Orders table lists, and the only one that means anything to staff.
+const editOrderNo = ref<number|string|null>(null)
 const activeOrderModalTab = ref<'order' | 'payments' | 'new-customer'>('order')
 
 const customerSearchQuery = ref('')
@@ -746,7 +759,9 @@ const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
 const printBillOnCreate = ref(true)
-const printCopies = ref(2)
+// A bill is printed twice by default: one for the customer, one for the shop.
+const DEFAULT_PRINT_COPIES = 2
+const printCopies = ref(DEFAULT_PRINT_COPIES)
 const makePaymentOnCreate = ref(false)
 const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
@@ -825,6 +840,19 @@ watch(suborders, (subs) => {
   subs.forEach((sub, idx) => updateSuborderAmount(idx))
 }, { deep: true })
 import { makePayment } from '@/services/paymentApiService'
+// Cancelling the payment of a just-created order still owes the bill the user
+// asked for when placing it; the create+pay step ends either way.
+async function onPaymentCancelled({ printBill: wantsBill }: { printBill: boolean }) {
+  const pendingCreate = makePaymentOnCreate.value
+  makePaymentOnCreate.value = false
+  if (!pendingCreate || !wantsBill || !editOrderId.value) return
+  try {
+    await printBill(await getOrderById(editOrderId.value), printCopies.value)
+  } catch (e) {
+    console.error('Print after cancelled payment failed', e)
+  }
+}
+
 async function onPaymentMade(payment: any) {
   // Call payment API
   try {
@@ -841,8 +869,9 @@ async function onPaymentMade(payment: any) {
       return;
     }
     
+    const orderId = editOrderId.value || ''
     await makePayment({
-      orderId: editOrderId.value || '',
+      orderId,
       amount: payment.amount,
       paymentMethod: payment.paymentMethod,
       type: payment.type,
@@ -853,30 +882,34 @@ async function onPaymentMade(payment: any) {
     
     showToast('Payment successful!', 'success')
     
-    // Reload payments to update due amount
-    payments.value = await getPaymentsByOrder(editOrderId.value || '')
-    const latestOrder = await getOrderById(editOrderId.value || '')
-    currentOrderDueAmount.value = Number(latestOrder?.dueAmount || 0)
-    currentOrderPaymentStatus.value = String(latestOrder?.paymentStatus || 'unpaid')
+    const latestOrder = await getOrderById(orderId)
     
-    // If this payment was initiated as part of a create+pay flow, print the bill now
-    if (makePaymentOnCreate.value) {
+    // Print when the payment modal's "Print bill" box was ticked — pre-ticked
+    // for a create+pay order that asked for a bill, otherwise the user's choice.
+    if (payment.printBill) {
       try {
         // Use authoritative order returned from server to render bill
         await printBill(latestOrder, printCopies.value)
       } catch (e) {
         console.error('Print after payment failed', e)
       }
-      // clear the flag so subsequent payments don't auto-print
-      makePaymentOnCreate.value = false
     }
+    // The create+pay step is over; later payments on this order are ordinary.
+    makePaymentOnCreate.value = false
 
-    // Check if order is fully paid and refresh orders
-    if (effectiveDueAmount.value <= 0) {
+    if (Number(latestOrder?.dueAmount || 0) <= 0) {
       showToast('Payment status updated to paid.', 'success')
     }
     await loadOrders()
     showPaymentDialog.value = false
+    // Reload the order window from the server, exactly as if the order had just
+    // been opened: its items, status, payments and due amount become the saved
+    // ones, so any further item change goes through the "order already contains
+    // payments" confirmation. After a create+pay, this is what turns the
+    // half-built new-order form into a real edit of the placed order.
+    const tab = activeOrderModalTab.value
+    await onEditOrder({ id: orderId })
+    activeOrderModalTab.value = tab
   } catch (e) {
     showToast('Payment failed', 'error')
   }
@@ -1190,7 +1223,17 @@ function handleTableOptions(options: any) {
   loadOrders()
 }
 
-onMounted(loadCustomersAndOrders)
+onMounted(async () => {
+  // Read the flag before the replace below clears it — route.query is reactive.
+  const openNew = route.query.new === '1'
+  await loadCustomersAndOrders()
+  if (!openNew) return
+  // Drop the flag so a refresh or a back-navigation does not reopen the modal.
+  router.replace({ name: 'OrderList' })
+  // Goes through the same entry point as the "+ New order" button, so the
+  // shortcut still gets the active-cash-box-session check.
+  await handleNewOrderClick()
+})
 
 const { form, isValid } = useDynamicForm({ fields: [] })
 // Initialize all possible fields upfront
@@ -1215,8 +1258,9 @@ function resetForm() {
   currentOrderDueAmount.value = 0
   currentOrderPaymentStatus.value = 'unpaid'
   activeOrderModalTab.value = 'order'
+  editOrderNo.value = null
   printBillOnCreate.value = true
-  printCopies.value = 2
+  printCopies.value = DEFAULT_PRINT_COPIES
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
   newCustomerId.value = null
@@ -1234,7 +1278,7 @@ function resetForm() {
 }
 
 const submitButtonLabel = computed(() => {
-  if (!editOrderId.value && makePaymentOnCreate.value) return 'Next'
+  if (!editOrderId.value && makePaymentOnCreate.value) return 'Submit order & pay'
   if (editOrderId.value) return 'Update order'
   return 'Submit order'
 })
@@ -1452,7 +1496,12 @@ async function onEditOrder(order: any) {
   const orderId = order.id || order._id
   if (!orderId) return
   const data = await getOrderById(orderId)
+  // Create-only choices must never carry over to an existing order.
+  makePaymentOnCreate.value = false
+  printBillOnCreate.value = true
+  printCopies.value = DEFAULT_PRINT_COPIES
   editOrderId.value = orderId
+  editOrderNo.value = data.orderNo ?? order.orderNo ?? null
   activeOrderModalTab.value = 'order'
   form.value.customer = data.customerID?._id || data.customerID
   form.value.deliveryDate = data.deliveryDate?.substring(0, 10)
@@ -1539,6 +1588,11 @@ async function persistOrder() {
 async function afterOrderPersist(createdOrder?: any) {
   if (createdOrder && makePaymentOnCreate.value) {
     editOrderId.value = createdOrder._id
+    editOrderNo.value = createdOrder.orderNo ?? null
+    // The modal is now in edit mode, which shows the Status field; a new order
+    // is always To Do.
+    form.value.status = createdOrder.status || 'todo'
+    originalOrderStatus.value = String(form.value.status).toLowerCase()
     currentOrderDueAmount.value = Number(createdOrder.dueAmount ?? createdOrder.totalAmount ?? totalAmount.value ?? 0)
     currentOrderPaymentStatus.value = String(createdOrder.paymentStatus || 'unpaid')
     payments.value = []
@@ -1552,6 +1606,7 @@ async function afterOrderPersist(createdOrder?: any) {
   await loadOrders()
   showForm.value = false
   editOrderId.value = null
+  editOrderNo.value = null
 }
 
 async function handleSubmit() {

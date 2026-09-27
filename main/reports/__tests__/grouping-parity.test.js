@@ -216,8 +216,9 @@ test('grand total counts each order once', () => {
   assert.strictEqual(engineDaily.footer[0].value, legacyDailySalesGrandTotal(legacyDaily));
 });
 
-test('footer labelSpan reproduces the old colspan="11"', () => {
-  assert.strictEqual(engineDaily.footer[0].labelSpan, 11);
+// The old template's colspan="11", plus the Payment Status column added since.
+test('footer labelSpan spans every column before Total Amount', () => {
+  assert.strictEqual(engineDaily.footer[0].labelSpan, 12);
 });
 
 console.log('\nPending Orders — engine vs legacy composable');
@@ -248,8 +249,9 @@ test('total pending weight sums every row', () => {
   assert.strictEqual(enginePending.footer[0].value, expected);
 });
 
-test('footer labelSpan reproduces the old colspan="7"', () => {
-  assert.strictEqual(enginePending.footer[0].labelSpan, 7);
+// The old template's colspan="7", plus the Order Created Date column added since.
+test('footer labelSpan spans every column before Weight', () => {
+  assert.strictEqual(enginePending.footer[0].labelSpan, 8);
 });
 
 console.log('\nEngine invariants');

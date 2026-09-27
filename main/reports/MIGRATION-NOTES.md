@@ -53,6 +53,50 @@ Route is unchanged (`/reports/bank-transfer-tracking`) — the definition id was
 set to match the old URL so existing bookmarks keep working. Its processor file
 is `processors/bank-transfer.js`.
 
+### 4. Daily Sales — Payment Status filter and column *(feature, post-migration)*
+
+Daily Sales gained a **Payment Status** filter (All / Paid / Not Paid /
+Partially Paid) beside the date range, and a matching order-level column after
+Status. Orders with no `paymentStatus` field (created before it existed) are
+treated as Not Paid, both in the filter and in the column — the same way
+`OrderList.vue` shows them.
+
+This adds one column to the CSV/Excel/PDF layout, so every column from Rack No
+onwards shifts one place right and the footer label spans 12 columns, not 11.
+The CSV parity gate still holds everywhere else: the legacy exporter in
+`csv-parity.test.js` differs from the original only by that one column.
+
+### 5. Pending Orders — Order Created Date column *(feature, post-migration)*
+
+Pending Orders gained an order-level **Order Created Date** column after
+Order No. Like the Daily Sales addition above, it shifts the later columns one
+place right in CSV/Excel/PDF, and the footer label now spans 8 columns, not 7.
+
+### 6. Cash Box Summary — Payment Date replaces Business Date *(feature, post-migration)*
+
+The report period now filters on each **payment's date**, not the order's
+creation date, and the Business Date column (the opening time of the cash box
+session that recorded the payment) is replaced by **Payment Date** in the same
+position. A settlement taken today for last week's order is now counted today;
+previously it was counted on the day the order was created. The processor
+starts from `payments` instead of `orders`, and no longer joins the cash ledger
+or sessions. Column positions are unchanged, so the exports keep their layout.
+
+### 7. Business-day option on the cash reports *(feature, post-migration)*
+
+Cash Box Summary, Expenses and Bank Reconciliation have a **Date Basis** filter:
+
+- **Transaction Date** (default) — each payment/expense by its own date, as before.
+- **Business Day** — each by the opening day of the cash box session it was
+  recorded in (via its cash-ledger row), so after-midnight activity in a
+  session that opened the evening before reconciles to that earlier day across
+  all three reports. Rows recorded without a session fall back to their own date.
+
+In Business Day mode, Expenses and Bank Reconciliation show and group by the
+business date; Cash Box Summary still shows each payment's own Payment Date.
+The shared join lives in `processors/shared/businessDay.js`. Bank Transfer
+Tracking is unchanged.
+
 ## Preserved inconsistencies (tech debt, deliberate)
 
 Four reports rendered the **same value differently** on screen and in exports:
