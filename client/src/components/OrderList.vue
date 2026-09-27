@@ -454,7 +454,7 @@
                 <div class="order-form-field">
                   <div class="field-group">
                     <label class="field-label">Mobile Number <span class="required-star">*</span></label>
-                    <v-text-field v-model="newCustomerForm.mobileNumber" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" :rules="MOBILE_RULES" />
+                    <v-text-field v-model="newCustomerForm.mobileNumber" inputmode="tel" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" :rules="MOBILE_RULES" />
                   </div>
                 </div>
                 <div class="order-form-field">

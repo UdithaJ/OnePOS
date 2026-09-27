@@ -52,6 +52,8 @@
           </div>
         </div>
       </Transition>
+
+      <OnScreenKeyboard />
     </v-main>
   </v-app>
 </template>
@@ -62,6 +64,7 @@ import { toast, useToast } from './composables/useToast'
 import { useRouter } from 'vue-router'
 import { useAuth } from './composables/useAuth'
 import { getBootstrapStatus, type BootstrapStep } from './services/bootstrapApiService'
+import OnScreenKeyboard from './components/OnScreenKeyboard.vue'
 import './styles/neomorphic.scss'
 
 // --- first-run setup ------------------------------------------------------
