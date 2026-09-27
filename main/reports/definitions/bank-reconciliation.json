@@ -15,7 +15,17 @@
 
   "params": [
     { "name": "fromDate", "type": "date", "label": "From Date", "default": "today", "required": true, "bind": "dayStart" },
-    { "name": "toDate", "type": "date", "label": "To Date", "default": "today", "required": true, "bind": "dayEnd" }
+    { "name": "toDate", "type": "date", "label": "To Date", "default": "today", "required": true, "bind": "dayEnd" },
+    {
+      "name": "dateBasis",
+      "type": "select",
+      "label": "Date Basis",
+      "default": "transaction",
+      "options": [
+        { "label": "Transaction Date", "value": "transaction" },
+        { "label": "Business Day", "value": "business" }
+      ]
+    }
   ],
 
   "source": { "model": "expense", "processor": "bank-reconciliation" },

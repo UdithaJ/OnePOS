@@ -159,17 +159,59 @@ test('an unknown paymentStatus is a 400, not an empty report', () => {
   }
 });
 
-console.log('\nCash Box Summary period');
+console.log('\nCash report periods (transaction date vs business day)');
 
-test('the period filters on the payment date and excludes bank payments', () => {
-  const definition = getDefinition('cash-box-summary');
-  assert.strictEqual(definition.source.model, 'payment');
-  const processor = require(path.join(__dirname, '..', 'processors', 'cash-box-summary.js'));
-  const { values, timezone } = bindParams(definition, SAMPLE_QUERY);
-  const match = processor.buildPipeline({ params: values, timezone })[0].$match;
-  assert.deepStrictEqual(match.date, { $gte: values.fromDate, $lte: values.toDate });
-  assert.deepStrictEqual(match.paymentMethod, { $ne: 'bank' });
-  assert.ok(!('createdDate' in match), 'must not filter on the order creation date');
+const CASH_REPORTS = ['cash-box-summary', 'expenses', 'bank-reconciliation'];
+
+function cashPipeline(id, query) {
+  const definition = getDefinition(id);
+  const processor = require(path.join(__dirname, '..', 'processors', `${definition.source.processor}.js`));
+  const { values, timezone } = bindParams(definition, { ...SAMPLE_QUERY, ...query });
+  return { values, pipeline: processor.buildPipeline({ params: values, timezone }) };
+}
+const matches = (pipeline) => pipeline.filter((stage) => stage.$match).map((stage) => stage.$match);
+const lookupsFrom = (pipeline) => pipeline.filter((stage) => stage.$lookup).map((stage) => stage.$lookup.from);
+
+test('cash box summary reads payments and excludes bank payments', () => {
+  assert.strictEqual(getDefinition('cash-box-summary').source.model, 'payment');
+  const { pipeline } = cashPipeline('cash-box-summary', {});
+  assert.ok(matches(pipeline).some((m) => JSON.stringify(m.paymentMethod) === JSON.stringify({ $ne: 'bank' })));
+  assert.ok(!matches(pipeline).some((m) => 'createdDate' in m), 'must not filter on the order creation date');
+});
+
+for (const id of CASH_REPORTS) {
+  test(`${id}: transaction basis (and absent) filters on the transaction's own date`, () => {
+    for (const query of [{ dateBasis: 'transaction' }, { dateBasis: undefined }]) {
+      const { values, pipeline } = cashPipeline(id, query);
+      assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+      assert.ok(!lookupsFrom(pipeline).includes('cashboxsessions'));
+    }
+  });
+
+  test(`${id}: business basis filters on the session's opening day`, () => {
+    const { values, pipeline } = cashPipeline(id, { dateBasis: 'business' });
+    assert.ok(lookupsFrom(pipeline).includes('cashledgers') && lookupsFrom(pipeline).includes('cashboxsessions'));
+    // The transaction's own date may run past toDate (after midnight), so it
+    // is only bounded below; the full period applies to the business date.
+    assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate })));
+    assert.ok(matches(pipeline).some((m) => JSON.stringify(m.businessDate) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+  });
+
+  test(`${id}: an unknown dateBasis is a 400`, () => {
+    try {
+      cashPipeline(id, { dateBasis: 'fiscal' });
+      assert.fail('expected an error');
+    } catch (err) {
+      assert.strictEqual(err.status, 400);
+    }
+  });
+}
+
+test('expenses and bank reconciliation group by the business date in business mode', () => {
+  for (const id of ['expenses', 'bank-reconciliation']) {
+    const project = cashPipeline(id, { dateBasis: 'business' }).pipeline.find((stage) => stage.$project).$project;
+    assert.strictEqual(project.date, '$businessDate', id);
+  }
 });
 
 test('an unknown report id is a 404', () => {

@@ -1,6 +1,8 @@
 // Cash Box Summary (Cash Inflow) — one row per non-bank payment taken in the
-// period. The period is the payment's own date, not the order's creation date,
-// so a settlement taken today counts today even for an order from last week.
+// period. The period is the payment's own date (or, with dateBasis=business,
+// the business day of the drawer session it was taken in), never the order's
+// creation date, so a settlement taken today counts today even for an order
+// from last week. The Payment Date column always shows the payment's own date.
 //
 // Each row is a payment *event*, so its money columns come from the snapshot
 // frozen onto the payment when it was taken, not from the live order. Reading
@@ -9,13 +11,16 @@
 // snapshot fall back to the order fields — run
 // `node main/scripts/backfillPaymentSnapshots.js` to fill them in.
 
+const { resolveDateBasis, periodStages } = require('./shared/businessDay.js');
+
 exports.buildPipeline = ({ params }) => [
-  {
-    $match: {
-      date: { $gte: params.fromDate, $lte: params.toDate },
-      paymentMethod: { $ne: 'bank' },
-    },
-  },
+  { $match: { paymentMethod: { $ne: 'bank' } } },
+  ...periodStages({
+    basis: resolveDateBasis(params.dateBasis),
+    dateField: 'date',
+    fromDate: params.fromDate,
+    toDate: params.toDate,
+  }),
   {
     $lookup: {
       from: 'orders',

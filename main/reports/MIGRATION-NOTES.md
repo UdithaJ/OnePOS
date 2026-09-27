@@ -82,6 +82,21 @@ previously it was counted on the day the order was created. The processor
 starts from `payments` instead of `orders`, and no longer joins the cash ledger
 or sessions. Column positions are unchanged, so the exports keep their layout.
 
+### 7. Business-day option on the cash reports *(feature, post-migration)*
+
+Cash Box Summary, Expenses and Bank Reconciliation have a **Date Basis** filter:
+
+- **Transaction Date** (default) — each payment/expense by its own date, as before.
+- **Business Day** — each by the opening day of the cash box session it was
+  recorded in (via its cash-ledger row), so after-midnight activity in a
+  session that opened the evening before reconciles to that earlier day across
+  all three reports. Rows recorded without a session fall back to their own date.
+
+In Business Day mode, Expenses and Bank Reconciliation show and group by the
+business date; Cash Box Summary still shows each payment's own Payment Date.
+The shared join lives in `processors/shared/businessDay.js`. Bank Transfer
+Tracking is unchanged.
+
 ## Preserved inconsistencies (tech debt, deliberate)
 
 Four reports rendered the **same value differently** on screen and in exports:

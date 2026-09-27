@@ -2,14 +2,17 @@
 // are reported separately by bank-reconciliation.
 
 const mongoose = require('mongoose');
+const { resolveDateBasis, periodStages } = require('./shared/businessDay.js');
 
 exports.buildPipeline = ({ params }) => {
-  const match = { date: { $gte: params.fromDate, $lte: params.toDate } };
+  const basis = resolveDateBasis(params.dateBasis);
+  const match = {};
   if (params.expenseTypeId && params.expenseTypeId !== 'all') {
     match.expenseType = mongoose.Types.ObjectId.createFromHexString(params.expenseTypeId);
   }
 
   return [
+    ...periodStages({ basis, dateField: 'date', fromDate: params.fromDate, toDate: params.toDate }),
     { $match: match },
     {
       $lookup: {
@@ -30,7 +33,8 @@ exports.buildPipeline = ({ params }) => {
       $project: {
         _id: 0,
         expenseId: '$_id',
-        date: 1,
+        // The Date column and the day grouping follow the chosen basis.
+        date: basis === 'business' ? '$businessDate' : 1,
         description: '$category.displayName',
         amount: 1,
       },
