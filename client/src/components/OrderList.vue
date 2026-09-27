@@ -746,7 +746,7 @@ const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
 const printBillOnCreate = ref(true)
-const printCopies = ref(1)
+const printCopies = ref(2)
 const makePaymentOnCreate = ref(false)
 const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
@@ -1216,7 +1216,7 @@ function resetForm() {
   currentOrderPaymentStatus.value = 'unpaid'
   activeOrderModalTab.value = 'order'
   printBillOnCreate.value = true
-  printCopies.value = 1
+  printCopies.value = 2
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
   newCustomerId.value = null
@@ -1252,8 +1252,28 @@ function escapeHtml(value: any) {
     .replace(/'/g, '&#039;')
 }
 
+
+const BILL_COMPANY = {
+  name: 'softwash',
+  tagline: 'your neighborhood laundry',
+  address: 'No.79A, Jubilee Post, Mirihana, Nugegoda.',
+  hotline: '+94 718 807 625',
+  email: 'softwash.mirihana@gmail.com',
+}
+
+// Bill amounts print as plain grouped numbers (1,234.50); the "(Rs)" lives in the
+// label beside them, so no currency prefix here.
 function formatMoney(value: number) {
-  return `LKR ${Number(value || 0).toFixed(2)}`
+  return Number(value || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+function formatBillTimestamp(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())}` +
+    ` ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 function resolveCustomerName(customerId: any) {
@@ -1270,7 +1290,6 @@ function resolveCustomerPhone(customerId: any): string {
 
 function buildPrintBillHtml(order: any) {
   const created = order?.createdDate ? new Date(order.createdDate) : new Date()
-  const delivery = order?.deliveryDate ? new Date(order.deliveryDate) : null
   const orderItems = Array.isArray(order?.suborders) ? order.suborders : []
   const orderId = order?.orderNo || order?._id || 'N/A'
   const customerName = resolveCustomerName(order?.customerID)
@@ -1281,104 +1300,119 @@ function buildPrintBillHtml(order: any) {
   const dueAmt = Number(order?.dueAmount ?? netTotal)
   const paidAmt = Math.max(netTotal - dueAmt, 0)
 
-  const rows = orderItems.map((item: any, index: number) => {
+  const rows = orderItems.map((item: any) => {
     const categoryName = item?.category?.name || categories.value.find((c: any) => c.value === item?.category)?.label || 'Item'
     const weight = Number(item?.weight || 0)
     const amount = Number(item?.amount || 0)
     return `
       <tr>
-        <td>${index + 1}</td>
         <td>${escapeHtml(categoryName)}</td>
-        <td style="text-align:right;">${weight.toFixed(2)}</td>
-        <td style="text-align:right;">${amount.toFixed(2)}</td>
+        <td class="num">${weight.toFixed(2)}</td>
+        <td class="num">${escapeHtml(formatMoney(amount))}</td>
       </tr>
     `
   }).join('')
 
-  const discountRow = discount > 0 ? `
-    <div class="summary-row">
-      <span>Subtotal</span>
-      <span>${escapeHtml(formatMoney(subtotal))}</span>
-    </div>
-    <div class="summary-row discount">
-      <span>Discount</span>
-      <span>- ${escapeHtml(formatMoney(discount))}</span>
-    </div>
-    <div class="divider"></div>
-  ` : ''
+  const summaryRow = (label: string, value: number) => `
+    <tr>
+      <td class="sum-label">${escapeHtml(label)}</td>
+      <td class="sum-colon">:</td>
+      <td class="sum-value">${escapeHtml(formatMoney(value))}</td>
+    </tr>
+  `
 
   return `
     <!doctype html>
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>Order Bill ${escapeHtml(orderId)}</title>
+        <title>Invoice ${escapeHtml(orderId)}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111827; }
-          .bill { width: 80mm; margin: 0 auto; padding: 10px; }
+          /* 80mm roll, fixed 100mm slip. The page is the printer's 72mm
+             PRINTABLE width, not the 80mm paper width, and the content fills it
+             from x=0. The driver already offsets by its own unprintable left
+             margin, so centring a column inside an 80mm page pays that margin
+             twice and pushes the Amount column off the right of the paper. */
+          @page { size: 68mm 100mm; margin: 0; }
+          * { box-sizing: border-box; }
+          html, body { width: 68mm; margin: 0; padding: 0; background: #fff; }
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+            font-size: 7pt;
+            line-height: 1.18;
+          }
+          .bill { width: 100%; max-width: 62mm; margin: 0 auto; padding: 1.2mm 0; }
           .center { text-align: center; }
-          .muted { color: #6b7280; font-size: 12px; }
-          .title { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
-          .section { margin-top: 10px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { padding: 4px 0; border-bottom: 1px dashed #d1d5db; }
-          th { text-align: left; font-weight: 600; }
-          .summary-row { margin-top: 4px; font-size: 13px; display: flex; justify-content: space-between; }
-          .summary-row.discount { color: #b45309; }
-          .summary-row.paid { color: #111827; }
-          .divider { border-top: 1px dashed #d1d5db; margin: 4px 0; }
-          .total { margin-top: 4px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; }
-          .balance { margin-top: 4px; font-size: 14px; display: flex; justify-content: space-between; color: #111827; }
-          .footer { margin-top: 10px; text-align: center; font-size: 11px; color: #6b7280; }
+          .shop-name { font-size: 13pt; font-weight: 700; letter-spacing: -0.3pt; }
+          .tagline { font-style: italic; font-size: 7pt; margin-top: 0.2mm; }
+          .shop-contact { margin-top: 1.1mm; }
+          .customer { margin-top: 1.6mm; }
+          table {width: 100%;border-collapse: collapse;table-layout: fixed;}
+          .items {margin-top: 1.8mm;}
+          .items th {text-align: left;font-weight: 700;padding-bottom: 0.4mm;overflow-wrap: break-word;}
+          .items td {padding: 0.15mm 0;vertical-align: top;overflow-wrap: break-word;}
+          .items .num {text-align: right;white-space: nowrap;  padding-right: 0.5mm;}
+          .items th.num {text-align: right; white-space: nowrap;}
+          .items th:last-child,
+          .items td:last-child {padding-right: 1.2mm;}
+          .items col.c-cat {width: 40%;}
+          .items col.c-wt {width: 23%;}
+          .items col.c-amt {width: 37%;}
+          /* Summary */
+          .summary { margin-top: 1.8mm;table-layout: fixed; width: 100%;}
+          .summary td {padding: 0.15mm 0;}
+          .summary .sum-label { width: 60%;text-align: left;white-space: nowrap;}
+          .summary .sum-colon { width: 5%;text-align: center;}
+          .summary .sum-value {width: 35%;text-align: right;white-space: nowrap;}
+          .footer { margin-top: 2mm;}
         </style>
       </head>
       <body>
         <div class="bill">
           <div class="center">
-            <div class="title">Softwash</div>
-            <div class="muted">Laundry Order Receipt</div>
+            <div class="shop-name">${escapeHtml(BILL_COMPANY.name)}</div>
+            <div class="tagline">${escapeHtml(BILL_COMPANY.tagline)}</div>
+            <div class="shop-contact">${escapeHtml(BILL_COMPANY.address)}</div>
+            <div>Hotline: ${escapeHtml(BILL_COMPANY.hotline)}</div>
+            <div>E-Mail: ${escapeHtml(BILL_COMPANY.email)}</div>
           </div>
 
-          <div class="section muted">Order: ${escapeHtml(orderId)}</div>
-          <div class="muted">Date: ${escapeHtml(created.toLocaleString())}</div>
-          <div class="muted">Customer: ${escapeHtml(customerName)}</div>
-          ${customerPhone ? `<div class="muted">Contact: ${escapeHtml(customerPhone)}</div>` : ''}
-          <div class="muted">Delivery: ${escapeHtml(delivery ? delivery.toLocaleDateString() : '-')}</div>
-
-          <div class="section">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Item</th>
-                  <th style="text-align:right;">Kg</th>
-                  <th style="text-align:right;">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows || '<tr><td colspan="4" class="muted">No items</td></tr>'}
-              </tbody>
-            </table>
+          <div class="customer">
+            <div>Name: ${escapeHtml(customerName)}</div>
+            ${customerPhone ? `<div>Contact: ${escapeHtml(customerPhone)}</div>` : ''}
+            <div>Invoice No: ${escapeHtml(orderId)}</div>
+            <div>Date &amp; Time: ${escapeHtml(formatBillTimestamp(created))}</div>
           </div>
 
-          ${discountRow}
-          <div class="total">
-            <span>Total</span>
-            <span>${escapeHtml(formatMoney(netTotal))}</span>
-          </div>
-          ${paidAmt > 0 ? `
-          <div class="divider"></div>
-          <div class="summary-row paid">
-            <span>Paid</span>
-            <span>${escapeHtml(formatMoney(paidAmt))}</span>
-          </div>
-          <div class="balance">
-            <span>Balance Due</span>
-            <span>${escapeHtml(formatMoney(dueAmt))}</span>
-          </div>
-          ` : ''}
+          <table class="items">
+            <colgroup>
+              <col class="c-cat" /><col class="c-wt" /><col class="c-amt" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Laundry Category</th>
+                <th class="num">Weight (Kgs)</th>
+                <th class="num">Amount (Rs)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows || '<tr><td colspan="3">No items</td></tr>'}
+            </tbody>
+          </table>
 
-          <div class="footer">Thank you for your order</div>
+          <table class="summary">
+            ${summaryRow('Total Amount (Rs)', subtotal)}
+            ${discount > 0 ? summaryRow('Discount (Rs)', discount) : ''}
+            ${discount > 0 ? summaryRow('Net Amount (Rs)', netTotal) : ''}
+            ${paidAmt > 0 ? summaryRow('Advance Paid (Rs)', paidAmt) : ''}
+            ${summaryRow('Amount Due (Rs)', dueAmt)}
+          </table>
+
+          <div class="footer center">
+            <div>Thank you for your business.</div>
+            <div>****</div>
+          </div>
         </div>
       </body>
     </html>
