@@ -262,6 +262,13 @@ test('Due Date is suppressed per date group, matching the table', () => {
   assert.deepStrictEqual(dateCells, ['01/03/2026', '', '', '', '02/03/2026', '']);
 });
 
+test('Order Created Date follows Order No and prints once per order', () => {
+  const [header, ...rest] = pendingCSV.split('\r\n');
+  assert.strictEqual(header.split(',')[2], 'Order Created Date');
+  const createdCells = rest.slice(0, -1).map((line) => line.split(',')[2]);
+  assert.deepStrictEqual(createdCells, ['01/03/2026', '', '', '01/03/2026', '02/03/2026', '']);
+});
+
 test('Total Pending Weight has no unit suffix in CSV (table shows " kg")', () => {
   const footer = pendingCSV.split('\r\n').pop();
   assert.ok(footer.endsWith(',24'), `footer was: ${footer}`);

@@ -249,8 +249,9 @@ test('total pending weight sums every row', () => {
   assert.strictEqual(enginePending.footer[0].value, expected);
 });
 
-test('footer labelSpan reproduces the old colspan="7"', () => {
-  assert.strictEqual(enginePending.footer[0].labelSpan, 7);
+// The old template's colspan="7", plus the Order Created Date column added since.
+test('footer labelSpan spans every column before Weight', () => {
+  assert.strictEqual(enginePending.footer[0].labelSpan, 8);
 });
 
 console.log('\nEngine invariants');

@@ -39,6 +39,7 @@
   "columns": [
     { "key": "deliveryDate", "label": "Due Date", "type": "date", "span": "date" },
     { "key": "orderNo", "label": "Order No", "type": "text", "pad": 4, "span": "order" },
+    { "key": "createdDate", "label": "Order Created Date", "type": "date", "span": "order" },
     { "key": "customerName", "label": "Customer", "type": "text", "span": "order" },
     { "key": "mobileNumber", "label": "Mobile No", "type": "text", "span": "order" },
     { "key": "status", "label": "Status", "type": "badge", "valueMap": "orderStatus", "span": "order" },

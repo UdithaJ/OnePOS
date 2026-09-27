@@ -66,6 +66,12 @@ onwards shifts one place right and the footer label spans 12 columns, not 11.
 The CSV parity gate still holds everywhere else: the legacy exporter in
 `csv-parity.test.js` differs from the original only by that one column.
 
+### 5. Pending Orders — Order Created Date column *(feature, post-migration)*
+
+Pending Orders gained an order-level **Order Created Date** column after
+Order No. Like the Daily Sales addition above, it shifts the later columns one
+place right in CSV/Excel/PDF, and the footer label now spans 8 columns, not 7.
+
 ## Preserved inconsistencies (tech debt, deliberate)
 
 Four reports rendered the **same value differently** on screen and in exports:

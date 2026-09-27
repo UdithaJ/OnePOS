@@ -44,6 +44,7 @@ exports.buildPipeline = ({ params }) => {
         _id: 0,
         orderId: '$_id',
         orderNo: 1,
+        createdDate: 1,
         deliveryDate: 1,
         status: 1,
         rackNumber: 1,
