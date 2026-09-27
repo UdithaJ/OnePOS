@@ -11,6 +11,9 @@ export interface FormField {
   required?: boolean
   disabled?: boolean
   rules?: Array<(v: any) => true | string>
+  // Keyboard hint for text fields, e.g. 'tel' for a phone number: picks the
+  // on-screen keyboard's layout (and the system one's, where it appears).
+  inputmode?: string
 }
 
 export interface FormSchema {

@@ -11,6 +11,7 @@
             v-if="field.type === 'text'"
             v-model="form[field.name]"
             :placeholder="field.label"
+            :inputmode="field.inputmode"
             :required="field.required"
             :disabled="field.disabled"
             :rules="field.rules || []"
