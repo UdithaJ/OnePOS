@@ -66,11 +66,14 @@ import { ref, watch } from 'vue'
 const props = defineProps<{ show: boolean, orderId: string, dueAmount: number }>()
 const emit = defineEmits(['close', 'paid', 'update:show'])
 
+const DEFAULT_TYPE = 'settlement'
+const DEFAULT_METHOD = 'cash'
+
 const amount = ref<number | string>(props.dueAmount)
 const errorMsg = ref('')
-const paymentMethod = ref('cash')
+const paymentMethod = ref(DEFAULT_METHOD)
 const transactionId = ref('')
-const type = ref('settlement')
+const type = ref(DEFAULT_TYPE)
 const methods = [
   { title: 'Cash', value: 'cash' },
   { title: 'Bank Transfer', value: 'bank' },
@@ -80,6 +83,21 @@ const types = [
   { title: 'Full Payment', value: 'full_payment' },
   { title: 'Settlement', value: 'settlement' },
 ]
+
+// The dialog stays mounted between openings — and across orders, since the
+// parent only unmounts it when no order is being edited — so every opening
+// starts from a clean form for the current order.
+function resetForm() {
+  type.value = DEFAULT_TYPE
+  paymentMethod.value = DEFAULT_METHOD
+  transactionId.value = ''
+  amount.value = props.dueAmount
+  errorMsg.value = ''
+}
+
+watch(() => props.show, (open) => {
+  if (open) resetForm()
+})
 
 watch(() => props.dueAmount, (val) => {
   if (type.value !== 'advance') {
