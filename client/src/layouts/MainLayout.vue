@@ -70,6 +70,15 @@
           >
             <v-list-item-title>Settings</v-list-item-title>
           </v-list-item>
+          <v-list-item
+            v-if="isSysadmin"
+            to="/system-upgrades"
+            prepend-icon="mdi-database-arrow-up"
+            :active="isActive('/system-upgrades')"
+            class="neomorphic-sidebar-item"
+          >
+            <v-list-item-title>System Upgrades</v-list-item-title>
+          </v-list-item>
         </v-list>
       </div>
     </v-navigation-drawer>
@@ -82,7 +91,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { isAdminRole } from '@/constants/roles'
+import { isAdminRole, isSysadminRole } from '@/constants/roles'
 import { useAuth } from '../composables/useAuth'
 import { useReportCatalog } from '../composables/useReport'
 
@@ -106,6 +115,10 @@ const userInitials = computed(() => {
 // sysadmin counts as an admin here too, or the built-in account cannot reach
 // the screens it exists to recover.
 const isAdmin = computed(() => isAdminRole(getUser()?.userRole))
+
+// Upgrades rewrite data directly, so the menu item exists only for the
+// built-in account — an ordinary admin never sees it.
+const isSysadmin = computed(() => isSysadminRole(getUser()?.userRole))
 
 onMounted(() => {
   document.body.classList.remove('dark-theme')
