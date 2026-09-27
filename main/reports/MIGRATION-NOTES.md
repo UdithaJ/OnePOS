@@ -72,6 +72,16 @@ Pending Orders gained an order-level **Order Created Date** column after
 Order No. Like the Daily Sales addition above, it shifts the later columns one
 place right in CSV/Excel/PDF, and the footer label now spans 8 columns, not 7.
 
+### 6. Cash Box Summary — Payment Date replaces Business Date *(feature, post-migration)*
+
+The report period now filters on each **payment's date**, not the order's
+creation date, and the Business Date column (the opening time of the cash box
+session that recorded the payment) is replaced by **Payment Date** in the same
+position. A settlement taken today for last week's order is now counted today;
+previously it was counted on the day the order was created. The processor
+starts from `payments` instead of `orders`, and no longer joins the cash ledger
+or sessions. Column positions are unchanged, so the exports keep their layout.
+
 ## Preserved inconsistencies (tech debt, deliberate)
 
 Four reports rendered the **same value differently** on screen and in exports:

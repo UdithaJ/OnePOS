@@ -278,7 +278,7 @@ console.log('\nCash Box Summary — legacy display/export split preserved');
 
 const cashBoxDef = require('../definitions/cash-box-summary.json');
 const cashRows = [
-  { orderNo: 1, createdDate: '2026-03-01T04:00:00.000Z', businessDate: null, customerName: 'A',
+  { orderNo: 1, createdDate: '2026-03-01T04:00:00.000Z', paymentDate: '2026-03-02T04:00:00.000Z', customerName: 'A',
     totalAmount: 1500.5, discount: 0, orderAmountAfterDiscount: 1500.5, dueAmount: 0,
     paymentMethod: 'cash', paymentReceived: 1500.5 },
 ];

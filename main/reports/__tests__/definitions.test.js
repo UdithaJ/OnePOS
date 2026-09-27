@@ -159,6 +159,19 @@ test('an unknown paymentStatus is a 400, not an empty report', () => {
   }
 });
 
+console.log('\nCash Box Summary period');
+
+test('the period filters on the payment date and excludes bank payments', () => {
+  const definition = getDefinition('cash-box-summary');
+  assert.strictEqual(definition.source.model, 'payment');
+  const processor = require(path.join(__dirname, '..', 'processors', 'cash-box-summary.js'));
+  const { values, timezone } = bindParams(definition, SAMPLE_QUERY);
+  const match = processor.buildPipeline({ params: values, timezone })[0].$match;
+  assert.deepStrictEqual(match.date, { $gte: values.fromDate, $lte: values.toDate });
+  assert.deepStrictEqual(match.paymentMethod, { $ne: 'bank' });
+  assert.ok(!('createdDate' in match), 'must not filter on the order creation date');
+});
+
 test('an unknown report id is a 404', () => {
   try {
     getDefinition('no-such-report');
