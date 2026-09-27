@@ -576,7 +576,9 @@
         :show="showPaymentDialog"
         :order-id="editOrderId"
         :due-amount="effectiveDueAmount"
+        :print-bill="makePaymentOnCreate && printBillOnCreate"
         @close="showPaymentDialog = false"
+        @cancel="onPaymentCancelled"
         @paid="onPaymentMade"
       />
     </main>
@@ -757,7 +759,9 @@ const showPaymentDialog = ref(false)
 const categories = ref<any[]>([])
 const suborders = ref<any[]>([])
 const printBillOnCreate = ref(true)
-const printCopies = ref(2)
+// A bill is printed twice by default: one for the customer, one for the shop.
+const DEFAULT_PRINT_COPIES = 2
+const printCopies = ref(DEFAULT_PRINT_COPIES)
 const makePaymentOnCreate = ref(false)
 const showCapacityWarning = ref(false)
 const capacityResult = ref<CapacityCheckResult | null>(null)
@@ -836,6 +840,19 @@ watch(suborders, (subs) => {
   subs.forEach((sub, idx) => updateSuborderAmount(idx))
 }, { deep: true })
 import { makePayment } from '@/services/paymentApiService'
+// Cancelling the payment of a just-created order still owes the bill the user
+// asked for when placing it; the create+pay step ends either way.
+async function onPaymentCancelled({ printBill: wantsBill }: { printBill: boolean }) {
+  const pendingCreate = makePaymentOnCreate.value
+  makePaymentOnCreate.value = false
+  if (!pendingCreate || !wantsBill || !editOrderId.value) return
+  try {
+    await printBill(await getOrderById(editOrderId.value), printCopies.value)
+  } catch (e) {
+    console.error('Print after cancelled payment failed', e)
+  }
+}
+
 async function onPaymentMade(payment: any) {
   // Call payment API
   try {
@@ -852,8 +869,9 @@ async function onPaymentMade(payment: any) {
       return;
     }
     
+    const orderId = editOrderId.value || ''
     await makePayment({
-      orderId: editOrderId.value || '',
+      orderId,
       amount: payment.amount,
       paymentMethod: payment.paymentMethod,
       type: payment.type,
@@ -864,30 +882,34 @@ async function onPaymentMade(payment: any) {
     
     showToast('Payment successful!', 'success')
     
-    // Reload payments to update due amount
-    payments.value = await getPaymentsByOrder(editOrderId.value || '')
-    const latestOrder = await getOrderById(editOrderId.value || '')
-    currentOrderDueAmount.value = Number(latestOrder?.dueAmount || 0)
-    currentOrderPaymentStatus.value = String(latestOrder?.paymentStatus || 'unpaid')
+    const latestOrder = await getOrderById(orderId)
     
-    // If this payment was initiated as part of a create+pay flow, print the bill now
-    if (makePaymentOnCreate.value) {
+    // Print when the payment modal's "Print bill" box was ticked — pre-ticked
+    // for a create+pay order that asked for a bill, otherwise the user's choice.
+    if (payment.printBill) {
       try {
         // Use authoritative order returned from server to render bill
         await printBill(latestOrder, printCopies.value)
       } catch (e) {
         console.error('Print after payment failed', e)
       }
-      // clear the flag so subsequent payments don't auto-print
-      makePaymentOnCreate.value = false
     }
+    // The create+pay step is over; later payments on this order are ordinary.
+    makePaymentOnCreate.value = false
 
-    // Check if order is fully paid and refresh orders
-    if (effectiveDueAmount.value <= 0) {
+    if (Number(latestOrder?.dueAmount || 0) <= 0) {
       showToast('Payment status updated to paid.', 'success')
     }
     await loadOrders()
     showPaymentDialog.value = false
+    // Reload the order window from the server, exactly as if the order had just
+    // been opened: its items, status, payments and due amount become the saved
+    // ones, so any further item change goes through the "order already contains
+    // payments" confirmation. After a create+pay, this is what turns the
+    // half-built new-order form into a real edit of the placed order.
+    const tab = activeOrderModalTab.value
+    await onEditOrder({ id: orderId })
+    activeOrderModalTab.value = tab
   } catch (e) {
     showToast('Payment failed', 'error')
   }
@@ -1238,7 +1260,7 @@ function resetForm() {
   activeOrderModalTab.value = 'order'
   editOrderNo.value = null
   printBillOnCreate.value = true
-  printCopies.value = 2
+  printCopies.value = DEFAULT_PRINT_COPIES
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
   newCustomerId.value = null
@@ -1256,7 +1278,7 @@ function resetForm() {
 }
 
 const submitButtonLabel = computed(() => {
-  if (!editOrderId.value && makePaymentOnCreate.value) return 'Next'
+  if (!editOrderId.value && makePaymentOnCreate.value) return 'Submit order & pay'
   if (editOrderId.value) return 'Update order'
   return 'Submit order'
 })
@@ -1474,6 +1496,10 @@ async function onEditOrder(order: any) {
   const orderId = order.id || order._id
   if (!orderId) return
   const data = await getOrderById(orderId)
+  // Create-only choices must never carry over to an existing order.
+  makePaymentOnCreate.value = false
+  printBillOnCreate.value = true
+  printCopies.value = DEFAULT_PRINT_COPIES
   editOrderId.value = orderId
   editOrderNo.value = data.orderNo ?? order.orderNo ?? null
   activeOrderModalTab.value = 'order'
@@ -1563,6 +1589,10 @@ async function afterOrderPersist(createdOrder?: any) {
   if (createdOrder && makePaymentOnCreate.value) {
     editOrderId.value = createdOrder._id
     editOrderNo.value = createdOrder.orderNo ?? null
+    // The modal is now in edit mode, which shows the Status field; a new order
+    // is always To Do.
+    form.value.status = createdOrder.status || 'todo'
+    originalOrderStatus.value = String(form.value.status).toLowerCase()
     currentOrderDueAmount.value = Number(createdOrder.dueAmount ?? createdOrder.totalAmount ?? totalAmount.value ?? 0)
     currentOrderPaymentStatus.value = String(createdOrder.paymentStatus || 'unpaid')
     payments.value = []
