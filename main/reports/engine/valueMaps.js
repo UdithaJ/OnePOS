@@ -14,6 +14,11 @@ const VALUE_MAPS = {
     delivered: { label: 'Delivered', variant: 'delivered' },
     cancelled: { label: 'Cancelled', variant: 'cancelled' },
   },
+  paymentStatus: {
+    paid: { label: 'Paid', variant: 'paid' },
+    partial: { label: 'Partially Paid', variant: 'partial' },
+    unpaid: { label: 'Not Paid', variant: 'unpaid' },
+  },
   paymentMethod: {
     cash: { label: 'Cash', variant: 'cash' },
     bank: { label: 'Bank Transfer', variant: 'bank' },

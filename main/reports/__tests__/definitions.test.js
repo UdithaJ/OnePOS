@@ -114,13 +114,45 @@ test('a missing required param is a 400, not a 500', () => {
 test('undeclared query params are dropped', () => {
   const definition = getDefinition('daily-sales');
   const { values } = bindParams(definition, { ...SAMPLE_QUERY, sneaky: 'value' });
-  assert.deepStrictEqual(Object.keys(values).sort(), ['fromDate', 'toDate']);
+  assert.deepStrictEqual(Object.keys(values).sort(), ['fromDate', 'paymentStatus', 'toDate']);
 });
 
 test('an unparseable date is rejected', () => {
   const definition = getDefinition('daily-sales');
   try {
     bindParams(definition, { fromDate: 'not-a-date', toDate: SAMPLE_QUERY.toDate });
+    assert.fail('expected an error');
+  } catch (err) {
+    assert.strictEqual(err.status, 400);
+  }
+});
+
+console.log('\nDaily Sales payment status filter');
+
+function dailySalesMatch(query) {
+  const definition = getDefinition('daily-sales');
+  const processor = require(path.join(__dirname, '..', 'processors', 'daily-sales.js'));
+  const { values, timezone } = bindParams(definition, { ...SAMPLE_QUERY, ...query });
+  return processor.buildPipeline({ params: values, timezone })[0].$match;
+}
+
+test('"all" and an absent paymentStatus do not filter', () => {
+  assert.ok(!('paymentStatus' in dailySalesMatch({ paymentStatus: 'all' })));
+  assert.ok(!('paymentStatus' in dailySalesMatch({ paymentStatus: undefined })));
+});
+
+test('paid / partial match their own value', () => {
+  assert.strictEqual(dailySalesMatch({ paymentStatus: 'paid' }).paymentStatus, 'paid');
+  assert.strictEqual(dailySalesMatch({ paymentStatus: 'partial' }).paymentStatus, 'partial');
+});
+
+test('"unpaid" also matches orders with no paymentStatus field', () => {
+  assert.deepStrictEqual(dailySalesMatch({ paymentStatus: 'unpaid' }).paymentStatus, { $in: ['unpaid', null] });
+});
+
+test('an unknown paymentStatus is a 400, not an empty report', () => {
+  try {
+    dailySalesMatch({ paymentStatus: 'refunded' });
     assert.fail('expected an error');
   } catch (err) {
     assert.strictEqual(err.status, 400);

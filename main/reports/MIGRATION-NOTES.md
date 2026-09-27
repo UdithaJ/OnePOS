@@ -53,6 +53,19 @@ Route is unchanged (`/reports/bank-transfer-tracking`) — the definition id was
 set to match the old URL so existing bookmarks keep working. Its processor file
 is `processors/bank-transfer.js`.
 
+### 4. Daily Sales — Payment Status filter and column *(feature, post-migration)*
+
+Daily Sales gained a **Payment Status** filter (All / Paid / Not Paid /
+Partially Paid) beside the date range, and a matching order-level column after
+Status. Orders with no `paymentStatus` field (created before it existed) are
+treated as Not Paid, both in the filter and in the column — the same way
+`OrderList.vue` shows them.
+
+This adds one column to the CSV/Excel/PDF layout, so every column from Rack No
+onwards shifts one place right and the footer label spans 12 columns, not 11.
+The CSV parity gate still holds everywhere else: the legacy exporter in
+`csv-parity.test.js` differs from the original only by that one column.
+
 ## Preserved inconsistencies (tech debt, deliberate)
 
 Four reports rendered the **same value differently** on screen and in exports:

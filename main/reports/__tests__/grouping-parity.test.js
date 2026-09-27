@@ -216,8 +216,9 @@ test('grand total counts each order once', () => {
   assert.strictEqual(engineDaily.footer[0].value, legacyDailySalesGrandTotal(legacyDaily));
 });
 
-test('footer labelSpan reproduces the old colspan="11"', () => {
-  assert.strictEqual(engineDaily.footer[0].labelSpan, 11);
+// The old template's colspan="11", plus the Payment Status column added since.
+test('footer labelSpan spans every column before Total Amount', () => {
+  assert.strictEqual(engineDaily.footer[0].labelSpan, 12);
 });
 
 console.log('\nPending Orders — engine vs legacy composable');

@@ -155,6 +155,9 @@ function trailingColumns(entry: ReportFooterEntry): string[] {
   &.chip-cancelled { background: #fef3c7; color: #b45309; }
   &.chip-cash      { background: #dcfce7; color: #15803d; }
   &.chip-bank      { background: #dbeafe; color: #1d4ed8; }
+  &.chip-paid      { background: #dcfce7; color: #15803d; }
+  &.chip-partial   { background: #fef3c7; color: #b45309; }
+  &.chip-unpaid    { background: #fee2e2; color: #b91c1c; }
   &.chip-neutral   { background: #f3f4f6; color: #374151; }
 }
 
