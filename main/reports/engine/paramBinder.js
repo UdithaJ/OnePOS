@@ -72,4 +72,4 @@ function resolveTimezone(tz) {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 }
 
-module.exports = { bindParams };
+module.exports = { bindParams, resolveTimezone };
