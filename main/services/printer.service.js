@@ -49,6 +49,11 @@ function resolveDeviceName(printers, requestedName) {
   return '';
 }
 
+const BILL_PAGE = {
+  widthMicrons: 68000,
+  heightMicrons: 100000,
+};
+
 async function printBill(event, htmlContent, copies = 1, printerName = '') {
   const printers = await event.sender.getPrintersAsync();
 
@@ -93,6 +98,8 @@ async function printBill(event, htmlContent, copies = 1, printerName = '') {
             printBackground: true,
             deviceName,
             copies: Math.max(1, parseInt(copies) || 1),
+            pageSize: { width: BILL_PAGE.widthMicrons, height: BILL_PAGE.heightMicrons },
+            margins: { marginType: 'none' },
           },
           (success, failureReason) => {
             console.log('[print-bill] callback success:', success, failureReason || '');
