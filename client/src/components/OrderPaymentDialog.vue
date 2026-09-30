@@ -69,6 +69,7 @@
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
+import { toCents } from '@/utils/money'
 
 // printBill is the initial state of the "Print bill" checkbox for this opening
 // (ticked when the order was created with "Print bill" selected). The choice is
@@ -143,7 +144,7 @@ function onDialogUpdate(val: boolean) {
 
 async function submitPayment() {
   errorMsg.value = ''
-  if (Number(amount.value) > Number(props.dueAmount)) {
+  if (toCents(amount.value) > toCents(props.dueAmount)) {
     errorMsg.value = 'Payment cannot exceed due amount.'
     return
   }

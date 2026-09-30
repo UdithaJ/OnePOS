@@ -5,6 +5,7 @@ const OrderCategory = require('../models/orderCategory');
 const Category = require('../models/category');
 const Customer = require('../models/customer');
 const messaging = require('../services/messaging.service');
+const { toCents, roundToTen } = require('../utils/money');
 
 // Hardcoded status list
 const ORDER_STATUSES = [
@@ -14,13 +15,15 @@ const ORDER_STATUSES = [
   { name: 'delivered', displayName: 'Delivered' }
 ];
 
-// Authoritative suborder amount: max(weight * unitPrice, minimumPrice).
+// Authoritative suborder amount: max(weight * unitPrice, minimumPrice), charged
+// to the nearest 10. The unrounded figure comes back as actualAmount.
 function computeAmount(weight, category) {
   const w = Number(weight) || 0;
-  if (w === 0) return 0;
+  if (w === 0) return { amount: 0, actualAmount: 0 };
   const computed = w * Number(category.unitPrice);
   const floor = Number(category.minimumPrice) || 0;
-  return Math.max(computed, floor);
+  const actualAmount = toCents(Math.max(computed, floor));
+  return { amount: roundToTen(actualAmount), actualAmount };
 }
 
 async function loadCategoryMap(suborders) {
@@ -95,18 +98,21 @@ async function createOrder(orderData) {
   // Step 2: Create suborders, applying the minimum-price floor authoritatively.
   const suborderIds = [];
   let recomputedTotal = 0;
+  let actualTotal = 0;
   if (Array.isArray(orderData.suborders)) {
     for (const sub of orderData.suborders) {
       const cat = catMap.get(String(sub.category));
       if (!cat) throw new Error(`Category ${sub.category} not found`);
-      const amount = computeAmount(sub.weight, cat);
+      const { amount, actualAmount } = computeAmount(sub.weight, cat);
       recomputedTotal += amount;
+      actualTotal += actualAmount;
 
       const suborder = new OrderCategory({
         order: order._id,
         category: sub.category,
         weight: sub.weight,
-        amount
+        amount,
+        actualAmount
       });
       await suborder.save();
       suborderIds.push(suborder._id);
@@ -114,11 +120,13 @@ async function createOrder(orderData) {
   }
 
   // Step 3: Persist suborder IDs and the authoritative totals.
-  const discount = Math.min(Math.max(Number(orderData.discount) || 0, 0), recomputedTotal)
+  // Discount is whole rupees only; any decimals are dropped.
+  const discount = Math.min(Math.max(Math.floor(Number(orderData.discount) || 0), 0), recomputedTotal)
   order.suborders = suborderIds;
   order.totalAmount = recomputedTotal;
+  order.actualTotalAmount = toCents(actualTotal);
   order.discount = discount;
-  order.dueAmount = Math.max(recomputedTotal - discount, 0);
+  order.dueAmount = Math.max(toCents(recomputedTotal - discount), 0);
   await order.save();
 
   // Step 4: Populate suborders for return
@@ -333,6 +341,7 @@ async function updateOrder(id, updateData) {
   // Planned suborder rows, worked out without touching the existing ones.
   let planned = null;
   let plannedTotal = null;
+  let plannedActualTotal = null;
 
   if (Array.isArray(updateData.suborders)) {
     // Disallow editing of order items if the order is finalized (Done or Delivered)
@@ -347,32 +356,34 @@ async function updateOrder(id, updateData) {
       ? await OrderCategory.find({ _id: { $in: order.suborders } }).lean()
       : [];
 
-    // Build a map of existing amounts keyed by category+weight so unchanged items keep original amount
+    // Build a map of existing amounts keyed by category+weight so unchanged items keep original amount.
+    // The actual amount travels with it, since every save recreates the rows.
+    // Items placed before rounding have no actualAmount; their amount is the actual.
     const existingMap = new Map();
     for (const ex of existingSuborders) {
       const key = `${String(ex.category)}_${String(ex.weight)}`;
       if (!existingMap.has(key)) existingMap.set(key, []);
-      existingMap.get(key).push(Number(ex.amount || 0));
+      const amount = Number(ex.amount || 0);
+      existingMap.get(key).push({ amount, actualAmount: Number(ex.actualAmount ?? amount) });
     }
 
     // Work out each row's amount, reusing the original when category+weight
     // match, otherwise computing it. Nothing is created or deleted yet.
     planned = [];
     plannedTotal = 0;
+    plannedActualTotal = 0;
     for (const sub of updateData.suborders) {
       const cat = catMap.get(String(sub.category));
       if (!cat) throw new Error(`Category ${sub.category} not found`);
 
       const key = `${String(sub.category)}_${String(sub.weight)}`;
-      let amount;
-      if (existingMap.has(key) && existingMap.get(key).length > 0) {
-        amount = existingMap.get(key).shift();
-      } else {
-        amount = computeAmount(sub.weight, cat);
-      }
+      const { amount, actualAmount } = existingMap.has(key) && existingMap.get(key).length > 0
+        ? existingMap.get(key).shift()
+        : computeAmount(sub.weight, cat);
 
       plannedTotal += amount;
-      planned.push({ category: sub.category, weight: sub.weight, amount, order: id });
+      plannedActualTotal += actualAmount;
+      planned.push({ category: sub.category, weight: sub.weight, amount, actualAmount, order: id });
     }
   }
 
@@ -380,17 +391,19 @@ async function updateOrder(id, updateData) {
   // server's recomputed total wins over any total the client sent.
   const newTotal = plannedTotal ?? updateData.totalAmount ?? order.totalAmount
   const newDiscount = 'discount' in updateData
-    ? Math.min(Math.max(Number(updateData.discount) || 0, 0), newTotal)
+    ? Math.min(Math.max(Math.floor(Number(updateData.discount) || 0), 0), newTotal)
     : Number(order.discount || 0)
   const payments = await Payment.find({ orderId: id })
   const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
 
-  const netTotal = Math.max(newTotal - newDiscount, 0)
+  // Compared in cents: older orders carry unrounded, float-drifted amounts.
+  const netTotal = toCents(Math.max(newTotal - newDiscount, 0))
+  const paidCents = toCents(paid)
   let paymentStatus = 'unpaid'
-  if (paid <= 0) paymentStatus = 'unpaid'
-  else if (paid >= netTotal && netTotal > 0) paymentStatus = 'paid'
-  else if (paid > 0 && paid < netTotal) paymentStatus = 'partial'
-  else if (netTotal === 0 && paid > 0) paymentStatus = 'paid'
+  if (paidCents <= 0) paymentStatus = 'unpaid'
+  else if (paidCents >= netTotal && netTotal > 0) paymentStatus = 'paid'
+  else if (paidCents > 0 && paidCents < netTotal) paymentStatus = 'partial'
+  else if (netTotal === 0 && paidCents > 0) paymentStatus = 'paid'
 
   // Validate the status move against the workflow table. `undefined` means the
   // caller isn't touching status at all, and an unchanged value is not a
@@ -420,10 +433,11 @@ async function updateOrder(id, updateData) {
     }
     updateData.suborders = suborderIds;
     updateData.totalAmount = plannedTotal;
+    updateData.actualTotalAmount = toCents(plannedActualTotal);
   }
 
   updateData.discount = newDiscount
-  updateData.dueAmount = Math.max(newTotal - newDiscount - paid, 0)
+  updateData.dueAmount = Math.max(toCents(newTotal - newDiscount - paid), 0)
   updateData.paymentStatus = paymentStatus
 
   const updated = await Order.findByIdAndUpdate(id, updateData, { new: true }).populate({
@@ -461,6 +475,7 @@ async function deleteOrder(id) {
 }
 
 module.exports = {
+  computeAmount,
   toCalendarDay,
   todayCalendarDay,
   assertDeliveryDateNotPast,
