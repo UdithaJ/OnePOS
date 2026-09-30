@@ -1,6 +1,20 @@
 const CashBoxSession = require('../models/cashBoxSession');
 const { getSessionLedgerTotals } = require('./cashLedger.service');
 
+// The session's cash on hand. The live balance and the closing amount both use
+// this, so a session showing a balance closes at that same balance.
+function computeSessionBalance(openingAmount, totals) {
+  return (
+    Number(openingAmount || 0) +
+    Number(totals.totalPayments || 0) +
+    Number(totals.totalDeposits || 0) +
+    Number(totals.totalInflows || 0) -
+    Number(totals.totalExpenses || 0) -
+    Number(totals.totalWithdrawals || 0)
+  );
+}
+exports.computeSessionBalance = computeSessionBalance;
+
 exports.createCashBoxSession = async (data) => {
   // Prevent creating a new session when there's an active open session
   const active = await CashBoxSession.findOne({ status: 'open' });
@@ -46,17 +60,11 @@ exports.updateCashBoxSession = async (id, data) => {
     update.status = 'closed';
     update.closedAt = closedAt;
 
-    // If closingAmount not provided or is 0, compute from ledger totals to avoid saving 0
-    if (update.closingAmount === undefined || update.closingAmount === null || Number(update.closingAmount) === 0) {
+    // Compute from ledger totals only when no closing amount was sent. Zero is a
+    // real closing amount (a session can end with an empty box) and is saved as is.
+    if (update.closingAmount === undefined || update.closingAmount === null || update.closingAmount === '') {
       const totals = await getSessionLedgerTotals(id);
-      const openingAmount = Number(session.openingAmount || 0);
-      const computed =
-        openingAmount +
-        Number(totals.totalPayments || 0) +
-        Number(totals.totalDeposits || 0) -
-        Number(totals.totalExpenses || 0) -
-        Number(totals.totalWithdrawals || 0);
-      update.closingAmount = Number(computed || 0);
+      update.closingAmount = computeSessionBalance(session.openingAmount, totals);
     }
   }
 
@@ -77,13 +85,7 @@ exports.getCashBoxSessionBalance = async (id) => {
 
   const totals = await getSessionLedgerTotals(id);
   const openingAmount = Number(session.openingAmount || 0);
-  const currentAmount =
-    openingAmount +
-    Number(totals.totalPayments || 0) +
-    Number(totals.totalDeposits || 0) +
-    Number(totals.totalInflows || 0) -
-    Number(totals.totalExpenses || 0) -
-    Number(totals.totalWithdrawals || 0);
+  const currentAmount = computeSessionBalance(openingAmount, totals);
 
   return {
     sessionId: session._id,
