@@ -4,6 +4,7 @@ const BankTransfer = require('../models/bankTransfer');
 const { createCashLedger } = require('../services/cashLedger.service');
 
 const Order = require('../models/order');
+const { toCents } = require('../utils/money');
 exports.createPayment = async (req, res) => {
   try {
     // Backend validation: prevent overpayment
@@ -12,8 +13,10 @@ exports.createPayment = async (req, res) => {
     if (!order) return res.status(400).json({ message: 'Order not found' });
     const payments = await Payment.find({ orderId });
     const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const due = order.totalAmount - Number(order.discount || 0) - paid;
-    if (Number(req.body.amount) > due) {
+    // Compared in cents, so the due amount shown on screen is always payable —
+    // older orders carry unrounded, float-drifted amounts.
+    const due = toCents(order.totalAmount - Number(order.discount || 0) - paid);
+    if (toCents(req.body.amount) > due) {
       return res.status(400).json({ message: 'Payment exceeds due amount.' });
     }
     if (req.body.paymentMethod === 'bank' && !req.body.transactionId) {
@@ -25,7 +28,7 @@ exports.createPayment = async (req, res) => {
     const orderTotalAmount = Number(order.totalAmount || 0);
     const orderDiscount = Number(order.discount || 0);
     const dueBefore = Math.max(due, 0);
-    const dueAfter = Math.max(dueBefore - Number(req.body.amount || 0), 0);
+    const dueAfter = Math.max(toCents(dueBefore - Number(req.body.amount || 0)), 0);
 
     const payment = new Payment({
       ...req.body,

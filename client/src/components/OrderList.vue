@@ -377,14 +377,16 @@
                       v-model="form.discount"
                       type="number"
                       min="0"
+                      step="1"
                       :max="totalAmount"
-                      placeholder="0.00"
+                      placeholder="0"
                       prefix="LKR"
                       variant="outlined"
                       density="compact"
                       hide-details
                       style="max-width: 180px;"
                       :disabled="isOrderDone"
+                      @keydown="blockDecimalKeys"
                       @input="clampDiscount"
                     />
                   </div>
@@ -613,6 +615,7 @@ const orderHeaders = [
 
 import { getOrders, getOrderById, updateOrder, getAllowedTransitions, type StatusOption } from '@/services/orderApiService'
 import { localDayStartISO, localDayEndISO, localToday } from '@/utils/reportDate'
+import { roundToTen } from '@/utils/money'
 import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
 import { checkOrderCapacity, getSystemSettings, type CapacityCheckResult } from '@/services/systemSettingsApiService'
 const payments = ref<any[]>([])
@@ -814,7 +817,8 @@ function updateSuborderAmount(idx: number) {
   if (cat && sub.weight) {
     const computed = Number(sub.weight) * Number(cat.unitPrice)
     const floor = Number(cat.minimumPrice) || 0
-    sub.amount = Math.max(computed, floor)
+    // Charged to the nearest 10, matching what the server stores.
+    sub.amount = roundToTen(Math.max(computed, floor))
   } else {
     sub.amount = 0
   }
@@ -829,10 +833,15 @@ function availableCategoriesFor(idx: number) {
 const totalAmount = computed(() => suborders.value.reduce((sum, s) => sum + Number(s.amount || 0), 0))
 const finalAmount = computed(() => Math.max(totalAmount.value - Number(form.value.discount || 0), 0))
 
+// Discount is whole rupees only, so the due amount stays a whole number.
+function blockDecimalKeys(e: KeyboardEvent) {
+  if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault()
+}
+
 function clampDiscount() {
-  const d = Number(form.value.discount)
+  const d = Math.floor(Number(form.value.discount))
   if (isNaN(d) || d < 0) { form.value.discount = 0; return }
-  if (d > totalAmount.value) form.value.discount = totalAmount.value
+  form.value.discount = Math.min(d, totalAmount.value)
 }
 
 // Watch suborders for changes to recalculate amounts

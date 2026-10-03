@@ -42,9 +42,14 @@ const orderSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  // Sum of the rounded line item amounts.
   totalAmount: {
     type: Number,
     required: true
+  },
+  // Sum of the unrounded line item amounts, kept for reference.
+  actualTotalAmount: {
+    type: Number
   },
   discount: {
     type: Number,

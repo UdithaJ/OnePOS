@@ -15,9 +15,15 @@ const orderCategorySchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  // Charged amount, rounded to the nearest 10.
   amount: {
     type: Number,
     required: true
+  },
+  // The unrounded weight × price (or minimum price), kept for reference.
+  // Missing on items placed before rounding was introduced.
+  actualAmount: {
+    type: Number
   }
 });
 
