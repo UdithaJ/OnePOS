@@ -95,7 +95,21 @@ Cash Box Summary, Expenses and Bank Reconciliation have a **Date Basis** filter:
 In Business Day mode, Expenses and Bank Reconciliation show and group by the
 business date; Cash Box Summary still shows each payment's own Payment Date.
 The shared join lives in `processors/shared/businessDay.js`. Bank Transfer
-Tracking is unchanged.
+Tracking got its own Date Basis filter later (see 8).
+
+### 8. Bank Transfer Tracking — Date Basis filter *(feature, post-migration)*
+
+Bank Transfer Tracking has a **Date Basis** filter:
+
+- **Order Created Date** (default) — bank payments on orders created in the
+  period, as before.
+- **Payment Date** — each bank payment by its own date.
+- **Business Day** — each by the opening day of the cash box session it was
+  recorded in, using the same join as the cash reports (see 7).
+
+The processor now starts from `payments` instead of `orders`. Columns are
+unchanged; with Payment Date or Business Day the rows are sorted by Bank
+Transfer Date instead of Order Created Date.
 
 ## Preserved inconsistencies (tech debt, deliberate)
 

@@ -214,6 +214,38 @@ test('expenses and bank reconciliation group by the business date in business mo
   }
 });
 
+test('bank transfer tracking: order basis (and absent) filters on the order creation date', () => {
+  for (const query of [{ dateBasis: 'order' }, { dateBasis: undefined }]) {
+    const { values, pipeline } = cashPipeline('bank-transfer-tracking', query);
+    assert.ok(matches(pipeline).some((m) => JSON.stringify(m['order.createdDate']) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+    assert.ok(!matches(pipeline).some((m) => 'date' in m), 'must not filter on the payment date');
+  }
+});
+
+test('bank transfer tracking: payment basis filters on the payment date', () => {
+  const { values, pipeline } = cashPipeline('bank-transfer-tracking', { dateBasis: 'payment' });
+  assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+  assert.ok(!matches(pipeline).some((m) => 'order.createdDate' in m));
+  assert.ok(!lookupsFrom(pipeline).includes('cashboxsessions'));
+});
+
+test('bank transfer tracking: business basis filters on the session opening day', () => {
+  const { values, pipeline } = cashPipeline('bank-transfer-tracking', { dateBasis: 'business' });
+  assert.ok(lookupsFrom(pipeline).includes('cashledgers') && lookupsFrom(pipeline).includes('cashboxsessions'));
+  assert.ok(matches(pipeline).some((m) => JSON.stringify(m.businessDate) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+});
+
+test('bank transfer tracking: only bank payments, and an unknown dateBasis is a 400', () => {
+  const { pipeline } = cashPipeline('bank-transfer-tracking', {});
+  assert.ok(matches(pipeline).some((m) => m.paymentMethod === 'bank'));
+  try {
+    cashPipeline('bank-transfer-tracking', { dateBasis: 'transaction' });
+    assert.fail('expected an error');
+  } catch (err) {
+    assert.strictEqual(err.status, 400);
+  }
+});
+
 test('an unknown report id is a 404', () => {
   try {
     getDefinition('no-such-report');
