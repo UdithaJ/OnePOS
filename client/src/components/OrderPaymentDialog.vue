@@ -35,7 +35,7 @@
           />
           <v-select
             v-model="type"
-            :items="types"
+            :items="availableTypes"
             item-title="title"
             item-value="value"
             label="Type"
@@ -68,24 +68,25 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toCents } from '@/utils/money'
 
 // printBill is the initial state of the "Print bill" checkbox for this opening
 // (ticked when the order was created with "Print bill" selected). The choice is
 // reported with both `paid` and `cancel`, so the parent never has to rely on a
 // flag left over from an earlier order.
-const props = defineProps<{ show: boolean, orderId: string, dueAmount: number, printBill?: boolean }>()
+// hasPayments: the order already has a payment, so the remaining due can be
+// settled. Settlement is only offered then.
+const props = defineProps<{ show: boolean, orderId: string, dueAmount: number, printBill?: boolean, hasPayments?: boolean }>()
 const emit = defineEmits(['close', 'cancel', 'paid', 'update:show'])
 
-const DEFAULT_TYPE = 'settlement'
 const DEFAULT_METHOD = 'cash'
 
 const amount = ref<number | string>(props.dueAmount)
 const errorMsg = ref('')
 const paymentMethod = ref(DEFAULT_METHOD)
 const transactionId = ref('')
-const type = ref(DEFAULT_TYPE)
+const type = ref(defaultType())
 const printBill = ref(!!props.printBill)
 const methods = [
   { title: 'Cash', value: 'cash' },
@@ -96,12 +97,19 @@ const types = [
   { title: 'Full Payment', value: 'full_payment' },
   { title: 'Settlement', value: 'settlement' },
 ]
+const availableTypes = computed(() =>
+  props.hasPayments ? types : types.filter(t => t.value !== 'settlement')
+)
+
+function defaultType() {
+  return props.hasPayments ? 'settlement' : 'full_payment'
+}
 
 // The dialog stays mounted between openings — and across orders, since the
 // parent only unmounts it when no order is being edited — so every opening
 // starts from a clean form for the current order.
 function resetForm() {
-  type.value = DEFAULT_TYPE
+  type.value = defaultType()
   paymentMethod.value = DEFAULT_METHOD
   transactionId.value = ''
   amount.value = props.dueAmount

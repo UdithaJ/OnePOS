@@ -19,6 +19,10 @@ exports.createPayment = async (req, res) => {
     if (toCents(req.body.amount) > due) {
       return res.status(400).json({ message: 'Payment exceeds due amount.' });
     }
+    // A settlement pays off what is left after an earlier payment.
+    if (req.body.type === 'settlement' && payments.length === 0) {
+      return res.status(400).json({ message: 'Settlement requires an earlier payment on the order.' });
+    }
     if (req.body.paymentMethod === 'bank' && !req.body.transactionId) {
       return res.status(400).json({ message: 'Transaction ID is required for bank transfers.' });
     }
