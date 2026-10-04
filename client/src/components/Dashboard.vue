@@ -113,10 +113,23 @@
           <div class="bg-[#0d3d38] px-5 py-3 flex items-center gap-2">
             <v-icon color="white" size="20">mdi-chart-line</v-icon>
             <span class="text-white text-sm font-medium">Monthly Order Count</span>
+            <v-btn-toggle
+              v-model="monthRange"
+              mandatory
+              density="compact"
+              variant="text"
+              class="ml-auto month-range-toggle"
+            >
+              <v-btn v-for="range in MONTH_RANGES" :key="range" :value="range" size="small">
+                {{ range }}M
+              </v-btn>
+            </v-btn-toggle>
           </div>
           <div class="px-5 py-4" style="height: 260px; position: relative;">
             <Line v-if="lineChartData" :data="lineChartData" :options="chartOptions" />
-            <div v-else class="flex items-center justify-center h-full text-gray-400 text-sm">No data</div>
+            <div v-else class="flex items-center justify-center h-full text-gray-400 text-sm">
+              {{ monthlyError ? 'Could not load monthly orders' : 'Loading…' }}
+            </div>
           </div>
         </div>
       </div>
@@ -125,7 +138,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bar, Line } from 'vue-chartjs'
 import {
@@ -145,8 +158,8 @@ import BankTransfersCard from './BankTransfersCard.vue'
 
 const bankTransfersCard = ref<InstanceType<typeof BankTransfersCard> | null>(null)
 import DeliveryPending from './DeliveryPending.vue'
-import { getAllOrders } from '@/services/orderApiService'
 import { useAuth } from '@/composables/useAuth'
+import { getDashboardSummary, getMonthlyOrderCount, type MonthRange } from '@/services/dashboardApiService'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler)
 
@@ -162,6 +175,10 @@ const pendingWeightKg = ref(0)
 const barChartData = ref<any>(null)
 const lineChartData = ref<any>(null)
 
+const MONTH_RANGES: MonthRange[] = [3, 6, 12]
+const monthRange = ref<MonthRange>(12)
+const monthlyError = ref(false)
+
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -172,68 +189,68 @@ const chartOptions = {
   },
 }
 
-onMounted(async () => {
-  const orders = await getAllOrders()
-  const all = orders || []
+// 'YYYY-MM' -> 'Sep 2026'
+function monthLabel(month: string) {
+  const [year, m] = month.split('-').map(Number)
+  return `${new Date(year, m - 1, 1).toLocaleString('default', { month: 'short' })} ${year}`
+}
 
-  const pending = all.filter((o: any) => o.status === 'todo')
-  pendingCount.value = pending.length
-  doneCount.value = all.filter((o: any) => o.status === 'done').length
-  pendingWeightKg.value = pending.reduce((sum: number, o: any) => {
-    return sum + (o.suborders || []).reduce((s: number, sub: any) => s + (Number(sub.weight) || 0), 0)
-  }, 0)
-
-  const today = new Date().toDateString()
-  ordersTodayCount.value = all.filter(
-    (o: any) => new Date(o.createdDate).toDateString() === today
-  ).length
-
-  const kgByCategory: Record<string, number> = {}
-  for (const order of all) {
-    if (new Date(order.createdDate).toDateString() !== today) continue
-    for (const sub of order.suborders || []) {
-      const name = sub.category?.name || 'Unknown'
-      kgByCategory[name] = (kgByCategory[name] || 0) + (Number(sub.weight) || 0)
-    }
-  }
-  if (Object.keys(kgByCategory).length) {
-    const tealPalette = ['#b45309', '#292929', '#0d3d38', '#0f766e', '#0d9488', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4']
-    const labels = Object.keys(kgByCategory)
-    barChartData.value = {
-      labels,
-      datasets: [{
-        label: 'kg',
-        data: Object.values(kgByCategory),
-        backgroundColor: labels.map((_, i) => tealPalette[i % tealPalette.length]),
-        borderRadius: 6,
-      }],
-    }
-  }
-
-  const countByMonth: Record<string, number> = {}
-  for (const order of all) {
-    const d = new Date(order.createdDate)
-    const key = `${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`
-    countByMonth[key] = (countByMonth[key] || 0) + 1
-  }
-  const sortedMonths = Object.keys(countByMonth).sort(
-    (a, b) => (new Date(a) > new Date(b) ? 1 : -1)
-  )
-  if (sortedMonths.length) {
+// Every month in the range is plotted, zeros included, so a quiet month shows
+// as a dip rather than being skipped.
+async function loadMonthlyOrders() {
+  const months = monthRange.value
+  monthlyError.value = false
+  try {
+    const byMonth = await getMonthlyOrderCount(months)
+    // Ignore a slow response for a range the user has already switched away from
+    if (months !== monthRange.value) return
     lineChartData.value = {
-      labels: sortedMonths,
+      labels: byMonth.map(r => monthLabel(r.month)),
       datasets: [{
         label: 'Orders',
-        data: sortedMonths.map(m => countByMonth[m]),
+        data: byMonth.map(r => r.count),
         borderColor: '#0f766e',
         backgroundColor: 'rgba(15,118,110,0.1)',
-        tension: 0.4,
+        // monotone keeps the curve from dipping below zero around empty months
+        cubicInterpolationMode: 'monotone',
         fill: true,
         pointBackgroundColor: '#0f766e',
         pointRadius: 4,
       }],
     }
+  } catch {
+    if (months !== monthRange.value) return
+    lineChartData.value = null
+    monthlyError.value = true
   }
+}
+
+watch(monthRange, loadMonthlyOrders)
+
+onMounted(async () => {
+  loadMonthlyOrders()
+
+  const summary = await getDashboardSummary()
+
+  doneCount.value = summary.doneCount
+  ordersTodayCount.value = summary.ordersTodayCount
+  pendingCount.value = summary.pendingCount
+  pendingWeightKg.value = summary.pendingWeightKg
+
+  const byCategory = summary.todayWeightByCategory
+  if (byCategory.length) {
+    const tealPalette = ['#b45309', '#292929', '#0d3d38', '#0f766e', '#0d9488', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4']
+    barChartData.value = {
+      labels: byCategory.map(r => r.category),
+      datasets: [{
+        label: 'kg',
+        data: byCategory.map(r => r.weightKg),
+        backgroundColor: byCategory.map((_, i) => tealPalette[i % tealPalette.length]),
+        borderRadius: 6,
+      }],
+    }
+  }
+
 })
 </script>
 
@@ -260,6 +277,21 @@ onMounted(async () => {
   min-width: 0;
   overflow-y: auto;
   padding-right: 4px;
+}
+
+/* 3M / 6M / 12M toggle on the dark chart header */
+.month-range-toggle {
+  height: 24px;
+}
+.month-range-toggle :deep(.v-btn) {
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: none;
+  min-width: 36px;
+  font-size: 0.75rem;
+}
+.month-range-toggle :deep(.v-btn--active) {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .dashboard-right::-webkit-scrollbar {

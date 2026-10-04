@@ -81,22 +81,14 @@
         </div>
       </div>
     </div>
-
-    <v-snackbar
-      v-model="snackbar.show"
-      color="error"
-      location="bottom right"
-      :timeout="3500"
-    >
-      {{ snackbar.message }}
-    </v-snackbar>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { getAllOrders, updateOrder } from '@/services/orderApiService'
-import { getAllCustomers } from '@/services/customerApiService'
+import { updateOrder } from '@/services/orderApiService'
+import { getDeliveryPending } from '@/services/dashboardApiService'
+import { useToast } from '@/composables/useToast'
 
 interface PendingOrder {
   id: string
@@ -112,8 +104,8 @@ const loading = ref(false)
 const errorMsg = ref('')
 const pendingOrders = ref<PendingOrder[]>([])
 const removingIds = ref<Set<string>>(new Set())
-const snackbar = ref({ show: false, message: '' })
 const timerMap = new Map<string, ReturnType<typeof setTimeout>>()
+const { showToast } = useToast()
 
 function formatDate(dateStr: string) {
   if (!dateStr) return '—'
@@ -125,29 +117,38 @@ async function loadData() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const [orderData, customerData] = await Promise.all([getAllOrders(), getAllCustomers()])
-    const customerMap = new Map(
-      (customerData || []).map((c: any) => [
-        String(c._id),
-        `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim(),
-      ])
-    )
-    pendingOrders.value = (orderData || [])
-      .filter((o: any) => o.status === 'done' && o.paymentStatus === 'paid')
-      .map((o: any) => ({
-        id: String(o._id),
-        orderNo: o.orderNo || o._id,
-        customerName: (
-          customerMap.get(String(o.customerID?._id ?? o.customerID)) ||
-          String(o.customerID ?? '—')
-        ) as string,
-        deliveryDate: o.deliveryDate,
-        checked: false,
-      }))
+    const orders = await getDeliveryPending()
+    pendingOrders.value = orders.map(o => ({
+      id: o.id,
+      orderNo: o.orderNo || o.id,
+      customerName: o.customerName || '—',
+      deliveryDate: o.deliveryDate,
+      checked: false,
+    }))
   } catch {
     errorMsg.value = 'Failed to load orders.'
   } finally {
     loading.value = false
+  }
+}
+
+// Removes the tile and saves the order as delivered. Called when the five-second
+// window runs out, or straight away if the panel is left before then.
+async function commitDelivered(orderId: string) {
+  timerMap.delete(orderId)
+  removingIds.value = new Set([...removingIds.value].filter(id => id !== orderId))
+
+  const index = pendingOrders.value.findIndex(o => o.id === orderId)
+  const removed = index === -1 ? null : pendingOrders.value.splice(index, 1)[0]
+
+  try {
+    await updateOrder(orderId, { status: 'delivered' } as any)
+  } catch {
+    // Put the tile back if the panel is still showing
+    if (removed) pendingOrders.value.splice(index, 0, { ...removed, checked: false })
+    // The app-wide toast, so the failure still shows after navigating away
+    const label = removed ? `order #${removed.orderNo}` : 'the order'
+    showToast(`Failed to mark ${label} as delivered. Please try again.`, 'error')
   }
 }
 
@@ -156,20 +157,7 @@ function onMarkDelivered(order: PendingOrder, checked: boolean | null) {
     // Enter "removing" state — visual countdown starts
     removingIds.value = new Set([...removingIds.value, order.id])
 
-    const timer = setTimeout(async () => {
-      const index = pendingOrders.value.findIndex(o => o.id === order.id)
-      if (index === -1) return
-      const [removed] = pendingOrders.value.splice(index, 1)
-      removingIds.value = new Set([...removingIds.value].filter(id => id !== order.id))
-      timerMap.delete(order.id)
-      try {
-        await updateOrder(order.id, { status: 'delivered' } as any)
-      } catch {
-        pendingOrders.value.splice(index, 0, { ...removed, checked: false })
-        snackbar.value = { show: true, message: 'Failed to update order. Please try again.' }
-      }
-    }, REMOVE_DELAY_MS)
-
+    const timer = setTimeout(() => commitDelivered(order.id), REMOVE_DELAY_MS)
     timerMap.set(order.id, timer)
   } else {
     // User unchecked — cancel pending removal
@@ -181,7 +169,14 @@ function onMarkDelivered(order: PendingOrder, checked: boolean | null) {
 }
 
 onMounted(loadData)
-onUnmounted(() => { timerMap.forEach(t => clearTimeout(t)) })
+// Leaving the page mid-countdown still saves the order: ticking it was the
+// decision, and the countdown only exists so it can be undone.
+onUnmounted(() => {
+  for (const [orderId, timer] of timerMap) {
+    clearTimeout(timer)
+    commitDelivered(orderId)
+  }
+})
 </script>
 
 <style scoped lang="scss">
