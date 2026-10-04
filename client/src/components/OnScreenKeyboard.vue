@@ -17,14 +17,14 @@
               :class="{ 'osk-mode-active': showPad }" :aria-checked="showPad" title="Number pad"
               @pointerdown.prevent="press($event, () => { fullKeyboard = false })"
             >
-              <v-icon size="18">mdi-dialpad</v-icon> 123
+              <v-icon size="14">mdi-dialpad</v-icon> 123
             </button>
             <button
               type="button" tabindex="-1" role="radio" class="osk-mode-btn osk-mode-abc"
               :class="{ 'osk-mode-active': !showPad }" :aria-checked="!showPad" title="Letters and numbers"
               @pointerdown.prevent="press($event, () => { fullKeyboard = true })"
             >
-              <v-icon size="18">mdi-keyboard-outline</v-icon> ABC
+              <v-icon size="14">mdi-keyboard-outline</v-icon> ABC
             </button>
           </div>
           <span class="osk-header-spacer" />
@@ -33,18 +33,18 @@
             type="button" tabindex="-1" class="osk-icon-btn" title="Clear"
             @pointerdown.prevent="press($event, clearField)"
           >
-            <v-icon size="20">mdi-close-circle-outline</v-icon>
+            <v-icon size="18">mdi-close-circle-outline</v-icon>
           </button>
           <button
             type="button" tabindex="-1" class="osk-auto" role="switch" :aria-checked="keyboard.autoOpen"
             title="Open the keyboard automatically when a field is tapped"
             @pointerdown.prevent="press($event, () => setAutoOpen(!keyboard.autoOpen))"
           >
-            <v-icon size="20">{{ keyboard.autoOpen ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}</v-icon>
+            <v-icon size="18">{{ keyboard.autoOpen ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}</v-icon>
             <span>Auto-open</span>
           </button>
           <button type="button" tabindex="-1" class="osk-icon-btn" title="Hide keyboard" @pointerdown.prevent="press($event, hideKeyboard)">
-            <v-icon size="22">mdi-keyboard-close-outline</v-icon>
+            <v-icon size="18">mdi-keyboard-close-outline</v-icon>
           </button>
         </div>
 
@@ -61,7 +61,7 @@
           </div>
           <div class="osk-pad-actions">
             <button type="button" tabindex="-1" class="osk-key osk-key-lg osk-key-muted" title="Backspace" @pointerdown.prevent="startRepeat($event)">
-              <v-icon size="24">mdi-backspace-outline</v-icon>
+              <v-icon size="18">mdi-backspace-outline</v-icon>
             </button>
             <button type="button" tabindex="-1" class="osk-key osk-key-lg osk-key-outline" @pointerdown.prevent="press($event, focusNextField)">
               Next <v-icon size="18" class="ml-1">mdi-arrow-right</v-icon>
@@ -84,7 +84,7 @@
               :title="key.title"
               @pointerdown.prevent="onKey($event, key)"
             >
-              <v-icon v-if="key.icon" size="22">{{ key.icon }}</v-icon>
+              <v-icon v-if="key.icon" size="18">{{ key.icon }}</v-icon>
               <template v-else>{{ key.label }}</template>
             </button>
           </div>
@@ -444,10 +444,10 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 $teal: #0f766e;
 $teal-dark: #0d3d38;
-// Both layouts share one key-area height (the full keyboard's five 54px rows
+// Both layouts share one key-area height (the full keyboard's five 34px rows
 // and their gaps), so the toolbar above them — and the 123 | ABC switch in
 // it — does not move when switching.
-$keys-height: 5 * 54px + 4 * 8px;
+$keys-height: 5 * 34px + 4 * 4px;
 
 .osk {
   position: fixed;
@@ -459,7 +459,7 @@ $keys-height: 5 * 54px + 4 * 8px;
   background: #e8eeec;
   border-top: 1px solid #cbd5d2;
   box-shadow: 0 -6px 24px rgba(13, 61, 56, 0.18);
-  padding: 0 12px 12px;
+  padding: 0 8px 6px;
   user-select: none;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -468,11 +468,11 @@ $keys-height: 5 * 54px + 4 * 8px;
 .osk-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: 1100px;
-  min-height: 48px;
+  gap: 6px;
+  max-width: 760px;
+  min-height: 34px;
   margin: 0 auto;
-  padding: 8px 2px;
+  padding: 3px 2px;
 }
 
 .osk-header-spacer { flex: 1; }
@@ -490,10 +490,10 @@ $keys-height: 5 * 54px + 4 * 8px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 38px;
-  padding: 0 16px;
-  border-radius: 8px;
-  font-size: 15px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.03em;
   color: $teal-dark;
@@ -512,9 +512,9 @@ $keys-height: 5 * 54px + 4 * 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   color: $teal-dark;
   background: transparent;
   cursor: pointer;
@@ -525,14 +525,14 @@ $keys-height: 5 * 54px + 4 * 8px;
 .osk-auto {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: 12px;
   color: #374151;
   cursor: pointer;
   white-space: nowrap;
 
-  padding: 6px 8px;
-  border-radius: 8px;
+  padding: 4px 6px;
+  border-radius: 7px;
 
   .v-icon { color: $teal; }
   @media (hover: hover) { &:hover { background: rgba(15, 118, 110, 0.08); } }
@@ -546,11 +546,11 @@ $keys-height: 5 * 54px + 4 * 8px;
   justify-content: center;
   flex: 1 1 0;
   min-width: 0;
-  height: 54px;
-  border-radius: 10px;
+  height: 34px;
+  border-radius: 7px;
   background: #fff;
   color: #111827;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 500;
   box-shadow: 0 1px 0 #b8c4c1, 0 1px 2px rgba(0, 0, 0, 0.06);
   cursor: pointer;
@@ -565,28 +565,28 @@ $keys-height: 5 * 54px + 4 * 8px;
   100% { background: #fff; transform: scale(1); }
 }
 
-.osk-key-muted { background: #d5dfdc; color: $teal-dark; font-size: 15px; font-weight: 600; @media (hover: hover) { &:hover { background: #cad6d3; } } }
+.osk-key-muted { background: #d5dfdc; color: $teal-dark; font-size: 13px; font-weight: 600; @media (hover: hover) { &:hover { background: #cad6d3; } } }
 .osk-key-active { background: $teal; color: #fff; @media (hover: hover) { &:hover { background: $teal; } } }
-.osk-key-space { font-size: 14px; color: #6b7280; }
-.osk-key-outline { background: #fff; color: $teal; border: 2px solid $teal; font-size: 15px; font-weight: 600; }
-.osk-key-done { background: $teal; color: #fff; font-size: 16px; font-weight: 700; @media (hover: hover) { &:hover { background: #0e6b64; } } }
-.osk-key-lg { height: 60px; font-size: 24px; }
+.osk-key-space { font-size: 12px; color: #6b7280; }
+.osk-key-outline { background: #fff; color: $teal; border: 2px solid $teal; font-size: 13px; font-weight: 600; }
+.osk-key-done { background: $teal; color: #fff; font-size: 14px; font-weight: 700; @media (hover: hover) { &:hover { background: #0e6b64; } } }
+.osk-key-lg { height: 40px; font-size: 17px; }
 .osk-key-blank { visibility: hidden; }
 .osk-key-grow { flex-grow: 1; height: auto; }
 
 .osk-board {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   height: $keys-height;
-  max-width: 1100px;
+  max-width: 760px;
   margin: 0 auto;
 }
 
 .osk-row {
   flex: 1;
   display: flex;
-  gap: 6px;
+  gap: 4px;
 
   .osk-key { height: auto; }
 }
@@ -595,9 +595,9 @@ $keys-height: 5 * 54px + 4 * 8px;
 // Done spanning the bottom two.
 .osk-pad {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   height: $keys-height;
-  max-width: 460px;
+  max-width: 320px;
   margin: 0 auto;
 
   .osk-key { height: auto; }
@@ -608,17 +608,17 @@ $keys-height: 5 * 54px + 4 * 8px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(4, 1fr);
-  gap: 8px;
+  gap: 4px;
 }
 
 .osk-pad-actions {
   flex: 1.3;
   display: grid;
   grid-template-rows: repeat(4, 1fr);
-  gap: 8px;
+  gap: 4px;
 
   .osk-key-grow { grid-row: span 2; }
-  .osk-key-outline { font-size: 17px; }
+  .osk-key-outline { font-size: 13px; }
 }
 
 .osk-fab {

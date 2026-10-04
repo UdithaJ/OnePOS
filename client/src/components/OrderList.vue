@@ -579,6 +579,7 @@
         :order-id="editOrderId"
         :due-amount="effectiveDueAmount"
         :print-bill="makePaymentOnCreate && printBillOnCreate"
+        :has-payments="payments.length > 0"
         @close="showPaymentDialog = false"
         @cancel="onPaymentCancelled"
         @paid="onPaymentMade"
@@ -1341,7 +1342,18 @@ function resolveCustomerPhone(customerId: any): string {
   return selected?.mobileNumber || ''
 }
 
-function buildPrintBillHtml(order: any) {
+// Bill payment rows split by payment type, so a settlement taken on a later
+// visit isn't printed as an advance. Without the payment list (fetch failed),
+// everything paid so far falls back to the single "Advance Paid" row.
+function summarizeBillPayments(orderPayments: any[] | null, paidTotal: number) {
+  if (!Array.isArray(orderPayments)) return { advance: paidTotal, settlement: 0, full: 0 }
+  const sumOf = (type: string) => orderPayments
+    .filter((p: any) => p?.type === type)
+    .reduce((sum: number, p: any) => sum + Number(p?.amount || 0), 0)
+  return { advance: sumOf('advance'), settlement: sumOf('settlement'), full: sumOf('full_payment') }
+}
+
+function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
   const created = order?.createdDate ? new Date(order.createdDate) : new Date()
   const orderItems = Array.isArray(order?.suborders) ? order.suborders : []
   const orderId = order?.orderNo || order?._id || 'N/A'
@@ -1352,6 +1364,7 @@ function buildPrintBillHtml(order: any) {
   const netTotal = Math.max(subtotal - discount, 0)
   const dueAmt = Number(order?.dueAmount ?? netTotal)
   const paidAmt = Math.max(netTotal - dueAmt, 0)
+  const paid = summarizeBillPayments(orderPayments, paidAmt)
 
   const rows = orderItems.map((item: any) => {
     const categoryName = item?.category?.name || categories.value.find((c: any) => c.value === item?.category)?.label || 'Item'
@@ -1458,7 +1471,9 @@ function buildPrintBillHtml(order: any) {
             ${summaryRow('Total Amount (Rs)', subtotal)}
             ${discount > 0 ? summaryRow('Discount (Rs)', discount) : ''}
             ${discount > 0 ? summaryRow('Net Amount (Rs)', netTotal) : ''}
-            ${paidAmt > 0 ? summaryRow('Advance Paid (Rs)', paidAmt) : ''}
+            ${paid.advance > 0 ? summaryRow('Advance Paid (Rs)', paid.advance) : ''}
+            ${paid.full > 0 ? summaryRow('Paid (Rs)', paid.full) : ''}
+            ${paid.settlement > 0 ? summaryRow('Settlement Paid (Rs)', paid.settlement) : ''}
             ${summaryRow('Amount Due (Rs)', dueAmt)}
           </table>
 
@@ -1473,7 +1488,16 @@ function buildPrintBillHtml(order: any) {
 }
 
 async function printBill(order: any, copies = 1) {
-  const htmlContent = buildPrintBillHtml(order)
+  let orderPayments: any[] | null = null
+  const orderId = order?._id
+  if (orderId) {
+    try {
+      orderPayments = await getPaymentsByOrder(String(orderId))
+    } catch (e) {
+      console.error('Loading payments for bill failed', e)
+    }
+  }
+  const htmlContent = buildPrintBillHtml(order, orderPayments)
   const electronStore = (window as any).electronStore
   if (electronStore?.printBill) {
     try {
