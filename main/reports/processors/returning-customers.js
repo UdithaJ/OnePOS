@@ -4,6 +4,8 @@
 // why the engine treats a date range as one declarable param type rather than
 // a built-in.
 
+const { stripFloatNoise } = require('../engine/number');
+
 exports.buildPipeline = ({ params }) => {
   const threshold = Number(params.minOrderCount);
   const min = Number.isFinite(threshold) && threshold > 0 ? Math.floor(threshold) : 0;
@@ -63,3 +65,6 @@ exports.buildPipeline = ({ params }) => {
     { $sort: { orderCount: -1, customerName: 1 } },
   ];
 };
+
+exports.postProcess = (rows) =>
+  rows.map((row) => ({ ...row, totalWeight: stripFloatNoise(Number(row.totalWeight) || 0) }));

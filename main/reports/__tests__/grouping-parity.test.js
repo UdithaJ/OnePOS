@@ -304,5 +304,20 @@ test('a report with no groups produces no spans and keeps source order', () => {
   assert.strictEqual(envelope.footer[0].value, 350);
 });
 
+// 2.3 + 5.14 is 7.4399999999999995 in floating point; the footer printed that.
+test('a summed weight total carries no floating-point noise', () => {
+  const envelope = runEngine(pendingOrdersDef, [
+    { orderId: 'o1', orderNo: 1, deliveryDate: '2026-03-01T05:00:00.000Z', categoryName: 'Heavy Curtains', weight: 2.3 },
+    { orderId: 'o1', orderNo: 1, deliveryDate: '2026-03-01T05:00:00.000Z', categoryName: 'Bed Sheets', weight: 5.14 },
+  ]);
+  assert.strictEqual(envelope.footer[0].value, 7.44);
+});
+
+test('Returning Customers total weight carries no floating-point noise', () => {
+  const { postProcess } = require('../processors/returning-customers.js');
+  const [row] = postProcess([{ customerName: 'A', orderCount: 2, totalWeight: 2.3 + 5.14 }]);
+  assert.strictEqual(row.totalWeight, 7.44);
+});
+
 console.log(failures === 0 ? '\nAll parity checks passed.\n' : `\n${failures} check(s) failed.\n`);
 process.exit(failures === 0 ? 0 : 1);
