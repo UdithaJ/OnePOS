@@ -130,7 +130,7 @@ function envelopeFor(definition) {
 }
 
 function newCSV(definition) {
-  return client.rows.toCSV(client.rows.exportMatrix(envelopeFor(definition), false));
+  return client.rows.toCSV(client.rows.exportMatrix(envelopeFor(definition), 'csv'));
 }
 
 // --- legacy exporters, copied verbatim --------------------------------------
@@ -190,7 +190,9 @@ function legacyDailyFlatRows(rows) {
       isFirstOrder ? PAYMENT_STATUS_DISPLAY[r.paymentStatus] : '',
       isFirstOrder ? (r.rackNumber ?? '-') : '',
       r.categoryName,
-      String(r.weight),
+      // Weights now print with 2 decimals, as the bill prints them; the old
+      // exporter wrote String(r.weight).
+      r.weight.toFixed(2),
       r.amount.toFixed(2),
       isFirstOrder ? (r.discount > 0 ? r.discount.toFixed(2) : '-') : '',
       isFirstOrder ? netAmount.toFixed(2) : '',
@@ -236,7 +238,7 @@ const dailyDef = require('../definitions/daily-sales.json');
 const produced = newCSV(dailyDef);
 const legacy = legacyDailyCSV(rawRows);
 
-test('CSV is byte-identical to the old useDailySalesExport output (+ Payment Status)', () => {
+test('CSV is byte-identical to the old useDailySalesExport output (+ Payment Status, 2-decimal weights)', () => {
   if (produced !== legacy) {
     const a = produced.split('\r\n');
     const b = legacy.split('\r\n');
@@ -271,10 +273,10 @@ test('Order Created Date follows Order No and prints once per order', () => {
 
 test('Total Pending Weight has no unit suffix in CSV (table shows " kg")', () => {
   const footer = pendingCSV.split('\r\n').pop();
-  assert.ok(footer.endsWith(',24'), `footer was: ${footer}`);
+  assert.ok(footer.endsWith(',24.00'), `footer was: ${footer}`);
 });
 
-console.log('\nCash Box Summary — legacy display/export split preserved');
+console.log('\nCash Box Summary — screen, PDF and Excel match the bill; CSV is ungrouped');
 
 const cashBoxDef = require('../definitions/cash-box-summary.json');
 const cashRows = [
@@ -283,36 +285,46 @@ const cashRows = [
     paymentMethod: 'cash', paymentReceived: 1500.5 },
 ];
 
-test('CSV uses toFixed(2) while the table uses toLocaleString()', () => {
+function cashEnvelope() {
   const { rows, spansByRow } = groupRows(cashRows.map((r) => ({ ...r })), cashBoxDef, TZ);
-  const envelope = buildEnvelope({
+  return buildEnvelope({
     definition: cashBoxDef, rows, spansByRow, params: {}, timezone: TZ,
     generatedAt: '2026-03-03T00:00:00.000Z',
   });
-  const totalColumn = envelope.columns.find((c) => c.key === 'totalAmount');
+}
 
-  assert.strictEqual(client.format.formatCell(1500.5, totalColumn, 'export'), '1500.50');
-  assert.strictEqual(client.format.formatCell(1500.5, totalColumn, 'display'), (1500.5).toLocaleString());
+test('the table and PDF show 1,500.50; CSV writes 1500.50', () => {
+  const totalColumn = cashEnvelope().columns.find((c) => c.key === 'totalAmount');
+
+  assert.strictEqual(client.format.formatCell(1500.5, totalColumn, 'display'), '1,500.50');
+  assert.strictEqual(client.format.formatCell(1500.5, totalColumn, 'export'), '1,500.50');
+  assert.strictEqual(client.format.formatCell(1500.5, totalColumn, 'csv'), '1500.50');
+  assert.strictEqual(client.format.formatCell(1950, totalColumn, 'display'), '1,950.00');
+});
+
+test('the footer total matches its column on screen, in PDF and in CSV', () => {
+  const envelope = cashEnvelope();
+  assert.strictEqual(client.format.formatFooter(envelope.footer[0], 'display'), '1,500.50');
+  assert.strictEqual(client.rows.footerRows(envelope, 'pdf')[0][9], '1,500.50');
+  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][9], '1500.50');
 });
 
 test('a zero discount still exports as "-"', () => {
-  const { rows, spansByRow } = groupRows(cashRows.map((r) => ({ ...r })), cashBoxDef, TZ);
-  const envelope = buildEnvelope({
-    definition: cashBoxDef, rows, spansByRow, params: {}, timezone: TZ,
-    generatedAt: '2026-03-03T00:00:00.000Z',
-  });
-  const matrix = client.rows.exportMatrix(envelope, false);
+  const matrix = client.rows.exportMatrix(cashEnvelope(), 'csv');
   assert.strictEqual(matrix[1][5], '-');
 });
 
-test('Excel receives a real number where CSV receives text', () => {
-  const { rows, spansByRow } = groupRows(cashRows.map((r) => ({ ...r })), cashBoxDef, TZ);
-  const envelope = buildEnvelope({
-    definition: cashBoxDef, rows, spansByRow, params: {}, timezone: TZ,
-    generatedAt: '2026-03-03T00:00:00.000Z',
-  });
-  assert.strictEqual(client.rows.exportMatrix(envelope, true)[1][4], 1500.5);
-  assert.strictEqual(client.rows.exportMatrix(envelope, false)[1][4], '1500.50');
+test('Excel receives real numbers formatted as #,##0.00, footer included', () => {
+  const matrix = client.rows.excelMatrix(cashEnvelope());
+  assert.deepStrictEqual(matrix[1][4], { v: 1500.5, t: 'n', z: '#,##0.00' });
+  assert.deepStrictEqual(matrix[2][9], { v: 1500.5, t: 'n', z: '#,##0.00' });
+  assert.strictEqual(matrix[1][5], '-');
+});
+
+test('Excel weights are real numbers formatted as 0.00', () => {
+  const matrix = client.rows.excelMatrix(envelopeFor(pendingDef));
+  const weightIndex = pendingDef.columns.findIndex((c) => c.key === 'weight');
+  assert.deepStrictEqual(matrix[1][weightIndex], { v: 5, t: 'n', z: '0.00' });
 });
 
 console.log(failures === 0 ? '\nAll CSV parity checks passed.\n' : `\n${failures} check(s) failed.\n`);

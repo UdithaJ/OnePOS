@@ -53,11 +53,11 @@
     { "key": "paymentStatus", "label": "Payment Status", "type": "badge", "valueMap": "paymentStatus", "span": "order" },
     { "key": "rackNumber", "label": "Rack No", "type": "text", "align": "center", "emptyAs": "-", "span": "order" },
     { "key": "categoryName", "label": "Laundry Category", "type": "text" },
-    { "key": "weight", "label": "Weight (kg)", "type": "number", "align": "right", "format": "plain" },
-    { "key": "amount", "label": "Amount", "type": "number", "align": "right", "format": "fixed", "decimals": 2 },
-    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "fixed", "decimals": 2, "zeroAs": "-", "span": "order" },
-    { "key": "netAmount", "label": "Net Amount", "type": "number", "align": "right", "format": "fixed", "decimals": 2, "span": "order" },
-    { "key": "dateTotalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "fixed", "decimals": 2, "span": "date", "emphasis": true }
+    { "key": "weight", "label": "Weight (kg)", "type": "number", "align": "right", "format": "fixed", "decimals": 2 },
+    { "key": "amount", "label": "Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
+    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "grouped", "decimals": 2, "zeroAs": "-", "span": "order" },
+    { "key": "netAmount", "label": "Net Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2, "span": "order" },
+    { "key": "dateTotalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2, "span": "date", "emphasis": true }
   ],
 
   "footer": {
@@ -66,7 +66,7 @@
     "fn": "sum",
     "of": "netAmount",
     "distinctBy": "order",
-    "format": "fixed",
+    "format": "grouped",
     "decimals": 2
   }
 }

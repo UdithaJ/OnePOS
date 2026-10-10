@@ -36,9 +36,9 @@
     { "key": "createdDate", "label": "Order Created Date", "type": "date" },
     { "key": "bankTransferDate", "label": "Bank Transfer Date", "type": "date", "emptyAs": "-" },
     { "key": "customerName", "label": "Customer", "type": "text" },
-    { "key": "totalAmount", "label": "Order Amount", "type": "number", "align": "right", "format": "grouped", "exportFormat": "fixed", "exportDecimals": 2 },
-    { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "exportFormat": "fixed", "exportDecimals": 2 },
-    { "key": "bankTransferAmount", "label": "Bank Transfer Amount", "type": "number", "align": "right", "format": "grouped", "exportFormat": "fixed", "exportDecimals": 2 }
+    { "key": "totalAmount", "label": "Order Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
+    { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "decimals": 2 },
+    { "key": "bankTransferAmount", "label": "Bank Transfer Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 }
   ],
 
   "footer": {
@@ -47,7 +47,6 @@
     "fn": "sum",
     "of": "bankTransferAmount",
     "format": "grouped",
-    "exportFormat": "fixed",
-    "exportDecimals": 2
+    "decimals": 2
   }
 }

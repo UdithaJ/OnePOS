@@ -8,7 +8,7 @@ const OrderCategory = require('../models/orderCategory');
 const Category = require('../models/category');
 const Customer = require('../models/customer');
 const { resolveTimezone } = require('../reports/engine/paramBinder');
-const { toCents } = require('../utils/money');
+const { stripFloatNoise } = require('../reports/engine/number');
 
 function parseInstant(value) {
   if (!value) return null;
@@ -93,14 +93,14 @@ async function getSummary({ dayStart, dayEnd } = {}) {
 }
 
 // Weights are summed as floats, so 2.30 + 5.14 comes back as 7.4399999999999995;
-// round to 2 decimals before they reach the screen.
+// strip that noise before they reach the screen (see stripFloatNoise).
 function shapeSummary({ doneCount, ordersTodayCount, pending, byCategory }) {
   return {
     doneCount,
     ordersTodayCount,
     pendingCount: pending[0]?.count || 0,
-    pendingWeightKg: toCents(pending[0]?.weightKg),
-    todayWeightByCategory: byCategory.map(r => ({ category: r._id, weightKg: toCents(r.weightKg) })),
+    pendingWeightKg: stripFloatNoise(pending[0]?.weightKg || 0),
+    todayWeightByCategory: byCategory.map(r => ({ category: r._id, weightKg: stripFloatNoise(r.weightKg || 0) })),
   };
 }
 

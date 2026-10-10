@@ -67,15 +67,21 @@ test("today's weight is limited to orders created inside the window", () => {
   });
 });
 
-test('summed weights are rounded to 2 decimals', () => {
+test('summed weights lose float noise but keep their decimals', () => {
   const summary = shapeSummary({
     doneCount: 1,
     ordersTodayCount: 2,
     pending: [{ count: 1, weightKg: 2.3 + 5.14 }], // 7.4399999999999995
-    byCategory: [{ _id: 'Bed Sheets & Towels', weightKg: 0.1 + 0.2 }],
+    byCategory: [
+      { _id: 'Bed Sheets & Towels', weightKg: 0.1 + 0.2 },
+      { _id: 'Curtains', weightKg: 1.125 },
+    ],
   });
   assert.strictEqual(summary.pendingWeightKg, 7.44);
-  assert.deepStrictEqual(summary.todayWeightByCategory, [{ category: 'Bed Sheets & Towels', weightKg: 0.3 }]);
+  assert.deepStrictEqual(summary.todayWeightByCategory, [
+    { category: 'Bed Sheets & Towels', weightKg: 0.3 },
+    { category: 'Curtains', weightKg: 1.125 },
+  ]);
 });
 
 test('no pending orders gives zero counts', () => {

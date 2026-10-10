@@ -35,12 +35,12 @@
     { "key": "createdDate", "label": "Order Created Date", "type": "date" },
     { "key": "paymentDate", "label": "Payment Date", "type": "date" },
     { "key": "customerName", "label": "Customer", "type": "text" },
-    { "key": "totalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "grouped", "exportFormat": "fixed", "exportDecimals": 2 },
-    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "exportFormat": "fixed", "exportDecimals": 2 },
-    { "key": "orderAmountAfterDiscount", "label": "Order Amount After Discount", "type": "number", "align": "right", "format": "grouped", "exportFormat": "fixed", "exportDecimals": 2 },
-    { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "exportFormat": "fixed", "exportDecimals": 2 },
+    { "key": "totalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
+    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "decimals": 2 },
+    { "key": "orderAmountAfterDiscount", "label": "Order Amount After Discount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
+    { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "decimals": 2 },
     { "key": "paymentMethod", "label": "Payment Method", "type": "badge", "valueMap": "paymentMethod", "emptyAs": "-" },
-    { "key": "paymentReceived", "label": "Payment Received", "type": "number", "align": "right", "format": "grouped", "emptyAs": "-", "exportFormat": "fixed", "exportDecimals": 2 }
+    { "key": "paymentReceived", "label": "Payment Received", "type": "number", "align": "right", "format": "grouped", "emptyAs": "-", "decimals": 2 }
   ],
 
   "footer": {
@@ -49,7 +49,6 @@
     "fn": "sum",
     "of": "paymentReceived",
     "format": "grouped",
-    "exportFormat": "fixed",
-    "exportDecimals": 2
+    "decimals": 2
   }
 }

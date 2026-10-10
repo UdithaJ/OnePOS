@@ -41,8 +41,7 @@
       "type": "number",
       "align": "right",
       "format": "grouped",
-      "exportFormat": "fixed",
-      "exportDecimals": 2
+      "decimals": 2
     }
   ],
 
@@ -52,7 +51,6 @@
     "fn": "sum",
     "of": "amount",
     "format": "grouped",
-    "exportFormat": "fixed",
-    "exportDecimals": 2
+    "decimals": 2
   }
 }

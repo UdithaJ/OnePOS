@@ -45,7 +45,7 @@
     { "key": "status", "label": "Status", "type": "badge", "valueMap": "orderStatus", "span": "order" },
     { "key": "rackNumber", "label": "Rack No", "type": "text", "align": "center", "emptyAs": "-", "span": "order" },
     { "key": "categoryName", "label": "Laundry Category", "type": "text" },
-    { "key": "weight", "label": "Weight (kg)", "type": "number", "align": "right", "format": "plain" }
+    { "key": "weight", "label": "Weight (kg)", "type": "number", "align": "right", "format": "fixed", "decimals": 2 }
   ],
 
   "footer": {
@@ -53,7 +53,8 @@
     "column": "weight",
     "fn": "sum",
     "of": "weight",
-    "format": "plain",
+    "format": "fixed",
+    "decimals": 2,
     "suffix": " kg",
     "exportSuffix": ""
   }

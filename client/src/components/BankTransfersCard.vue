@@ -13,7 +13,7 @@
         <div class="flex items-center gap-2 mb-3">
           <v-icon color="#0f766e">mdi-bank</v-icon>
           <span class="text-3xl font-bold text-gray-900">
-            Rs {{ bankTransfers.toFixed(2) }}
+            Rs {{ formatAmount(bankTransfers) }}
           </span>
         </div>
         <div class="text-sm text-gray-500">Received via bank transfer this session</div>
@@ -31,6 +31,7 @@ import {
   getActiveCashBoxSession,
   getCashBoxSessionBalance,
 } from '../services/cashBoxSessionApiService'
+import { formatAmount } from '@/utils/number'
 
 const loading = ref(true)
 const activeSession = ref<any | null>(null)

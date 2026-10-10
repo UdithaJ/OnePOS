@@ -150,6 +150,8 @@ Other declarative elements:
   | `grouped` | `1,500` | `.toLocaleString()` | Cash Box Summary, Bank Transfer |
   | `plain` | `1500` | bare interpolation | Pending Orders (weight) |
 
+  Since unified: every amount is now `grouped` with 2 decimals (`1,500.00`, `1500.00` in CSV) and every weight `fixed` with 2 decimals, matching the printed bill. See "Number formats" in `main/reports/MIGRATION-NOTES.md`.
+
   Plus two modifiers available on both columns and footers: **`suffix`** (Pending Orders' total is `142 kg`) and **`zeroAs`** (several columns render `-` instead of `0` — currently `row.discount > 0 ? … : '-'`).
 
 ---

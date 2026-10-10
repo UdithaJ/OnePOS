@@ -10,6 +10,8 @@
 // each group key, which reproduces the Map-insertion ordering the old
 // composables relied on.
 
+const { stripFloatNoise } = require('./number');
+
 // YYYY-MM-DD in the given IANA zone. 'en-CA' formats as YYYY-MM-DD, matching
 // the client's formatLocalKey() in utils/reportDate.ts — the two must agree or
 // rows bucket under a different day than the one displayed.
@@ -102,7 +104,7 @@ function evaluateAggregate(rows, agg, groupDefs, timezone) {
   if (!agg.distinctBy) {
     let total = 0;
     for (const row of rows) total += numeric(row[agg.of]);
-    return total;
+    return stripFloatNoise(total);
   }
 
   const def = findGroup(groupDefs, agg.distinctBy);
@@ -114,7 +116,7 @@ function evaluateAggregate(rows, agg, groupDefs, timezone) {
     seen.add(key);
     total += numeric(row[agg.of]);
   }
-  return total;
+  return stripFloatNoise(total);
 }
 
 /**
