@@ -110,7 +110,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import {
   getActiveCashBoxSession,
   createCashBoxSession,
@@ -188,8 +188,61 @@ async function openSessionDialog() {
   }
   showOpenDialog.value = true;
 }
-function openCloseDialog() {
-  showCloseDialog.value = true
+// Payments can be recorded from another window or terminal while this card is
+// on screen, so re-read the balance quietly (no spinner, no session-changed)
+// whenever the window regains focus and on a timer.
+const BALANCE_REFRESH_MS = 30000
+let balanceTimer: ReturnType<typeof setInterval> | undefined
+
+async function refreshBalance() {
+  if (actionLoading.value || showCloseDialog.value || loading.value) return
+  try {
+    const session = await getActiveCashBoxSession()
+    if (session?._id !== activeSession.value?._id) {
+      // Opened or closed elsewhere; reload the whole card.
+      await fetchSession()
+      return
+    }
+    if (session?._id) {
+      const balance = await getCashBoxSessionBalance(session._id)
+      activeSession.value = session
+      currentAmount.value = Number(balance.currentAmount || 0)
+    }
+  } catch (err) {
+    console.error('Failed to refresh cash box balance:', err)
+  }
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') refreshBalance()
+}
+
+// Re-read the session and its balance so the dialog shows, and the session
+// closes with, the amount as it stands now rather than when the card loaded.
+async function loadLatestBalance(): Promise<boolean> {
+  const session = await getActiveCashBoxSession()
+  if (!session?._id) {
+    // Already closed from another window or terminal.
+    await fetchSession()
+    showToast('This cash box session is no longer open', 'error')
+    return false
+  }
+  const balance = await getCashBoxSessionBalance(session._id)
+  activeSession.value = session
+  currentAmount.value = Number(balance.currentAmount || 0)
+  return true
+}
+
+async function openCloseDialog() {
+  actionLoading.value = true
+  try {
+    if (await loadLatestBalance()) showCloseDialog.value = true
+  } catch (err) {
+    console.error('Failed to load cash box balance:', err)
+    showToast('Failed to load the current cash box balance', 'error')
+  } finally {
+    actionLoading.value = false
+  }
 }
 
 async function confirmStartSession() {
@@ -218,6 +271,15 @@ async function confirmCloseSession() {
   actionLoading.value = true
   try {
     const user = getUser();
+    const confirmedAmount = displayAmount.value;
+    // A payment may have landed while the dialog was open. Don't close with an
+    // amount the user didn't see; show the new figure and ask again.
+    if (!(await loadLatestBalance())) return;
+    if (displayAmount.value !== confirmedAmount) {
+      showToast('The cash box balance changed. Please review the closing amount.', 'warning');
+      showCloseDialog.value = true;
+      return;
+    }
     const closingAmount = displayAmount.value;
     const payload = {
       closingAmount,
@@ -235,5 +297,16 @@ async function confirmCloseSession() {
   }
 }
 
-onMounted(fetchSession)
+onMounted(() => {
+  fetchSession()
+  window.addEventListener('focus', refreshBalance)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  balanceTimer = setInterval(refreshBalance, BALANCE_REFRESH_MS)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', refreshBalance)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  if (balanceTimer) clearInterval(balanceTimer)
+})
 </script>
