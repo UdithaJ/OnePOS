@@ -926,7 +926,8 @@ async function onPaymentMade(payment: any) {
 }
 
 import { onMounted } from 'vue'
-import { getAllCustomers, sendOtp, verifyOtp, updateCustomer } from '@/services/customerApiService'
+import { getAllCustomers, createCustomer, sendOtp, verifyOtp, updateCustomer } from '@/services/customerApiService'
+import { isAdminRole } from '@/constants/roles'
 import { createOrder } from '@/services/orderApiService'
 import { useToast } from '@/composables/useToast'
 const { toast, showToast } = useToast()
@@ -1742,7 +1743,7 @@ function goToNewCustomerTab() {
   activeOrderModalTab.value = 'new-customer'
 }
 
-// Save button on the New Customer tab: register a new customer (OTP) or, once
+// Save button on the New Customer tab: register a new customer (OTP, or directly for an admin) or, once
 // one has been registered inline, update it directly.
 function onSaveNewCustomer() {
   if (newCustomerId.value) updateNewCustomer()
@@ -1752,6 +1753,17 @@ function onSaveNewCustomer() {
 async function handleAddNewCustomer() {
   if (!newCustomerFormValid.value) return
   savingNewCustomer.value = true
+  if (isAdminRole(getUser()?.userRole)) {
+    // Admins add customers directly; the mobile number isn't OTP-verified.
+    try {
+      onNewCustomerSaved(await createCustomer(newCustomerForm.value))
+    } catch (err) {
+      showToast((err as any)?.response?.data?.message || 'Failed to add customer. Please try again.', 'error')
+    } finally {
+      savingNewCustomer.value = false
+    }
+    return
+  }
   try {
     otpMobile.value = newCustomerForm.value.mobileNumber
     await sendOtp(otpMobile.value, newCustomerForm.value)
@@ -1801,31 +1813,37 @@ async function verifyNewCustomerOtp() {
   verifyingOtp.value = true
   try {
     const saved = await verifyOtp(otpMobile.value, newCustomerOtpCode.value)
-    customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber, title: saved.title }]
-    form.value.customer = saved._id
     showNewCustomerOtpDialog.value = false
     newCustomerOtpCode.value = ''
-    // Keep the saved data on the New Customer tab and switch it to "update" mode,
-    // so returning to it edits this customer directly instead of creating a duplicate.
-    newCustomerId.value = saved._id
-    newCustomerForm.value = {
-      title: saved.title || '',
-      firstName: saved.firstName || '',
-      lastName: saved.lastName || '',
-      mobileNumber: saved.mobileNumber || '',
-      addressLine1: saved.addressLine1 || '',
-      addressLine2: saved.addressLine2 || '',
-      city: saved.city || '',
-      state: saved.state || '',
-      postalCode: saved.postalCode || '',
-    }
-    activeOrderModalTab.value = 'order'
-    showToast('Customer added successfully!', 'success')
+    onNewCustomerSaved(saved)
   } catch (err) {
     showToast((err as any)?.response?.data?.message || 'Incorrect or expired OTP. Please try again.', 'error')
   } finally {
     verifyingOtp.value = false
   }
+}
+
+// Select a just-registered customer on the order, whether it came through OTP
+// or an admin added it directly.
+function onNewCustomerSaved(saved: any) {
+  customers.value = [...customers.value, { label: [saved.firstName, saved.lastName].filter(Boolean).join(' '), value: saved._id, mobileNumber: saved.mobileNumber, title: saved.title }]
+  form.value.customer = saved._id
+  // Keep the saved data on the New Customer tab and switch it to "update" mode,
+  // so returning to it edits this customer directly instead of creating a duplicate.
+  newCustomerId.value = saved._id
+  newCustomerForm.value = {
+    title: saved.title || '',
+    firstName: saved.firstName || '',
+    lastName: saved.lastName || '',
+    mobileNumber: saved.mobileNumber || '',
+    addressLine1: saved.addressLine1 || '',
+    addressLine2: saved.addressLine2 || '',
+    city: saved.city || '',
+    state: saved.state || '',
+    postalCode: saved.postalCode || '',
+  }
+  activeOrderModalTab.value = 'order'
+  showToast('Customer added successfully!', 'success')
 }
 
 async function handleNewOrderClick() {

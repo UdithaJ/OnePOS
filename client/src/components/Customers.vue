@@ -103,6 +103,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useDynamicForm } from '@/composables/useDynamicForm'
 import { getCustomersPaginated, createCustomer, updateCustomer, deleteCustomer, sendOtp, verifyOtp } from '@/services/customerApiService'
+import { useAuth } from '@/composables/useAuth'
+import { isAdminRole } from '@/constants/roles'
 import { defineAsyncComponent } from 'vue'
 
 const BaseList = defineAsyncComponent(() => import('./BaseList.vue'))
@@ -192,6 +194,7 @@ const customerFormSchema = {
 
 const { form, isValid } = useDynamicForm(customerFormSchema)
 const { showToast } = useToast()
+const { getUser } = useAuth()
 
 const showDeleteConfirm = ref(false)
 const toDelete = ref<any | null>(null)
@@ -229,6 +232,11 @@ async function handleSubmit() {
       const idx = customers.value.findIndex(c => c._id === editId.value)
       if (idx !== -1) customers.value[idx] = toItem(saved)
       showToast('Customer updated successfully!', 'success')
+    } else if (isAdminRole(getUser()?.userRole)) {
+      // Admins add customers directly; the mobile number isn't OTP-verified.
+      await createCustomer(payload)
+      await loadCustomers()
+      showToast('Customer registered successfully!', 'success')
     } else {
       // Start OTP flow: send OTP and create on verification
       await startOtpFlow(payload)
