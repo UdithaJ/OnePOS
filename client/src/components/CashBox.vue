@@ -13,7 +13,7 @@
         <div class="flex items-center gap-2 mb-3">
           <v-icon color="#0f766e">mdi-cash</v-icon>
           <span class="text-3xl font-bold text-gray-900">
-            Rs {{ displayAmount.toFixed(2) }}
+            Rs {{ formatAmount(displayAmount) }}
           </span>
         </div>
         <div class="text-sm text-gray-500 mb-1">Current cashbox amount</div>
@@ -66,7 +66,7 @@
       @confirm="confirmStartSession"
     >
       <div>
-        <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ suggestedOpeningAmount.toFixed(2) }}</div>
+        <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ formatAmount(suggestedOpeningAmount) }}</div>
         <div class="text-sm text-gray-600 mb-3"><strong>Opened By:</strong> {{ userDisplayName() }}</div>
         <v-text-field
           v-model="sessionStartDateTime"
@@ -85,8 +85,8 @@
       @confirm="confirmCloseSession"
     >
       <div>
-        <div class="text-sm text-gray-600 mb-1"><strong>Closing Amount:</strong> Rs {{ displayAmount.toFixed(2) }}</div>
-        <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ activeSession?.openingAmount?.toFixed(2) }}</div>
+        <div class="text-sm text-gray-600 mb-1"><strong>Closing Amount:</strong> Rs {{ formatAmount(displayAmount) }}</div>
+        <div class="text-sm text-gray-600 mb-1"><strong>Opening Amount:</strong> Rs {{ formatAmount(activeSession?.openingAmount) }}</div>
         <div class="text-sm text-gray-600 mb-1"><strong>Opened At:</strong> {{ formatDate(activeSession?.openedAt) }}</div>
         <div class="text-sm text-gray-600"><strong>Opened By:</strong> {{ userDisplayName() }}</div>
       </div>
@@ -120,6 +120,7 @@ import {
 } from '../services/cashBoxSessionApiService'
 import { useAuth } from '../composables/useAuth'
 import { useToast } from '@/composables/useToast'
+import { formatAmount } from '@/utils/number'
 import ConfirmationDialog from './ConfirmationDialog.vue'
 import ExpenseDialog from './ExpenseDialog.vue'
 

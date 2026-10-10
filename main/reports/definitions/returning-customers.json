@@ -37,6 +37,6 @@
       "align": "right",
       "format": "plain"
     },
-    { "key": "totalWeight", "label": "Total No of Kilos", "type": "number", "align": "right", "format": "plain" }
+    { "key": "totalWeight", "label": "Total No of Kilos", "type": "number", "align": "right", "format": "fixed", "decimals": 2 }
   ]
 }

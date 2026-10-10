@@ -5,10 +5,23 @@
 // this file and asserts the CSV it produces still matches the old
 // use*Export.ts output.
 
-import type { ReportEnvelope } from '@/types/report'
-import { formatCell, formatFooter, columnHeader, spanOf, excelCell } from '@/utils/reportFormat'
+import type { ReportEnvelope, ReportColumn, ReportFooterEntry } from '@/types/report'
+import {
+  formatCell,
+  formatFooter,
+  columnHeader,
+  spanOf,
+  excelCell,
+  excelFooterCell,
+  type ExcelCell,
+} from '@/utils/reportFormat'
 
-export type Cell = string | number
+/** CSV and PDF get text; Excel gets cells built by `excelMatrix`. */
+export type TextTarget = 'csv' | 'pdf'
+
+function textMode(target: TextTarget) {
+  return target === 'csv' ? 'csv' : 'export'
+}
 
 export function headerRow(envelope: ReportEnvelope): string[] {
   return envelope.columns.map((column) => columnHeader(column, 'export'))
@@ -17,35 +30,50 @@ export function headerRow(envelope: ReportEnvelope): string[] {
 // A cell covered by a rowspan from above exports as blank, matching how the
 // merged table reads. Both the table and this function read the same spans, so
 // they cannot drift apart.
-export function bodyRows(envelope: ReportEnvelope, forExcel: boolean): Cell[][] {
+function cellRows<T>(envelope: ReportEnvelope, cell: (value: unknown, column: ReportColumn) => T): (T | '')[][] {
   return envelope.rows.map((row) =>
     envelope.columns.map((column) => {
       if (spanOf(row.spans, column.key) === 0) return ''
-      const value = row.values[column.key]
-      return forExcel ? excelCell(value, column) : formatCell(value, column, 'export')
+      return cell(row.values[column.key], column)
     }),
   )
 }
 
-export function footerRows(envelope: ReportEnvelope): Cell[][] {
+export function bodyRows(envelope: ReportEnvelope, target: TextTarget): string[][] {
+  return cellRows(envelope, (value, column) => formatCell(value, column, textMode(target)))
+}
+
+function footerCells<T>(envelope: ReportEnvelope, total: (entry: ReportFooterEntry) => T): (T | string)[][] {
   return envelope.footer.map((entry) => {
-    const cells: Cell[] = new Array(envelope.columns.length).fill('')
+    const cells: (T | string)[] = new Array(envelope.columns.length).fill('')
     // In the table the label cell spans `labelSpan` columns; flattened, that
     // means the text sits in the LAST cell it covers, which is where the old
     // exporters put it.
     cells[Math.max(0, entry.labelSpan - 1)] = entry.label
     const valueIndex = envelope.columns.findIndex((column) => column.key === entry.column)
-    if (valueIndex >= 0) cells[valueIndex] = formatFooter(entry, 'export')
+    if (valueIndex >= 0) cells[valueIndex] = total(entry)
     return cells
   })
 }
 
-export function exportMatrix(envelope: ReportEnvelope, forExcel = false): Cell[][] {
-  return [headerRow(envelope), ...bodyRows(envelope, forExcel), ...footerRows(envelope)]
+export function footerRows(envelope: ReportEnvelope, target: TextTarget): string[][] {
+  return footerCells(envelope, (entry) => formatFooter(entry, textMode(target)))
 }
 
-export function toCSV(matrix: Cell[][]): string {
-  function escapeCell(value: Cell): string {
+export function exportMatrix(envelope: ReportEnvelope, target: TextTarget): string[][] {
+  return [headerRow(envelope), ...bodyRows(envelope, target), ...footerRows(envelope, target)]
+}
+
+export function excelMatrix(envelope: ReportEnvelope): ExcelCell[][] {
+  return [
+    headerRow(envelope),
+    ...cellRows(envelope, excelCell),
+    ...footerCells(envelope, excelFooterCell),
+  ]
+}
+
+export function toCSV(matrix: string[][]): string {
+  function escapeCell(value: string): string {
     const text = String(value)
     if (text.includes(',') || text.includes('"') || text.includes('\n')) {
       return `"${text.replace(/"/g, '""')}"`

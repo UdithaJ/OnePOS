@@ -51,7 +51,7 @@
             </div>
             <div class="w-px h-10 bg-gray-200"></div>
             <div>
-              <div class="text-3xl font-bold text-gray-900">{{ pendingWeightKg }} <span class="text-lg font-medium text-gray-500">kg</span></div>
+              <div class="text-3xl font-bold text-gray-900">{{ formatWeight(pendingWeightKg) }} <span class="text-lg font-medium text-gray-500">kg</span></div>
               <div class="text-sm text-gray-500 mt-1">Pending</div>
             </div>
           </div>
@@ -160,6 +160,7 @@ const bankTransfersCard = ref<InstanceType<typeof BankTransfersCard> | null>(nul
 import DeliveryPending from './DeliveryPending.vue'
 import { useAuth } from '@/composables/useAuth'
 import { getDashboardSummary, getMonthlyOrderCount, type MonthRange } from '@/services/dashboardApiService'
+import { formatWeight } from '@/utils/number'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler)
 

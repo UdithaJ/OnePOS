@@ -8,3 +8,17 @@
 export function stripFloatNoise(value: number): number {
   return Math.round(value * 1e6) / 1e6
 }
+
+// Amounts and weights as the printed bill and the reports show them:
+// 1,950.00 and 2.30. Pinned to en-US so a till's system locale can't turn
+// 1,950.00 into 1.950,00.
+export function formatAmount(value: unknown): string {
+  return (Number(value) || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+export function formatWeight(value: unknown): string {
+  return (Number(value) || 0).toFixed(2)
+}

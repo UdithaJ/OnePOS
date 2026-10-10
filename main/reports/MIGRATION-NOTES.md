@@ -111,28 +111,28 @@ The processor now starts from `payments` instead of `orders`. Columns are
 unchanged; with Payment Date or Business Day the rows are sorted by Bank
 Transfer Date instead of Order Created Date.
 
-## Preserved inconsistencies (tech debt, deliberate)
+## Number formats (unified)
 
-Four reports rendered the **same value differently** on screen and in exports:
-the table used `.toLocaleString()` (`1,500`) while the exporter used
-`.toFixed(2)` (`1500.00`).
+Reports used to format the same value differently: the table used
+`.toLocaleString()` (`1,500`, decimals dropped) while the exporter used
+`.toFixed(2)` (`1500.00`) in Bank Reconciliation, Expenses, Cash Box Summary and
+Bank Transfer Tracking; Daily Sales used `1500.00` on screen; weights printed
+bare (`2.3`). These were preserved through the migration via `exportFormat` /
+`exportDecimals` overrides and have since been unified to match the printed
+bill:
 
-| Report | Columns affected |
-|---|---|
-| Bank Reconciliation | Amount, footer |
-| Expenses | Amount, footer |
-| Cash Box Summary | all amount columns, footer |
-| Bank Transfer Tracking | all amount columns, footer |
+| Value | Screen, PDF | Excel | CSV |
+|---|---|---|---|
+| Amounts (`grouped`, 2 decimals) | `1,950.00` | number, format `#,##0.00` | `1950.00` |
+| Weights (`fixed`, 2 decimals) | `2.30` | number, format `0.00` | `2.30` |
 
-This is almost certainly accidental, but changing it would alter output people
-may depend on, so it is preserved exactly via the `exportFormat` /
-`exportDecimals` / `exportSuffix` column and footer overrides.
+CSV leaves out the thousands separator by design, so the file imports into
+other tools as numbers rather than quoted text. No definition uses
+`exportFormat` / `exportDecimals` any more; the overrides remain available.
 
-Pending Orders has the same split on its footer: the table shows `24 kg`, the
-CSV shows `24` (`suffix` vs `exportSuffix`).
-
-**To unify later:** delete the `export*` keys from the affected definitions and
-update the assertions in `csv-parity.test.js`. No engine change is needed.
+Pending Orders still has one deliberate split on its footer: the table shows
+`24.00 kg`, the exports `24.00` (`suffix` vs `exportSuffix`), because the column
+header already says (kg).
 
 ## Behaviour worth knowing about
 

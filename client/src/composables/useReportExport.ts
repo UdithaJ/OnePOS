@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { ReportEnvelope } from '@/types/report'
-import { exportMatrix, headerRow, bodyRows, footerRows, toCSV, type Cell } from '@/utils/reportRows'
+import { exportMatrix, excelMatrix, headerRow, bodyRows, footerRows, toCSV } from '@/utils/reportRows'
 
 // One exporter for every report. It reads the same envelope the table renders,
 // so a spanned cell, a per-group total or a grand total can never come out
@@ -30,7 +30,7 @@ export function useReportExport() {
     const mod = await import('xlsx')
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const XLSX: any = mod && (mod as any).default ? (mod as any).default : mod
-    const ws = XLSX.utils.aoa_to_sheet(exportMatrix(envelope, true))
+    const ws = XLSX.utils.aoa_to_sheet(excelMatrix(envelope))
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, envelope.report.sheetName)
     XLSX.writeFile(wb, filename(envelope, params, 'xlsx'))
@@ -50,8 +50,8 @@ export function useReportExport() {
 
     autoTable(doc, {
       head: [headerRow(envelope)],
-      body: bodyRows(envelope, false) as string[][],
-      foot: footerRows(envelope) as string[][],
+      body: bodyRows(envelope, 'pdf'),
+      foot: footerRows(envelope, 'pdf'),
       startY: period ? 28 : 22,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [13, 61, 56] },
@@ -62,7 +62,7 @@ export function useReportExport() {
   }
 
   function exportToCSV(envelope: ReportEnvelope, params: DisplayParams) {
-    const csv = toCSV(exportMatrix(envelope, false) as Cell[][])
+    const csv = toCSV(exportMatrix(envelope, 'csv'))
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
