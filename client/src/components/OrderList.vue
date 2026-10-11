@@ -1875,8 +1875,10 @@ async function handleAddNewCustomer() {
     await sendOtp(otpMobile.value, newCustomerForm.value)
     showNewCustomerOtpDialog.value = true
     showToast('OTP sent to mobile number. Please verify.', 'info')
-  } catch (e) {
-    showToast('Failed to send OTP. Please try again.', 'error')
+  } catch (err) {
+    // The server explains a refusal, e.g. a number already registered to a
+    // customer, who can then be picked on the Order tab instead.
+    showToast((err as any)?.response?.data?.message || 'Failed to send OTP. Please try again.', 'error')
   } finally {
     savingNewCustomer.value = false
   }
@@ -1894,8 +1896,8 @@ async function updateNewCustomer() {
     form.value.customer = saved._id
     activeOrderModalTab.value = 'order'
     showToast('Customer updated successfully!', 'success')
-  } catch {
-    showToast('Failed to update customer. Please try again.', 'error')
+  } catch (err) {
+    showToast((err as any)?.response?.data?.message || 'Failed to update customer. Please try again.', 'error')
   } finally {
     savingNewCustomer.value = false
   }
@@ -1908,8 +1910,8 @@ async function resendNewCustomerOtp() {
     await sendOtp(otpMobile.value, newCustomerForm.value)
     newCustomerOtpCode.value = ''
     showToast('A new OTP has been sent.', 'info')
-  } catch {
-    showToast('Failed to resend OTP. Please try again.', 'error')
+  } catch (err) {
+    showToast((err as any)?.response?.data?.message || 'Failed to resend OTP. Please try again.', 'error')
   } finally {
     resendingOtp.value = false
   }
