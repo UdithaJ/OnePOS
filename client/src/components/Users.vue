@@ -27,42 +27,40 @@
 
     <v-dialog v-model="showForm" max-width="700">
       <template #default>
-        <div class="user-form-wrapper">
-          <v-card class="rounded-xl overflow-hidden" style="border: none;">
-            <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
-              <h3 class="text-lg font-semibold">
-                {{ editUserId ? 'Edit User' : 'Register User' }}
-              </h3>
-              <v-btn
-                icon="mdi-close"
-                size="small"
-                variant="text"
-                style="color: rgba(255,255,255,0.8);"
-                @click="showForm = false"
-              />
-            </div>
-            <div class="bg-white px-6 pt-6 pb-4">
-              <DynamicForm
-                :schema="userFormSchema"
-                :form="form"
-                :isValid="true"
-                :onSubmit="handleSubmit"
-                :hideDefaultSubmit="true"
-              />
-              <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <v-btn
-                  variant="outlined"
-                  style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
-                  @click="showForm = false"
-                >Cancel</v-btn>
-                <v-btn
-                  style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
-                  @click="handleSubmit"
-                >Submit</v-btn>
-              </div>
-            </div>
-          </v-card>
-        </div>
+        <v-card class="rounded-xl overflow-hidden pos-dialog" style="border: none;">
+          <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
+            <h3 class="text-lg font-semibold">
+              {{ editUserId ? 'Edit User' : 'Register User' }}
+            </h3>
+            <v-btn
+              icon="mdi-close"
+              size="small"
+              variant="text"
+              style="color: rgba(255,255,255,0.8);"
+              @click="showForm = false"
+            />
+          </div>
+          <div class="pos-dialog__body px-6 pt-6 pb-2">
+            <DynamicForm
+              :schema="userFormSchema"
+              :form="form"
+              :isValid="true"
+              :onSubmit="handleSubmit"
+              :hideDefaultSubmit="true"
+            />
+          </div>
+          <div class="pos-dialog__actions">
+            <v-btn
+              variant="outlined"
+              style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+              @click="showForm = false"
+            >Cancel</v-btn>
+            <v-btn
+              style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
+              @click="handleSubmit"
+            >Submit</v-btn>
+          </div>
+        </v-card>
       </template>
     </v-dialog>
 

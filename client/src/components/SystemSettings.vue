@@ -1,18 +1,21 @@
 <template>
-  <div class="p-6">
-    <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
+  <!-- The page fills the screen below the app bar and above the on-screen
+       keyboard (--osk-h while it is open). Each card scrolls on its own, with
+       Save Settings and Send pinned at the bottom. -->
+  <div class="settings-page p-6">
+    <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-3" style="flex: none;">
       <span class="w-1 h-7 bg-[#0f766e] rounded-full inline-block"></span>
       System Settings
     </h2>
 
-    <div class="flex gap-6 items-start">
+    <div class="flex gap-6" style="flex: 1 1 auto; min-height: 0;">
     <!-- Configuration -->
-    <v-card class="rounded-xl overflow-hidden" style="border: 1px solid #e5e7eb; min-width: 380px; width: 420px; flex-shrink: 0;">
-      <div class="bg-[#0d3d38] text-white px-6 py-4">
+    <v-card class="rounded-xl overflow-hidden pos-dialog" style="border: 1px solid #e5e7eb; min-width: 380px; width: 420px; flex-shrink: 0;">
+      <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4">
         <span class="text-base font-semibold">Configuration</span>
       </div>
-      <div class="bg-white px-6 py-6">
-        <v-form @submit.prevent="save">
+      <v-form class="pos-dialog" style="flex: 1 1 auto;" @submit.prevent="save">
+        <div class="pos-dialog__body px-6 py-6">
           <v-text-field
             v-model.number="dailyCapacityKg"
             label="Daily Processing Capacity (kg)"
@@ -34,23 +37,23 @@
             persistent-hint
             variant="outlined"
           />
-          <div class="flex justify-end mt-6">
-            <v-btn
-              type="submit"
-              :loading="saving"
-              style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-            >Save Settings</v-btn>
-          </div>
-        </v-form>
-      </div>
+        </div>
+        <div class="pos-dialog__actions">
+          <v-btn
+            type="submit"
+            :loading="saving"
+            style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+          >Save Settings</v-btn>
+        </div>
+      </v-form>
     </v-card>
 
     <!-- Bulk SMS -->
-    <v-card class="rounded-xl overflow-hidden flex-1" style="border: 1px solid #e5e7eb;">
-      <div class="bg-[#0d3d38] text-white px-6 py-4">
+    <v-card class="rounded-xl overflow-hidden pos-dialog" style="border: 1px solid #e5e7eb; flex: 1 1 0; min-width: 0;">
+      <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4">
         <span class="text-base font-semibold">Bulk SMS</span>
       </div>
-      <div class="bg-white px-6 py-6">
+      <div class="pos-dialog__body px-6 py-6 flex flex-col">
         <v-textarea
           v-model="smsMessage"
           label="Message"
@@ -60,13 +63,14 @@
           no-resize
           variant="outlined"
           class="mb-2"
+          style="flex: none;"
           :hint="`${smsMeta.length}/${smsMeta.singleMax} characters`"
           persistent-hint
           :error="smsMeta.overLimit"
           :error-messages="smsMeta.overLimit ? [`Message exceeds one SMS (${smsMeta.singleMax} chars for ${smsMeta.encoding}). Shorten it to send.`] : []"
         />
 
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-3" style="flex: none;">
           <span class="text-sm font-medium text-gray-700">Select Customers</span>
           <v-text-field
             v-model="customerSearch"
@@ -79,6 +83,8 @@
           />
         </div>
 
+        <!-- Takes the space left in the card, scrolling under a fixed header;
+             it shrinks while the keyboard is open but stays visible. -->
         <v-data-table
           v-model="selectedCustomers"
           :items="customers"
@@ -86,30 +92,30 @@
           :search="customerSearch"
           item-value="_id"
           show-select
+          fixed-header
           density="compact"
           class="rounded-lg"
-          style="border: 1px solid #e5e7eb;"
+          style="border: 1px solid #e5e7eb; flex: 1 1 auto; min-height: 160px;"
         />
-
-        <div class="flex items-center justify-between mt-4">
-          <span class="text-sm text-gray-500">{{ selectedCustomers.length }} customer(s) selected</span>
-          <v-btn
-            :disabled="selectedCustomers.length === 0 || !smsMessage.trim() || smsMeta.overLimit"
-            style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-            @click="confirmDialog = true"
-          >Send</v-btn>
-        </div>
+      </div>
+      <div class="pos-dialog__actions" style="justify-content: space-between;">
+        <span class="text-sm text-gray-500">{{ selectedCustomers.length }} customer(s) selected</span>
+        <v-btn
+          :disabled="selectedCustomers.length === 0 || !smsMessage.trim() || smsMeta.overLimit"
+          style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+          @click="confirmDialog = true"
+        >Send</v-btn>
       </div>
     </v-card>
     </div>
 
     <!-- Confirmation dialog -->
     <v-dialog v-model="confirmDialog" max-width="420">
-      <v-card class="rounded-xl overflow-hidden">
-        <div class="bg-[#0d3d38] text-white px-6 py-4">
+      <v-card class="rounded-xl overflow-hidden pos-dialog">
+        <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4">
           <span class="text-base font-semibold">Send SMS Confirmation</span>
         </div>
-        <div class="px-6 py-5">
+        <div class="pos-dialog__body px-6 py-5">
           <p class="text-sm text-gray-600 mb-3">
             Recipients: <strong>{{ selectedCustomers.length }} customer(s)</strong>
           </p>
@@ -119,7 +125,7 @@
             style="border: 1px solid #e5e7eb;"
           >{{ smsMessage }}</div>
         </div>
-        <div class="flex justify-end gap-3 px-6 pb-5">
+        <div class="pos-dialog__actions">
           <v-btn
             variant="outlined"
             style="text-transform: none;"
@@ -230,3 +236,12 @@ onMounted(() => {
   loadCustomers()
 })
 </script>
+
+<style scoped>
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--v-layout-top, 64px) - var(--osk-h, 0px));
+  box-sizing: border-box;
+}
+</style>

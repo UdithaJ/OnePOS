@@ -661,18 +661,23 @@ html.osk-open .v-overlay__content[data-osk-capped] {
   max-height: var(--osk-menu-max) !important;
 }
 
-// The padding confines the dialog to the area above the keyboard, and it sits
-// at the top of that area rather than its centre, as with a phone keyboard:
-// fields sit higher, leaving room for dropdown lists below them. Its content
-// is absolutely positioned, so Vuetify's own max-height (calc(100% - 48px))
-// is measured against the whole screen and would not shrink it — cap it
-// explicitly, and the dialog scrolls inside instead.
+// The padding confines the dialog to the area above the keyboard, and it is
+// centred in that area. Its content is absolutely positioned, so Vuetify's own
+// max-height (calc(100% - 48px)) is measured against the whole screen and
+// would not shrink it — cap it explicitly. Dialogs built with .pos-dialog keep
+// their header and buttons in view and scroll only the middle.
 html.osk-open .v-overlay.v-dialog {
   padding-bottom: var(--osk-h, 0px);
-  align-items: flex-start;
 
   > .v-overlay__content {
     max-height: calc(100% - var(--osk-h, 0px) - 48px);
   }
+}
+
+// A fullscreen dialog (New Order) fills the space above the keyboard exactly,
+// so its footer sits right on top of it.
+html.osk-open .v-overlay.v-dialog.v-dialog--fullscreen > .v-overlay__content {
+  height: calc(100% - var(--osk-h, 0px));
+  max-height: calc(100% - var(--osk-h, 0px));
 }
 </style>

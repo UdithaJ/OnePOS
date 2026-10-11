@@ -1,7 +1,9 @@
 <template>
   <v-app>
     <v-main style="background: #f3f4f6;">
-      <v-container class="d-flex align-center justify-center" style="min-height: 100vh;">
+      <!-- Centred in the space above the on-screen keyboard (--osk-h is its
+           height while open), so Sign In stays visible. -->
+      <v-container class="d-flex align-center justify-center" style="min-height: calc(100vh - var(--osk-h, 0px));">
         <v-card class="rounded-xl overflow-hidden" width="420" style="border: 1px solid #e5e7eb; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
           <div class="bg-[#0d3d38] text-white px-8 py-6 text-center">
             <div class="text-2xl font-bold tracking-wide">Softwash</div>
