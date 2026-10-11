@@ -3,6 +3,7 @@
 
 const mongoose = require('mongoose');
 const { resolveDateBasis, periodStages } = require('./shared/businessDay.js');
+const { BANK_DEPOSIT_REGEX } = require('./shared/bankDeposit.js');
 
 exports.buildPipeline = ({ params }) => {
   const basis = resolveDateBasis(params.dateBasis);
@@ -26,7 +27,7 @@ exports.buildPipeline = ({ params }) => {
     {
       $match: {
         'category.type': 'outflow',
-        'category.displayName': { $not: { $regex: /^bank deposite$/i } },
+        'category.displayName': { $not: BANK_DEPOSIT_REGEX },
       },
     },
     {

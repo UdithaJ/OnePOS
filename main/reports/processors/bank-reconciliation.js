@@ -1,6 +1,7 @@
 // Bank Transfer Reconciliation — bank-deposit expenses in the period.
 
 const { resolveDateBasis, periodStages } = require('./shared/businessDay.js');
+const { BANK_DEPOSIT_REGEX } = require('./shared/bankDeposit.js');
 
 exports.buildPipeline = ({ params }) => {
   const basis = resolveDateBasis(params.dateBasis);
@@ -16,7 +17,7 @@ exports.buildPipeline = ({ params }) => {
       },
     },
     { $unwind: '$category' },
-    { $match: { 'category.displayName': { $regex: /^bank deposite$/i } } },
+    { $match: { 'category.displayName': { $regex: BANK_DEPOSIT_REGEX } } },
     {
       $project: {
         _id: 0,

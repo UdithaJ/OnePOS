@@ -237,6 +237,31 @@ test('expenses and bank reconciliation group by the business date in business mo
   }
 });
 
+console.log('\nBank Deposit category name');
+
+const { BANK_DEPOSIT_PATTERN, BANK_DEPOSIT_REGEX } = require('../processors/shared/bankDeposit.js');
+
+test('"Bank Deposit" matches, as does the legacy "Bank Deposite", in any case or spacing', () => {
+  for (const name of ['Bank Deposit', 'bank deposit', ' BANK  DEPOSIT ', 'Bank Deposite']) {
+    assert.ok(BANK_DEPOSIT_REGEX.test(name), name);
+  }
+  for (const name of ['Bank Deposits', 'Bank Deposit Fee', 'Bank Withdrawal', 'Deposit']) {
+    assert.ok(!BANK_DEPOSIT_REGEX.test(name), name);
+  }
+});
+
+test('bank reconciliation keeps bank deposits and expenses leaves them out', () => {
+  const recon = matches(cashPipeline('bank-reconciliation', {}).pipeline);
+  assert.ok(recon.some((m) => m['category.displayName'] && m['category.displayName'].$regex === BANK_DEPOSIT_REGEX));
+  const expenses = matches(cashPipeline('expenses', {}).pipeline);
+  assert.ok(expenses.some((m) => m['category.displayName'] && m['category.displayName'].$not === BANK_DEPOSIT_REGEX));
+});
+
+test('the Expenses type filter hides the same category the pipelines match', () => {
+  const param = getDefinition('expenses').params.find((p) => p.name === 'expenseTypeId');
+  assert.strictEqual(param.optionsFrom.filter.labelNotMatching, BANK_DEPOSIT_PATTERN);
+});
+
 test('bank transfer tracking: order basis (and absent) filters on the order creation date', () => {
   for (const query of [{ dateBasis: 'order' }, { dateBasis: undefined }]) {
     const { values, pipeline } = cashPipeline('bank-transfer-tracking', query);

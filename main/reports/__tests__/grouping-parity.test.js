@@ -266,9 +266,9 @@ test('day grouping works on BSON Date values, not just ISO strings', () => {
   // localDateKey() is the one that actually runs in production.
   const def = require('../definitions/bank-reconciliation.json');
   const rows = [
-    { expenseId: 'e1', date: new Date('2026-03-01T04:00:00.000Z'), description: 'Bank Deposite', amount: 100 },
-    { expenseId: 'e2', date: new Date('2026-03-01T09:00:00.000Z'), description: 'Bank Deposite', amount: 250 },
-    { expenseId: 'e3', date: new Date('2026-03-02T04:00:00.000Z'), description: 'Bank Deposite', amount: 75 },
+    { expenseId: 'e1', date: new Date('2026-03-01T04:00:00.000Z'), description: 'Bank Deposit', amount: 100 },
+    { expenseId: 'e2', date: new Date('2026-03-01T09:00:00.000Z'), description: 'Bank Deposit', amount: 250 },
+    { expenseId: 'e3', date: new Date('2026-03-02T04:00:00.000Z'), description: 'Bank Deposit', amount: 75 },
   ];
   const envelope = runEngine(def, rows);
 
