@@ -11,7 +11,7 @@
   "exportBasename": "cash-box-summary",
   "sheetName": "Cash Box Summary",
   "orientation": "landscape",
-  "emptyMessage": "No cash payments found for the selected date range.",
+  "emptyMessage": "No cash payments or cash inflows found for the selected date range.",
 
   "params": [
     { "name": "fromDate", "type": "date", "label": "From Date", "default": "today", "required": true, "bind": "dayStart" },
@@ -31,14 +31,15 @@
   "source": { "model": "payment", "processor": "cash-box-summary" },
 
   "columns": [
+    { "key": "entryType", "label": "Type", "type": "text" },
     { "key": "orderNo", "label": "Order No", "type": "text", "pad": 4 },
     { "key": "createdDate", "label": "Order Created Date", "type": "date" },
     { "key": "paymentDate", "label": "Payment Date", "type": "date" },
     { "key": "customerName", "label": "Customer", "type": "text" },
-    { "key": "totalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
-    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "decimals": 2 },
-    { "key": "orderAmountAfterDiscount", "label": "Order Amount After Discount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
-    { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "decimals": 2 },
+    { "key": "totalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "grouped", "emptyAs": "-", "decimals": 2 },
+    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "emptyAs": "-", "decimals": 2 },
+    { "key": "orderAmountAfterDiscount", "label": "Order Amount After Discount", "type": "number", "align": "right", "format": "grouped", "emptyAs": "-", "decimals": 2 },
+    { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "emptyAs": "-", "decimals": 2 },
     { "key": "paymentMethod", "label": "Payment Method", "type": "badge", "valueMap": "paymentMethod", "emptyAs": "-" },
     { "key": "paymentReceived", "label": "Payment Received", "type": "number", "align": "right", "format": "grouped", "emptyAs": "-", "decimals": 2 }
   ],

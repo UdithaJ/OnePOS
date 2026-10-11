@@ -179,6 +179,29 @@ test('cash box summary reads payments and excludes bank payments', () => {
   assert.ok(!matches(pipeline).some((m) => 'createdDate' in m), 'must not filter on the order creation date');
 });
 
+const inflowUnion = (pipeline) => pipeline.find((stage) => stage.$unionWith)?.$unionWith;
+
+test('cash box summary also lists cash inflows from expenses', () => {
+  const { values, pipeline } = cashPipeline('cash-box-summary', {});
+  const union = inflowUnion(pipeline);
+  assert.ok(union && union.coll === 'expenses');
+  assert.ok(matches(union.pipeline).some((m) => m['category.type'] === 'inflow'));
+  assert.ok(matches(union.pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+  // Union before the sort, so payments and inflows interleave by date.
+  assert.ok(pipeline.findIndex((s) => s.$unionWith) < pipeline.findIndex((s) => s.$sort));
+  // Both sides carry the same columns.
+  const paymentKeys = Object.keys(pipeline.find((s) => s.$project).$project).sort();
+  const inflowKeys = Object.keys(union.pipeline.find((s) => s.$project).$project).sort();
+  assert.deepStrictEqual(inflowKeys, paymentKeys);
+});
+
+test('cash box summary inflows follow the business day in business mode', () => {
+  const { values, pipeline } = cashPipeline('cash-box-summary', { dateBasis: 'business' });
+  const union = inflowUnion(pipeline);
+  assert.ok(lookupsFrom(union.pipeline).includes('cashboxsessions'));
+  assert.ok(matches(union.pipeline).some((m) => JSON.stringify(m.businessDate) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+});
+
 for (const id of CASH_REPORTS) {
   test(`${id}: transaction basis (and absent) filters on the transaction's own date`, () => {
     for (const query of [{ dateBasis: 'transaction' }, { dateBasis: undefined }]) {
