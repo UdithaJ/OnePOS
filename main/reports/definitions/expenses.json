@@ -37,7 +37,7 @@
         "valueField": "_id",
         "labelField": "displayName",
         "includeAll": { "label": "All", "value": "all" },
-        "filter": { "type": "outflow", "labelNotMatching": "^bank deposite$" }
+        "filter": { "type": "outflow", "labelNotMatching": "^\\s*bank\\s+deposite?\\s*$" }
       }
     }
   ],

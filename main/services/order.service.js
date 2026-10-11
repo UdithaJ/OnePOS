@@ -27,9 +27,36 @@ function computeAmount(weight, category) {
 }
 
 async function loadCategoryMap(suborders) {
-  const ids = (suborders || []).map(s => s.category).filter(Boolean);
+  const ids = (suborders || [])
+    .map(s => s && s.category)
+    .filter(id => id && mongoose.Types.ObjectId.isValid(String(id)));
   const cats = await Category.find({ _id: { $in: ids } });
   return new Map(cats.map(c => [String(c._id), c]));
+}
+
+function invalidItems(message) {
+  const err = new Error(message);
+  err.status = 422;
+  return err;
+}
+
+// An order needs at least one item, and every item a known category and a
+// weight above zero. Checked before anything is written, so a rejected order
+// leaves nothing behind and does not use up an order number.
+function assertValidItems(suborders, catMap) {
+  if (!Array.isArray(suborders) || suborders.length === 0) {
+    throw invalidItems('An order must have at least one item.');
+  }
+  suborders.forEach((sub, idx) => {
+    const line = `Item ${idx + 1}`;
+    if (!sub || !sub.category) throw invalidItems(`${line}: a category is required.`);
+    if (!catMap.has(String(sub.category))) throw invalidItems(`${line}: the category was not found.`);
+    const raw = sub.weight;
+    const weight = typeof raw === 'string' && raw.trim() === '' ? NaN : Number(raw);
+    if (raw === null || raw === undefined || !Number.isFinite(weight) || weight <= 0) {
+      throw invalidItems(`${line}: the weight must be greater than 0.`);
+    }
+  });
 }
 
 // Example: get status list
@@ -78,56 +105,57 @@ async function createOrder(orderData) {
   // TODO: Replace with actual logged-in user ID
   const createdUser = '000000000000000000000000';
 
+  // Step 1: Validate and price every item before writing anything, applying
+  // the minimum-price floor authoritatively.
   const catMap = await loadCategoryMap(orderData.suborders);
+  assertValidItems(orderData.suborders, catMap);
 
-  // Step 1: Determine next sequential orderNo, then create the order without suborders.
+  const items = [];
+  let recomputedTotal = 0;
+  let actualTotal = 0;
+  for (const sub of orderData.suborders) {
+    const weight = Number(sub.weight);
+    const { amount, actualAmount } = computeAmount(weight, catMap.get(String(sub.category)));
+    recomputedTotal += amount;
+    actualTotal += actualAmount;
+    items.push({ category: sub.category, weight, amount, actualAmount });
+  }
+
+  // Step 2: Determine next sequential orderNo and create the order.
+  // Discount is whole rupees only; any decimals are dropped.
   const last = await Order.findOne().sort({ orderNo: -1 }).select('orderNo').lean()
   const nextOrderNo = last && last.orderNo ? Number(last.orderNo) + 1 : 1
+  const discount = Math.min(Math.max(Math.floor(Number(orderData.discount) || 0), 0), recomputedTotal)
 
   const order = new Order({
     ...orderData,
     suborders: [],
-    totalAmount: 0,
-    dueAmount: 0,
+    totalAmount: recomputedTotal,
+    actualTotalAmount: toCents(actualTotal),
+    discount,
+    dueAmount: Math.max(toCents(recomputedTotal - discount), 0),
     createdUser,
     status: 'todo',
     orderNo: nextOrderNo
   });
   await order.save();
 
-  // Step 2: Create suborders, applying the minimum-price floor authoritatively.
+  // Step 3: Create the suborders and link them. Should a write fail here, take
+  // the order back out so no item-less order is left holding its number.
   const suborderIds = [];
-  let recomputedTotal = 0;
-  let actualTotal = 0;
-  if (Array.isArray(orderData.suborders)) {
-    for (const sub of orderData.suborders) {
-      const cat = catMap.get(String(sub.category));
-      if (!cat) throw new Error(`Category ${sub.category} not found`);
-      const { amount, actualAmount } = computeAmount(sub.weight, cat);
-      recomputedTotal += amount;
-      actualTotal += actualAmount;
-
-      const suborder = new OrderCategory({
-        order: order._id,
-        category: sub.category,
-        weight: sub.weight,
-        amount,
-        actualAmount
-      });
+  try {
+    for (const item of items) {
+      const suborder = new OrderCategory({ order: order._id, ...item });
       await suborder.save();
       suborderIds.push(suborder._id);
     }
+    order.suborders = suborderIds;
+    await order.save();
+  } catch (err) {
+    await OrderCategory.deleteMany({ _id: { $in: suborderIds } }).catch(() => {});
+    await Order.deleteOne({ _id: order._id }).catch(() => {});
+    throw err;
   }
-
-  // Step 3: Persist suborder IDs and the authoritative totals.
-  // Discount is whole rupees only; any decimals are dropped.
-  const discount = Math.min(Math.max(Math.floor(Number(orderData.discount) || 0), 0), recomputedTotal)
-  order.suborders = suborderIds;
-  order.totalAmount = recomputedTotal;
-  order.actualTotalAmount = toCents(actualTotal);
-  order.discount = discount;
-  order.dueAmount = Math.max(toCents(recomputedTotal - discount), 0);
-  await order.save();
 
   // Step 4: Populate suborders for return
   await order.populate({
@@ -350,6 +378,7 @@ async function updateOrder(id, updateData) {
     }
 
     const catMap = await loadCategoryMap(updateData.suborders);
+    assertValidItems(updateData.suborders, catMap);
 
     // Load existing suborders so we can preserve original amounts when appropriate
     const existingSuborders = Array.isArray(order.suborders) && order.suborders.length
@@ -374,7 +403,6 @@ async function updateOrder(id, updateData) {
     plannedActualTotal = 0;
     for (const sub of updateData.suborders) {
       const cat = catMap.get(String(sub.category));
-      if (!cat) throw new Error(`Category ${sub.category} not found`);
 
       const key = `${String(sub.category)}_${String(sub.weight)}`;
       const { amount, actualAmount } = existingMap.has(key) && existingMap.get(key).length > 0
@@ -476,6 +504,7 @@ async function deleteOrder(id) {
 
 module.exports = {
   computeAmount,
+  assertValidItems,
   toCalendarDay,
   todayCalendarDay,
   assertDeliveryDateNotPast,

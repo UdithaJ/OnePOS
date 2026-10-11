@@ -27,60 +27,56 @@
 
     <v-dialog v-model="showForm" max-width="600">
       <template #default>
-        <div class="customer-form-wrapper">
-          <v-card class="rounded-xl overflow-hidden" style="border: none;">
-            <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
-              <h3 class="text-lg font-semibold">{{ editId ? 'Edit Customer' : 'Register Customer' }}</h3>
-              <v-btn
-                icon="mdi-close"
-                size="small"
-                variant="text"
-                style="color: rgba(255,255,255,0.8);"
-                @click="showForm = false"
-              />
-            </div>
-            <div class="bg-white px-6 pt-6 pb-4">
-              <DynamicForm
-                :schema="customerFormSchema"
-                :form="form"
-                :isValid="isValid"
-                :onSubmit="handleSubmit"
-                :hideDefaultSubmit="true"
-              />
-              <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <v-btn
-                  variant="outlined"
-                  style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
-                  @click="showForm = false"
-                >Cancel</v-btn>
-                <v-btn
-                  :disabled="!isValid"
-                  style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
-                  @click="handleSubmit"
-                >{{ editId ? 'Update' : 'Submit' }}</v-btn>
-              </div>
-            </div>
-          </v-card>
-        </div>
+        <v-card class="rounded-xl overflow-hidden pos-dialog" style="border: none;">
+          <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
+            <h3 class="text-lg font-semibold">{{ editId ? 'Edit Customer' : 'Register Customer' }}</h3>
+            <v-btn
+              icon="mdi-close"
+              size="small"
+              variant="text"
+              style="color: rgba(255,255,255,0.8);"
+              @click="showForm = false"
+            />
+          </div>
+          <div class="pos-dialog__body px-6 pt-6 pb-2">
+            <DynamicForm
+              :schema="customerFormSchema"
+              :form="form"
+              :isValid="isValid"
+              :onSubmit="handleSubmit"
+              :hideDefaultSubmit="true"
+            />
+          </div>
+          <div class="pos-dialog__actions">
+            <v-btn
+              variant="outlined"
+              style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+              @click="showForm = false"
+            >Cancel</v-btn>
+            <v-btn
+              :disabled="!isValid"
+              style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
+              @click="handleSubmit"
+            >{{ editId ? 'Update' : 'Submit' }}</v-btn>
+          </div>
+        </v-card>
       </template>
     </v-dialog>
     <v-dialog v-model="showOtpDialog" max-width="400">
       <template #default>
-        <v-card class="rounded-xl overflow-hidden">
-          <div class="bg-[#0d3d38] text-white px-6 py-4">
+        <v-card class="rounded-xl overflow-hidden pos-dialog">
+          <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4">
             <h3 class="text-lg font-semibold">Verify Mobile</h3>
           </div>
-          <div class="bg-white px-6 pt-6 pb-4">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
-              <v-text-field v-model="otpCode" placeholder="123456" />
-            </div>
-            <div class="flex justify-between items-center pt-4 border-t border-gray-100">
-              <v-btn variant="text" :loading="resendingOtp" style="color: #0f766e; text-transform: none; font-weight: 600;" @click="resendOtp">Resend OTP</v-btn>
-              <div class="flex gap-3">
-                <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showOtpDialog = false">Cancel</v-btn>
-                <v-btn style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyOtpAndCreate">Verify</v-btn>
-              </div>
+          <div class="pos-dialog__body px-6 pt-6 pb-2">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
+            <v-text-field v-model="otpCode" placeholder="123456" />
+          </div>
+          <div class="pos-dialog__actions" style="justify-content: space-between;">
+            <v-btn variant="text" :loading="resendingOtp" style="color: #0f766e; text-transform: none; font-weight: 600;" @click="resendOtp">Resend OTP</v-btn>
+            <div class="flex gap-3">
+              <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showOtpDialog = false">Cancel</v-btn>
+              <v-btn style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyOtpAndCreate">Verify</v-btn>
             </div>
           </div>
         </v-card>

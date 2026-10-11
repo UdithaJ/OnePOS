@@ -32,6 +32,9 @@
               <svg v-if="toast.type === 'success'" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
               </svg>
+              <svg v-else-if="toast.type === 'info'" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                <path fill-rule="evenodd" d="M10 4a1.25 1.25 0 110 2.5A1.25 1.25 0 0110 4zm-1 4.5a1 1 0 012 0V15a1 1 0 11-2 0V8.5z" clip-rule="evenodd"/>
+              </svg>
               <svg v-else viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
               </svg>
@@ -40,7 +43,7 @@
             <!-- Content -->
             <div class="toast-content">
               <div class="toast-title">{{ toastTitle }}</div>
-              <div v-if="toast.type !== 'success'" class="toast-message">{{ toast.message }}</div>
+              <div v-if="toast.type !== 'success' && toast.type !== 'info'" class="toast-message">{{ toast.message }}</div>
             </div>
 
             <!-- Close -->
@@ -137,6 +140,8 @@ onUnmounted(() => { if (pollTimer) clearTimeout(pollTimer) })
 
 const toastTitle = computed(() => {
   if (toast.value.type === 'success') return toast.value.message || 'Saved successfully'
+  // A notice, not a failure: the message itself is the title.
+  if (toast.value.type === 'info') return toast.value.message
   if (toast.value.type === 'warning') return 'Warning'
   return 'Something went wrong'
 })
@@ -231,6 +236,11 @@ const toastTitle = computed(() => {
   border: 1px solid rgba(180, 83, 9, 0.3);
 }
 
+.toast-info {
+  background: rgba(240, 249, 255, 0.5);
+  border: 1px solid rgba(15, 118, 110, 0.3);
+}
+
 .toast-icon {
   display: flex;
   align-items: center;
@@ -245,6 +255,7 @@ const toastTitle = computed(() => {
 .toast-icon-success { background: #14b8a6; }
 .toast-icon-error   { background: #b45309; }
 .toast-icon-warning { background: #b45309; }
+.toast-icon-info    { background: #0f766e; }
 
 .toast-content {
   flex: 1;

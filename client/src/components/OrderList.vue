@@ -87,12 +87,12 @@
 
           <!-- Filter modal -->
           <v-dialog v-model="showFilterDialog" max-width="480">
-            <v-card class="rounded-xl overflow-hidden">
-              <div style="background: #0d3d38;" class="d-flex align-center justify-space-between px-6 py-4">
+            <v-card class="rounded-xl overflow-hidden pos-dialog">
+              <div style="background: #0d3d38;" class="pos-dialog__header d-flex align-center justify-space-between px-6 py-4">
                 <span class="text-base font-semibold text-white">Filter Orders</span>
                 <v-btn icon="mdi-close" size="small" variant="text" style="color: rgba(255,255,255,0.8);" @click="showFilterDialog = false" />
               </div>
-              <v-card-text class="pt-5 pb-2">
+              <div class="pos-dialog__body px-6 pt-5 pb-2">
                 <div class="mb-4">
                   <div class="text-subtitle-2 mb-1 text-medium-emphasis">Status</div>
                   <v-select
@@ -113,9 +113,11 @@
                   <div class="text-subtitle-2 mb-1 text-medium-emphasis">Customer</div>
                   <v-autocomplete
                     v-model="filterCustomerID"
-                    :items="customers"
+                    v-model:search="filterCustomerSearch"
+                    :items="filterCustomerItems"
                     item-title="label"
                     item-value="value"
+                    no-filter
                     placeholder="All customers"
                     clearable
                     variant="outlined"
@@ -127,9 +129,11 @@
                   <div class="text-subtitle-2 mb-1 text-medium-emphasis">Phone</div>
                   <v-autocomplete
                     v-model="filterPhone"
-                    :items="phoneItems"
+                    v-model:search="filterPhoneSearch"
+                    :items="filterPhoneItems"
                     item-title="title"
                     item-value="value"
+                    no-filter
                     placeholder="Search by phone number"
                     clearable
                     variant="outlined"
@@ -167,12 +171,11 @@
                     </v-col>
                   </v-row>
                 </div>
-              </v-card-text>
-              <v-card-actions class="px-6 pb-5 pt-2">
+              </div>
+              <div class="pos-dialog__actions" style="justify-content: space-between;">
                 <v-btn variant="outlined" @click="clearFilters">Clear all</v-btn>
-                <v-spacer />
                 <v-btn variant="flat" style="background: #0f766e; color: #fff;" @click="applyFilters">Apply filters</v-btn>
-              </v-card-actions>
+              </div>
             </v-card>
           </v-dialog>
         </div>
@@ -226,153 +229,240 @@
           </div>
         </v-card>
       </v-dialog>
-      <v-dialog v-model="showForm" max-width="900" scrim>
-        <template #default>
-          <v-card class="rounded-xl overflow-hidden" style="border: none;">
-            <div class="bg-[#0d3d38] text-white px-6 py-4 flex items-center justify-between">
-              <h3 class="text-lg font-semibold">
-                {{ editOrderId ? 'Edit Order' : 'New Order' }}
-                <span v-if="editOrderNo" class="ml-2" style="color: rgba(255,255,255,0.75); font-weight: 500;">Order No: {{ editOrderNo }}</span>
-              </h3>
-              <v-btn icon="mdi-close" size="small" variant="text"
-                style="color: rgba(255,255,255,0.8);" @click="showForm = false" />
-            </div>
-            <div class="bg-white px-6 pt-6 pb-4" style="max-height: 75vh; overflow-y: auto;">
-            <div class="mb-4">
-              <v-tabs v-model="activeOrderModalTab" color="#0f766e" density="comfortable">
-                <v-tab value="order" style="text-transform: none;">Order</v-tab>
-                <v-tab v-if="showNewCustomerTab" value="new-customer" style="text-transform: none;">New Customer</v-tab>
-                <v-tab v-if="editOrderId" value="payments" style="text-transform: none;">Payments</v-tab>
-              </v-tabs>
-            </div>
-            <DynamicForm
-              v-show="activeOrderModalTab === 'order'"
-              :schema="orderFormSchema"
-              :form="form"
-              :isValid="isValid"
-              :onSubmit="handleSubmit"
-              :hideDefaultSubmit="true"
-            >
-              <template #default>
-                <div class="field-group mb-4">
-                  <label class="field-label">Customer <span class="required-star">*</span></label>
-                  <v-autocomplete
-                    v-model="form.customer"
-                    v-model:search="customerSearchQuery"
-                    :items="editOrderId ? customers : customerSearchItems"
-                    item-title="label"
-                    item-value="value"
-                    :custom-filter="customerFilter"
-                    placeholder="Search by name or phone number..."
-                    variant="outlined"
-                    density="compact"
-                    hide-details="auto"
-                    clearable
-                    required
-                    :disabled="isOrderDone"
-                    :rules="[v => !!v || 'Customer is required']"
-                    @update:model-value="onCustomerSelect"
-                  >
-                    <template #item="{ item, props: itemProps }">
-                      <v-list-item
-                        v-if="(item as any).raw?.isAction"
-                        v-bind="itemProps"
-                        title="+ Add New Customer"
-                        style="color: #0f766e; font-weight: 600; border-top: 1px solid #f3f4f6;"
-                      />
-                      <v-list-item v-else v-bind="itemProps">
-                        <template #subtitle>
-                          <span style="font-size: 12px; color: #6b7280;">{{ (item as any).raw?.mobileNumber }}</span>
+      <!-- New / Edit Order: a full screen laid out for the touch screen. The
+           header, tabs and footer (total and submit) stay put while the form and
+           the summary panel scroll on their own; the whole screen shrinks to the
+           space above the on-screen keyboard while it is open. -->
+      <v-dialog v-model="showForm" fullscreen>
+        <v-card class="pos-dialog order-screen">
+          <div class="pos-dialog__header order-screen__header">
+            <h3 class="text-lg font-semibold">
+              {{ editOrderId ? 'Edit Order' : 'New Order' }}
+              <span v-if="editOrderNo" class="ml-2" style="color: rgba(255,255,255,0.75); font-weight: 500;">Order No: {{ editOrderNo }}</span>
+            </h3>
+            <v-btn icon="mdi-close" size="small" variant="text"
+              style="color: rgba(255,255,255,0.8);" @click="showForm = false" />
+          </div>
+          <v-tabs v-model="activeOrderModalTab" color="#0f766e" density="comfortable" class="order-screen__tabs">
+            <v-tab value="order" style="text-transform: none;">Order</v-tab>
+            <v-tab v-if="showNewCustomerTab" value="new-customer" style="text-transform: none;">+ New Customer</v-tab>
+            <v-tab v-if="editOrderId" value="payments" style="text-transform: none;">Payments</v-tab>
+          </v-tabs>
+
+          <div class="order-screen__body">
+            <div class="order-screen__main">
+              <!-- The footer's submit button posts this form (form="order-form"). -->
+              <DynamicForm
+                v-show="activeOrderModalTab === 'order'"
+                id="order-form"
+                :schema="orderFormSchema"
+                :form="form"
+                :isValid="isValid"
+                :onSubmit="handleSubmit"
+                :hideDefaultSubmit="true"
+              >
+                <template #default>
+                  <div class="order-screen__row">
+                    <div class="field-group">
+                      <label class="field-label">Customer <span class="required-star">*</span></label>
+                      <v-autocomplete
+                        v-model="form.customer"
+                        v-model:search="customerSearchQuery"
+                        :items="editOrderId ? customers : customerSearchItems"
+                        item-title="label"
+                        item-value="value"
+                        :no-filter="!editOrderId"
+                        :custom-filter="customerFilter"
+                        placeholder="Search by name or mobile number"
+                        variant="outlined"
+                        density="compact"
+                        hide-details="auto"
+                        :hint="selectedCustomerPhone"
+                        persistent-hint
+                        clearable
+                        required
+                        :disabled="isOrderDone"
+                        :rules="[v => !!v || 'Customer is required']"
+                        @update:model-value="onCustomerSelect"
+                      >
+                        <template #item="{ item, props: itemProps }">
+                          <v-list-item
+                            v-if="(item as any).raw?.isAction"
+                            v-bind="itemProps"
+                            style="color: #0f766e; font-weight: 600; border-top: 1px solid #f3f4f6;"
+                          />
+                          <v-list-item v-else v-bind="itemProps">
+                            <template #subtitle>
+                              <span style="font-size: 12px; color: #6b7280;">{{ (item as any).raw?.mobileNumber }}</span>
+                            </template>
+                          </v-list-item>
                         </template>
-                      </v-list-item>
-                    </template>
-                  </v-autocomplete>
+                      </v-autocomplete>
+                    </div>
+                    <div v-if="form.customer || editOrderId" class="field-group">
+                      <label class="field-label">Delivery Date <span class="required-star">*</span></label>
+                      <v-text-field
+                        v-model="form.deliveryDate"
+                        type="date"
+                        :min="deliveryDateMin"
+                        :rules="deliveryDateRules"
+                        required
+                        :disabled="isOrderDone"
+                        variant="outlined"
+                        density="compact"
+                        hide-details="auto"
+                      />
+                    </div>
+                  </div>
+                </template>
+                <template #suborders>
+                  <div v-if="form.customer || editOrderId" class="order-items">
+                    <div class="order-items__header">
+                      <span class="order-items__title">Order Items</span>
+                      <span class="order-items__badge">{{ suborders.length }}</span>
+                      <v-spacer />
+                      <v-btn @click="addSuborder" variant="outlined"
+                        :disabled="isOrderDone"
+                        style="border-color: #0f766e; color: #0f766e; text-transform: none;">+ Add Item</v-btn>
+                    </div>
+                    <table class="order-items__table">
+                      <thead>
+                        <tr>
+                          <th class="order-items__no">#</th>
+                          <th>Category <span class="required-star">*</span></th>
+                          <th class="order-items__weight">Weight <span class="required-star">*</span></th>
+                          <th class="order-items__amount">Amount</th>
+                          <th class="order-items__delete"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(sub, idx) in suborders" :key="idx">
+                          <td class="order-items__no">{{ idx + 1 }}</td>
+                          <td>
+                            <v-select
+                              v-model="sub.category"
+                              :items="availableCategoriesFor(idx)"
+                              item-title="label"
+                              item-value="value"
+                              placeholder="Select category"
+                              :rules="[v => !!v || 'Category is required']"
+                              variant="outlined"
+                              density="compact"
+                              hide-details="auto"
+                              @change="() => updateSuborderAmount(idx)"
+                              :disabled="isOrderDone"
+                              required
+                            />
+                          </td>
+                          <td class="order-items__weight">
+                            <v-text-field
+                              v-model="sub.weight"
+                              placeholder="0"
+                              type="number"
+                              suffix="kg"
+                              :rules="WEIGHT_RULES"
+                              min="0"
+                              step="any"
+                              variant="outlined"
+                              density="compact"
+                              hide-details="auto"
+                              @input="() => updateSuborderAmount(idx)"
+                              :disabled="isOrderDone"
+                              required
+                            />
+                          </td>
+                          <td class="order-items__amount">LKR {{ formatAmount(sub.amount) }}</td>
+                          <td class="order-items__delete">
+                            <v-btn icon color="error" variant="tonal" size="small" :disabled="isOrderDone" @click="removeSuborder(idx)"><v-icon size="18">mdi-delete</v-icon></v-btn>
+                          </td>
+                        </tr>
+                        <tr v-if="!suborders.length">
+                          <td colspan="5" class="order-items__empty">No items yet. Tap + Add Item to add one.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+              </DynamicForm>
+
+              <div v-if="showNewCustomerTab && activeOrderModalTab === 'new-customer'">
+                <div class="order-screen__grid">
+                  <div class="field-group">
+                    <label class="field-label">Title <span class="required-star">*</span></label>
+                    <v-select v-model="newCustomerForm.title" :items="['Mr','Ms']" variant="outlined" density="compact" hide-details="auto" placeholder="Title" />
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label">First Name <span class="required-star">*</span></label>
+                    <v-text-field v-model="newCustomerForm.firstName" variant="outlined" density="compact" hide-details="auto" placeholder="First name" />
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label">Last Name</label>
+                    <v-text-field v-model="newCustomerForm.lastName" variant="outlined" density="compact" hide-details="auto" placeholder="Last name" />
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label">Mobile Number <span class="required-star">*</span></label>
+                    <v-text-field v-model="newCustomerForm.mobileNumber" inputmode="tel" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" :rules="MOBILE_RULES" />
+                  </div>
                 </div>
-                <div v-if="form.customer || editOrderId" class="field-group mb-2">
-                  <label class="field-label">Delivery Date <span class="required-star">*</span></label>
-                  <v-text-field
-                    v-model="form.deliveryDate"
-                    type="date"
-                    :min="deliveryDateMin"
-                    :rules="deliveryDateRules"
-                    required
-                    :disabled="isOrderDone"
-                    variant="outlined"
-                    density="compact"
-                    hide-details="auto"
-                  />
+                <!-- The optional address is folded away so the required fields fit above the keyboard. -->
+                <details class="order-screen__address" :open="addressOpen" @toggle="addressOpen = ($event.target as HTMLDetailsElement).open">
+                  <summary>Address (optional)</summary>
+                  <div class="order-screen__grid">
+                    <div class="field-group">
+                      <label class="field-label">Address Line 1</label>
+                      <v-text-field v-model="newCustomerForm.addressLine1" variant="outlined" density="compact" hide-details="auto" placeholder="Address line 1" />
+                    </div>
+                    <div class="field-group">
+                      <label class="field-label">Address Line 2</label>
+                      <v-text-field v-model="newCustomerForm.addressLine2" variant="outlined" density="compact" hide-details="auto" placeholder="Address line 2 (optional)" />
+                    </div>
+                    <div class="field-group">
+                      <label class="field-label">City</label>
+                      <v-text-field v-model="newCustomerForm.city" variant="outlined" density="compact" hide-details="auto" placeholder="City" />
+                    </div>
+                    <div class="field-group">
+                      <label class="field-label">State</label>
+                      <v-text-field v-model="newCustomerForm.state" variant="outlined" density="compact" hide-details="auto" placeholder="State" />
+                    </div>
+                    <div class="field-group">
+                      <label class="field-label">Postal Code</label>
+                      <v-text-field v-model="newCustomerForm.postalCode" variant="outlined" density="compact" hide-details="auto" placeholder="Postal code" />
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <div v-if="editOrderId" v-show="activeOrderModalTab === 'payments'" class="payments-section">
+                <div v-if="payments.length > 0">
+                  <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Payments Made</div>
+                  <div v-for="(p, idx) in payments" :key="idx" class="payment-row">
+                    <span class="payment-date">{{ p.date ? new Date(p.date).toLocaleString() : '' }}</span>
+                    <span class="payment-method">{{ PAYMENT_METHOD_LABELS[p.paymentMethod] || p.paymentMethod }}</span>
+                    <span class="payment-amount">LKR {{ formatAmount(p.amount) }}</span>
+                  </div>
                 </div>
+                <div v-else class="text-sm text-gray-500">No payments yet.</div>
+                <v-alert v-if="!canMakePayment" type="success" variant="tonal" class="mt-3">
+                  Payment completed
+                </v-alert>
+              </div>
+            </div>
+
+            <aside class="order-screen__side">
+              <template v-if="activeOrderModalTab === 'new-customer'">
+                <div class="order-summary__title">Registering a customer</div>
+                <p class="order-screen__note">Title, first name and mobile number are required; the address is optional.</p>
+                <p class="order-screen__note">After saving you go straight back to the order with this customer selected. Nothing on the order is lost.</p>
               </template>
-              <template #suborders>
-                <div v-if="form.customer || editOrderId" class="order-suborders-section">
-                  <div class="order-suborders-header">
-                    <div class="suborders-label">
-                      <span>Order Items</span>
-                      <span class="suborders-badge">{{ suborders.length }}</span>
-                    </div>
-                    <v-btn class="add-suborder-btn" @click="addSuborder" variant="outlined"
-                      :disabled="isOrderDone"
-                      style="border-color: #0f766e; color: #0f766e; text-transform: none;">+ Add Item</v-btn>
+              <template v-else>
+                <div class="order-summary__title">Order Summary</div>
+                <div class="order-summary">
+                  <div class="order-summary__row">
+                    <span>Subtotal</span>
+                    <b>LKR {{ formatAmount(totalAmount) }}</b>
                   </div>
-                  <div class="suborder-table">
-                    <div v-for="(sub, idx) in suborders" :key="idx" class="suborder-row">
-                      <div class="field-group suborder-field small-field">
-                        <label class="field-label">Category <span class="required-star">*</span></label>
-                        <v-select
-                          v-model="sub.category"
-                          :items="availableCategoriesFor(idx)"
-                          item-title="label"
-                          item-value="value"
-                          placeholder="Select"
-                          :rules="[v => !!v || 'Category is required']"
-                          variant="outlined"
-                          density="compact"
-                          hide-details="auto"
-                          @change="() => updateSuborderAmount(idx)"
-                          :disabled="isOrderDone"
-                          required
-                        />
-                      </div>
-                      <div class="field-group suborder-field small-field">
-                        <label class="field-label">Weight (kg) <span class="required-star">*</span></label>
-                        <v-text-field
-                          v-model="sub.weight"
-                          placeholder="0"
-                          type="number"
-                          :rules="[v => !!v || 'Weight is required']"
-                          variant="outlined"
-                          density="compact"
-                          hide-details="auto"
-                          @input="() => updateSuborderAmount(idx)"
-                          :disabled="isOrderDone"
-                          required
-                        />
-                      </div>
-                      <div class="field-group suborder-field small-field">
-                        <label class="field-label">Amount</label>
-                        <v-text-field
-                          :value="sub.amount"
-                          placeholder="0"
-                          type="number"
-                          readonly
-                          variant="outlined"
-                          density="compact"
-                          hide-details="auto"
-                        />
-                      </div>
-                      <div class="delete-btn-wrapper">
-                        <span class="delete-btn-spacer"></span>
-                        <v-btn icon color="error" size="small" :disabled="isOrderDone" @click="removeSuborder(idx)"><v-icon size="18">mdi-delete</v-icon></v-btn>
-                      </div>
-                    </div>
-                  </div>
-                  <v-divider class="order-divider" />
-                  <div class="order-total-row">
-                    <span class="order-total-label">Subtotal</span>
-                    <span class="order-total-amount">LKR {{ totalAmount.toFixed(2) }}</span>
-                  </div>
-                  <div class="order-discount-row">
-                    <span class="order-total-label">Discount</span>
+                  <div class="order-summary__row">
+                    <span>Discount (LKR)</span>
                     <v-text-field
                       v-model="form.discount"
                       type="number"
@@ -380,193 +470,120 @@
                       step="1"
                       :max="totalAmount"
                       placeholder="0"
-                      prefix="LKR"
                       variant="outlined"
                       density="compact"
                       hide-details
-                      style="max-width: 180px;"
+                      class="order-summary__discount"
                       :disabled="isOrderDone"
                       @keydown="blockDecimalKeys"
                       @input="clampDiscount"
                     />
                   </div>
-                  <div v-if="Number(form.discount) > 0" class="order-total-row" style="border-top: 2px solid #0f766e; margin-top: 4px; padding-top: 6px;">
-                    <span class="order-total-label" style="font-weight: 700;">Total After Discount</span>
-                    <span class="order-total-amount" style="color: #0f766e;">LKR {{ finalAmount.toFixed(2) }}</span>
+                  <div class="order-summary__row order-summary__total">
+                    <span>Total</span>
+                    <b>LKR {{ formatAmount(finalAmount) }}</b>
                   </div>
-                  <div v-if="!editOrderId" class="mb-3">
-                    <v-checkbox
-                      v-model="printBillOnCreate"
-                      label="Print bill after placing order"
-                      color="teal"
-                      density="compact"
-                      hide-details
-                    />
-                    <div v-if="printBillOnCreate" class="d-flex align-center ml-6 mt-1 mb-1" style="gap: 8px;">
-                      <span style="font-size: 13px; color: #374151;">Copies:</span>
-                      <v-text-field
-                        v-model.number="printCopies"
-                        type="number"
-                        min="1"
-                        max="10"
-                        density="compact"
-                        variant="outlined"
-                        hide-details
-                        style="max-width: 80px;"
-                      />
+                </div>
+                <template v-if="!editOrderId">
+                  <v-checkbox
+                    v-model="printBillOnCreate"
+                    label="Print bill after placing order"
+                    color="teal"
+                    density="compact"
+                    hide-details
+                  />
+                  <!-- Copies use - and + rather than the keyboard. -->
+                  <div class="order-summary__copies" :class="{ 'order-summary__copies--off': !printBillOnCreate }">
+                    <span>Copies</span>
+                    <div class="order-summary__stepper">
+                      <v-btn icon="mdi-minus" size="small" variant="text" aria-label="Fewer copies"
+                        :disabled="!printBillOnCreate || printCopies <= MIN_PRINT_COPIES"
+                        @click="printCopies = Math.max(MIN_PRINT_COPIES, printCopies - 1)" />
+                      <b>{{ printCopies }}</b>
+                      <v-btn icon="mdi-plus" size="small" variant="text" aria-label="More copies"
+                        :disabled="!printBillOnCreate || printCopies >= MAX_PRINT_COPIES"
+                        @click="printCopies = Math.min(MAX_PRINT_COPIES, printCopies + 1)" />
                     </div>
-                    <v-checkbox
-                      v-model="makePaymentOnCreate"
-                      label="Make payment now"
-                      color="teal"
-                      density="compact"
-                      hide-details
-                    />
                   </div>
-                  <v-btn type="submit" block
-                    :disabled="isOrderFullyLocked"
-                    style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600; height: 44px;">
-                    {{ submitButtonLabel }}
-                  </v-btn>
-                </div>
+                  <v-checkbox
+                    v-model="makePaymentOnCreate"
+                    label="Take payment now"
+                    color="teal"
+                    density="compact"
+                    hide-details
+                  />
+                </template>
               </template>
-            </DynamicForm>
-            <div v-if="showNewCustomerTab && activeOrderModalTab === 'new-customer'" class="pa-2">
-              <div style="font-size: 13px; color: #6b7280; margin-bottom: 16px;">
-                Enter customer details to register and continue with the order.
-              </div>
-              <div class="order-form-row" style="margin-bottom: 12px;">
-                <div class="order-form-field">
-                  <div class="field-group">
-                    <label class="field-label">Title <span class="required-star">*</span></label>
-                    <v-select v-model="newCustomerForm.title" :items="['Mr','Ms']" variant="outlined" density="compact" hide-details="auto" placeholder="Title" />
-                  </div>
-                </div>
-                <div class="order-form-field">
-                  <div class="field-group">
-                    <label class="field-label">First Name <span class="required-star">*</span></label>
-                    <v-text-field v-model="newCustomerForm.firstName" variant="outlined" density="compact" hide-details="auto" placeholder="First name" />
-                  </div>
-                </div>
-                <div class="order-form-field">
-                  <div class="field-group">
-                    <label class="field-label">Last Name</label>
-                    <v-text-field v-model="newCustomerForm.lastName" variant="outlined" density="compact" hide-details="auto" placeholder="Last name" />
-                  </div>
-                </div>
-              </div>
-              <div class="order-form-row" style="margin-bottom: 12px;">
-                <div class="order-form-field">
-                  <div class="field-group">
-                    <label class="field-label">Mobile Number <span class="required-star">*</span></label>
-                    <v-text-field v-model="newCustomerForm.mobileNumber" inputmode="tel" variant="outlined" density="compact" hide-details="auto" placeholder="Mobile number" :rules="MOBILE_RULES" />
-                  </div>
-                </div>
-                <div class="order-form-field">
-                  <div class="field-group">
-                    <label class="field-label">Postal Code</label>
-                    <v-text-field v-model="newCustomerForm.postalCode" variant="outlined" density="compact" hide-details="auto" placeholder="Postal code" />
-                  </div>
-                </div>
-              </div>
-              <div class="field-group" style="margin-bottom: 12px;">
-                <label class="field-label">Address Line 1</label>
-                <v-text-field v-model="newCustomerForm.addressLine1" variant="outlined" density="compact" hide-details="auto" placeholder="Address line 1" />
-              </div>
-              <div class="field-group" style="margin-bottom: 12px;">
-                <label class="field-label">Address Line 2</label>
-                <v-text-field v-model="newCustomerForm.addressLine2" variant="outlined" density="compact" hide-details="auto" placeholder="Address line 2 (optional)" />
-              </div>
-              <div class="order-form-row" style="margin-bottom: 16px;">
-                <div class="order-form-field">
-                  <div class="field-group">
-                    <label class="field-label">City</label>
-                    <v-text-field v-model="newCustomerForm.city" variant="outlined" density="compact" hide-details="auto" placeholder="City" />
-                  </div>
-                </div>
-                <div class="order-form-field">
-                  <div class="field-group">
-                    <label class="field-label">State</label>
-                    <v-text-field v-model="newCustomerForm.state" variant="outlined" density="compact" hide-details="auto" placeholder="State" />
-                  </div>
-                </div>
-              </div>
-              <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #f3f4f6; padding-top: 16px;">
-                <v-btn
-                  variant="outlined"
-                  style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
-                  @click="activeOrderModalTab = 'order'"
-                >Back to Order</v-btn>
-                <v-btn
-                  :disabled="!newCustomerFormValid"
-                  :loading="savingNewCustomer"
-                  style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
-                  @click="onSaveNewCustomer"
-                >{{ newCustomerId ? 'Update Customer' : 'Add Customer' }}</v-btn>
-              </div>
-            </div>
-            <template v-if="editOrderId">
-              <div v-show="activeOrderModalTab === 'payments'">
-              <v-divider class="mt-4 mb-3" />
-              <div class="payments-section">
-                <div v-if="payments.length > 0">
-                  <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Payments Made</div>
-                  <div v-for="(p, idx) in payments" :key="idx" class="payment-row">
-                    <span class="payment-date">{{ p.date ? new Date(p.date).toLocaleString() : '' }}</span>
-                    <span class="payment-method">{{ PAYMENT_METHOD_LABELS[p.paymentMethod] || p.paymentMethod }}</span>
-                    <span class="payment-amount">LKR {{ Number(p.amount).toFixed(2) }}</span>
-                  </div>
-                  <v-divider class="my-3" />
-                </div>
-                <div class="due-row">
-                  <span class="text-sm font-medium text-gray-600">Due Amount</span>
-                  <span class="text-base font-bold" :style="{ color: effectiveDueAmount > 0 ? '#b45309' : '#0f766e' }">
-                    LKR {{ effectiveDueAmount.toFixed(2) }}
-                  </span>
-                </div>
-                <v-btn
-                  v-if="canMakePayment"
-                  block
-                  class="mt-3"
-                  style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600; height: 40px;"
-                  @click="showPaymentDialog = true"
-                >
-                  {{ paymentButtonLabel }}
-                </v-btn>
-                <v-alert
-                  v-else
-                  type="success"
-                  variant="tonal"
-                  class="mt-3"
-                >
-                  Payment completed
-                </v-alert>
-              </div>
-              </div>
+            </aside>
+          </div>
+
+          <div class="pos-dialog__actions order-screen__footer">
+            <template v-if="activeOrderModalTab === 'new-customer'">
+              <v-btn
+                variant="outlined"
+                style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+                @click="activeOrderModalTab = 'order'"
+              >Back to Order</v-btn>
+              <v-btn
+                :disabled="!newCustomerFormValid"
+                :loading="savingNewCustomer"
+                style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
+                @click="onSaveNewCustomer"
+              >{{ newCustomerId ? 'Update Customer' : 'Save and use for order' }}</v-btn>
             </template>
-            </div>
-          </v-card>
-        </template>
+            <template v-else-if="activeOrderModalTab === 'payments'">
+              <div class="order-screen__total">
+                <small>Due amount</small>
+                <b :style="{ color: effectiveDueAmount > 0 ? '#b45309' : '#0f766e' }">LKR {{ formatAmount(effectiveDueAmount) }}</b>
+              </div>
+              <v-spacer />
+              <v-btn
+                v-if="canMakePayment"
+                class="order-screen__submit"
+                style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+                @click="showPaymentDialog = true"
+              >{{ paymentButtonLabel }}</v-btn>
+            </template>
+            <template v-else>
+              <div class="order-screen__total">
+                <small>{{ suborders.length }} item{{ suborders.length === 1 ? '' : 's' }} · {{ formatWeight(totalWeightKg) }} kg<template v-if="Number(form.discount) > 0"> · LKR {{ formatAmount(Number(form.discount)) }} off</template></small>
+                <b>LKR {{ formatAmount(finalAmount) }}</b>
+              </div>
+              <v-spacer />
+              <v-btn
+                variant="outlined"
+                style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+                @click="showForm = false"
+              >Cancel</v-btn>
+              <!-- Without a customer there is nothing to place yet. -->
+              <v-btn
+                type="submit"
+                form="order-form"
+                class="order-screen__submit"
+                :disabled="isOrderFullyLocked || (!editOrderId && !form.customer)"
+                style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;"
+              >{{ submitButtonLabel }}</v-btn>
+            </template>
+          </div>
+        </v-card>
       </v-dialog>
 
       <!-- OTP verification for inline new-customer registration -->
       <v-dialog v-model="showNewCustomerOtpDialog" max-width="400">
         <template #default>
-          <v-card class="rounded-xl overflow-hidden">
-            <div class="bg-[#0d3d38] text-white px-6 py-4">
+          <v-card class="rounded-xl overflow-hidden pos-dialog">
+            <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4">
               <h3 class="text-lg font-semibold">Verify Mobile</h3>
             </div>
-            <div class="bg-white px-6 pt-6 pb-4">
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
-                <v-text-field v-model="newCustomerOtpCode" placeholder="123456" variant="outlined" density="compact" hide-details="auto" />
-              </div>
-              <div class="flex justify-between items-center pt-4 border-t border-gray-100">
-                <v-btn variant="text" :loading="resendingOtp" style="color: #0f766e; text-transform: none; font-weight: 600;" @click="resendNewCustomerOtp">Resend OTP</v-btn>
-                <div class="flex gap-3">
-                  <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showNewCustomerOtpDialog = false">Cancel</v-btn>
-                  <v-btn :loading="verifyingOtp" style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyNewCustomerOtp">Verify</v-btn>
-                </div>
+            <div class="pos-dialog__body px-6 pt-6 pb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Enter OTP</label>
+              <v-text-field v-model="newCustomerOtpCode" placeholder="123456" variant="outlined" density="compact" hide-details="auto" />
+            </div>
+            <div class="pos-dialog__actions" style="justify-content: space-between;">
+              <v-btn variant="text" :loading="resendingOtp" style="color: #0f766e; text-transform: none; font-weight: 600;" @click="resendNewCustomerOtp">Resend OTP</v-btn>
+              <div class="flex gap-3">
+                <v-btn variant="outlined" style="border-color: #d1d5db; color: #6b7280; text-transform: none;" @click="showNewCustomerOtpDialog = false">Cancel</v-btn>
+                <v-btn :loading="verifyingOtp" style="background: #0f766e; color: #fff; text-transform: none; font-weight: 600;" @click="verifyNewCustomerOtp">Verify</v-btn>
               </div>
             </div>
           </v-card>
@@ -617,6 +634,8 @@ const orderHeaders = [
 import { getOrders, getOrderById, updateOrder, getAllowedTransitions, type StatusOption } from '@/services/orderApiService'
 import { localDayStartISO, localDayEndISO, localToday } from '@/utils/reportDate'
 import { roundToTen } from '@/utils/money'
+import { searchOrEmpty, topMatches } from '@/utils/searchMatches'
+import { formatAmount, formatWeight, stripFloatNoise } from '@/utils/number'
 import { getPaymentsByOrder } from '../services/getPaymentsByOrder'
 import { checkOrderCapacity, getSystemSettings, type CapacityCheckResult } from '@/services/systemSettingsApiService'
 const payments = ref<any[]>([])
@@ -725,10 +744,46 @@ const newCustomerFormValid = computed(() => {
 // customer (update mode) is selected so it can still be edited.
 const showNewCustomerTab = computed(() => !editOrderId.value && (!form.value.customer || !!newCustomerId.value))
 
-const customerSearchItems = computed(() => [
-  ...customers.value,
-  { label: '+ Add New Customer', value: '__add_new__', mobileNumber: '', isAction: true }
-])
+const ADD_CUSTOMER_LABEL = '+ Register new customer'
+
+// What was last typed into the order's customer search. Picking the
+// "+ Register new customer" item puts that item's own title in the search box,
+// so the text to prefill the new customer with is kept here.
+const typedCustomerQuery = ref('')
+watch(customerSearchQuery, (q) => {
+  if (String(q || '').startsWith(ADD_CUSTOMER_LABEL)) return
+  typedCustomerQuery.value = searchOrEmpty(customers.value, q, form.value.customer)
+})
+
+// The first few matches by name or mobile number (see topMatches), then the
+// action to register someone new, carrying what was typed.
+const customerSearchItems = computed(() => {
+  const typed = typedCustomerQuery.value.trim()
+  const matches = topMatches(
+    customers.value, searchOrEmpty(customers.value, customerSearchQuery.value, form.value.customer),
+    (c, q) => c.label.toLowerCase().includes(q) || (c.mobileNumber || '').toLowerCase().includes(q),
+    form.value.customer,
+  )
+  return [
+    ...matches,
+    { label: typed ? `${ADD_CUSTOMER_LABEL} “${typed}”` : ADD_CUSTOMER_LABEL, value: '__add_new__', mobileNumber: '', isAction: true },
+  ]
+})
+
+const selectedCustomerPhone = computed(() =>
+  customers.value.find(c => c.value === form.value.customer)?.mobileNumber || ''
+)
+
+// The New Customer tab's address section starts open when there is an address
+// to show (e.g. editing a customer just registered here); after that it is the
+// user's to open and close. It must not follow the fields, or clearing the
+// last address field would fold it away under the user's finger.
+const addressOpen = ref(false)
+watch(activeOrderModalTab, (tab) => {
+  if (tab !== 'new-customer') return
+  const f = newCustomerForm.value
+  addressOpen.value = !!(f.addressLine1 || f.addressLine2 || f.city || f.state || f.postalCode)
+})
 
 // Phone-number suggestions for the filter panel, derived from the loaded
 // customers (deduped) so the Phone field offers typeahead like the Customer field.
@@ -743,6 +798,18 @@ const phoneItems = computed(() => {
   }
   return items
 })
+
+// Filter panel searches: the first few matches only (see topMatches).
+const filterCustomerSearch = ref('')
+const filterPhoneSearch = ref('')
+const filterCustomerItems = computed(() => topMatches(
+  customers.value, searchOrEmpty(customers.value, filterCustomerSearch.value, filterCustomerID.value),
+  (c, q) => c.label.toLowerCase().includes(q), filterCustomerID.value,
+))
+const filterPhoneItems = computed(() => topMatches(
+  phoneItems.value, searchOrEmpty(phoneItems.value, filterPhoneSearch.value, filterPhone.value, p => p.title),
+  (p, q) => p.title.includes(q) || p.name.toLowerCase().includes(q), filterPhone.value,
+))
 
 function customerFilter(_value: string, query: string, item?: any): boolean {
   if (item?.raw?.isAction) return true
@@ -765,6 +832,8 @@ const suborders = ref<any[]>([])
 const printBillOnCreate = ref(true)
 // A bill is printed twice by default: one for the customer, one for the shop.
 const DEFAULT_PRINT_COPIES = 2
+const MIN_PRINT_COPIES = 1
+const MAX_PRINT_COPIES = 10
 const printCopies = ref(DEFAULT_PRINT_COPIES)
 const makePaymentOnCreate = ref(false)
 const showCapacityWarning = ref(false)
@@ -796,6 +865,26 @@ const dueSoonLeadDays = ref<number>(1)
 // Refreshed from the backend via fetchDueCounts() whenever the order set changes.
 const overdueCount = ref(0)
 const dueSoonCount = ref(0)
+
+const WEIGHT_RULES = [
+  (v: unknown) => (v !== '' && v !== null && v !== undefined) || 'Weight is required',
+  (v: unknown) => Number(v) > 0 || 'Weight must be greater than 0',
+]
+
+// The form's field rules only mark the inputs; they do not stop a submit, so
+// the order items are checked here before anything is sent. The server applies
+// the same checks.
+function orderItemsProblem(): string | null {
+  if (!suborders.value.length) return 'Add at least one item to the order.'
+  for (const [idx, sub] of suborders.value.entries()) {
+    if (!sub.category) return `Item ${idx + 1}: select a category.`
+    const weight = Number(sub.weight)
+    if (sub.weight === '' || sub.weight === null || !Number.isFinite(weight) || weight <= 0) {
+      return `Item ${idx + 1}: the weight must be greater than 0.`
+    }
+  }
+  return null
+}
 
 function addSuborder() {
   suborders.value.push({ category: '', weight: '', amount: 0 })
@@ -832,6 +921,7 @@ function availableCategoriesFor(idx: number) {
   return categories.value.filter((c: any) => !selectedElsewhere.has(c.value))
 }
 const totalAmount = computed(() => suborders.value.reduce((sum, s) => sum + Number(s.amount || 0), 0))
+const totalWeightKg = computed(() => stripFloatNoise(suborders.value.reduce((sum, s) => sum + (Number(s.weight) || 0), 0)))
 const finalAmount = computed(() => Math.max(totalAmount.value - Number(form.value.discount || 0), 0))
 
 // Discount is whole rupees only, so the due amount stays a whole number.
@@ -1274,6 +1364,7 @@ function resetForm() {
   printCopies.value = DEFAULT_PRINT_COPIES
   makePaymentOnCreate.value = false
   customerSearchQuery.value = ''
+  addressOpen.value = false
   newCustomerId.value = null
   newCustomerForm.value = {
     title: '',
@@ -1289,9 +1380,9 @@ function resetForm() {
 }
 
 const submitButtonLabel = computed(() => {
-  if (!editOrderId.value && makePaymentOnCreate.value) return 'Submit order & pay'
+  if (!editOrderId.value && makePaymentOnCreate.value) return 'Place order & pay'
   if (editOrderId.value) return 'Update order'
-  return 'Submit order'
+  return 'Place order'
 })
 
 const paymentButtonLabel = computed(() => {
@@ -1643,6 +1734,13 @@ async function afterOrderPersist(createdOrder?: any) {
   editOrderNo.value = null
 }
 
+// The server says why it refused an order (e.g. a missing item); show that.
+function showSaveFailed(failed: string, error: unknown) {
+  const reason = (error as any)?.response?.data?.message
+  showToast(reason ? `${failed}: ${reason}` : failed, 'error')
+  console.error('Order save failed', error)
+}
+
 async function handleSubmit() {
   try {
     // A Delivered order is terminal — nothing on it can be changed.
@@ -1655,6 +1753,15 @@ async function handleSubmit() {
     ) {
       showToast('Rack Number is required when the order status is Done or Delivered.', 'error')
       return
+    }
+    // Existing orders only resend their items when they changed, so only check
+    // them then; a status-only change must not be blocked by an old item.
+    if (!editOrderId.value || subordersChanged()) {
+      const problem = orderItemsProblem()
+      if (problem) {
+        showToast(problem, 'error')
+        return
+      }
     }
     if (!editOrderId.value && form.value.deliveryDate) {
       const totalKg = suborders.value.reduce((sum, s) => sum + (Number(s.weight) || 0), 0)
@@ -1681,8 +1788,7 @@ async function handleSubmit() {
     const createdOrder = await persistOrder()
     await afterOrderPersist(createdOrder)
   } catch (error) {
-    showToast(editOrderId.value ? 'Order update failed' : 'Order creation failed', 'error');
-    console.error('Order save failed', error);
+    showSaveFailed(editOrderId.value ? 'Order update failed' : 'Order creation failed', error)
   }
 }
 
@@ -1698,8 +1804,7 @@ async function confirmCapacityWarning() {
     const createdOrder = await persistOrder()
     await afterOrderPersist(createdOrder)
   } catch (error) {
-    showToast('Order creation failed', 'error')
-    console.error('Order save failed', error)
+    showSaveFailed('Order creation failed', error)
   }
 }
 
@@ -1720,20 +1825,21 @@ async function confirmModifyWithPayments() {
     const createdOrder = await persistOrder()
     await afterOrderPersist(createdOrder)
   } catch (error) {
-    showToast('Order update failed', 'error')
-    console.error('Order save failed', error)
+    showSaveFailed('Order update failed', error)
   }
 }
 
 
 function goToNewCustomerTab() {
-  const searchVal = customerSearchQuery.value.trim()
+  // What was typed becomes the mobile number (digits) or the first name.
+  const searchVal = typedCustomerQuery.value.trim()
+  const isNumber = /^\d+$/.test(searchVal)
   newCustomerId.value = null
   newCustomerForm.value = {
     title: '',
-    firstName: '',
+    firstName: isNumber ? '' : searchVal,
     lastName: '',
-    mobileNumber: /^\d+$/.test(searchVal) ? searchVal : '',
+    mobileNumber: isNumber ? searchVal : '',
     addressLine1: '',
     addressLine2: '',
     city: '',
@@ -1769,8 +1875,10 @@ async function handleAddNewCustomer() {
     await sendOtp(otpMobile.value, newCustomerForm.value)
     showNewCustomerOtpDialog.value = true
     showToast('OTP sent to mobile number. Please verify.', 'info')
-  } catch (e) {
-    showToast('Failed to send OTP. Please try again.', 'error')
+  } catch (err) {
+    // The server explains a refusal, e.g. a number already registered to a
+    // customer, who can then be picked on the Order tab instead.
+    showToast((err as any)?.response?.data?.message || 'Failed to send OTP. Please try again.', 'error')
   } finally {
     savingNewCustomer.value = false
   }
@@ -1788,8 +1896,8 @@ async function updateNewCustomer() {
     form.value.customer = saved._id
     activeOrderModalTab.value = 'order'
     showToast('Customer updated successfully!', 'success')
-  } catch {
-    showToast('Failed to update customer. Please try again.', 'error')
+  } catch (err) {
+    showToast((err as any)?.response?.data?.message || 'Failed to update customer. Please try again.', 'error')
   } finally {
     savingNewCustomer.value = false
   }
@@ -1802,8 +1910,8 @@ async function resendNewCustomerOtp() {
     await sendOtp(otpMobile.value, newCustomerForm.value)
     newCustomerOtpCode.value = ''
     showToast('A new OTP has been sent.', 'info')
-  } catch {
-    showToast('Failed to resend OTP. Please try again.', 'error')
+  } catch (err) {
+    showToast((err as any)?.response?.data?.message || 'Failed to resend OTP. Please try again.', 'error')
   } finally {
     resendingOtp.value = false
   }
@@ -1863,12 +1971,257 @@ async function handleAddOrder() {
 </script>
 
 <style scoped>
-.order-discount-row {
+/* --- New / Edit Order screen --- */
+.order-screen {
+  border-radius: 0 !important;
+  background: #f4f7f7;
+}
+.order-screen__header {
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 0;
-  gap: 12px;
+  padding: 0 12px 0 20px;
+  background: #0d3d38;
+  color: #fff;
+}
+.order-screen__tabs {
+  flex: none;
+  padding: 0 8px;
+  background: #fff;
+  border-bottom: 1px solid #d9e3e1;
+}
+/* Form on the left, summary panel on the right; each scrolls on its own. */
+.order-screen__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+.order-screen__main {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+  background: #fff;
+}
+.order-screen__side {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-left: 1px solid #d9e3e1;
+  background: #f4f7f7;
+}
+.order-screen__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.order-screen__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.order-screen__address {
+  border: 1px solid #d9e3e1;
+  border-radius: 8px;
+  padding: 0 12px;
+}
+.order-screen__address summary {
+  cursor: pointer;
+  padding: 11px 0;
+  font-weight: 600;
+  color: #4d625e;
+}
+.order-screen__address[open] summary {
+  border-bottom: 1px solid #d9e3e1;
+  margin-bottom: 12px;
+}
+.order-screen__note {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #4d625e;
+}
+.order-screen__footer {
+  height: 64px;
+  padding: 0 20px;
+  border-top: 1px solid #d9e3e1;
+}
+.order-screen__total {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.order-screen__total small {
+  font-size: 12.5px;
+  color: #4d625e;
+}
+.order-screen__total b {
+  font-size: 20px;
+  color: #0d3d38;
+}
+.order-screen__submit {
+  min-width: 180px;
+  height: 44px !important;
+}
+
+/* Order items */
+.order-items {
+  margin-top: 4px;
+}
+.order-items__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.order-items__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+.order-items__badge {
+  background: #e3f0ee;
+  color: #0f5f57;
+  font-weight: 700;
+  font-size: 12.5px;
+  border-radius: 99px;
+  padding: 2px 9px;
+}
+.order-items__table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #d9e3e1;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.order-items__table th {
+  background: #f0f4f3;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4d625e;
+  text-align: left;
+  padding: 7px 10px;
+}
+.order-items__table th:first-child { border-top-left-radius: 8px; }
+.order-items__table th:last-child { border-top-right-radius: 8px; }
+.order-items__table td {
+  padding: 6px 10px;
+  border-top: 1px solid #d9e3e1;
+  vertical-align: top;
+}
+.order-items__no {
+  width: 32px;
+  color: #4d625e;
+  padding-top: 14px !important;
+}
+.order-items__weight {
+  width: 140px;
+}
+.order-items__amount {
+  width: 130px;
+  text-align: right !important;
+  white-space: nowrap;
+  font-weight: 600;
+}
+td.order-items__amount {
+  padding-top: 14px !important;
+}
+.order-items__delete {
+  width: 56px;
+  text-align: right;
+}
+.order-items__empty {
+  padding: 22px !important;
+  text-align: center;
+  color: #4d625e;
+}
+
+/* Order summary panel */
+.order-summary__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #13231f;
+}
+.order-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #d9e3e1;
+  border-radius: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.order-summary__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.order-summary__row span {
+  font-size: 13.5px;
+  color: #4d625e;
+}
+.order-summary__row b {
+  font-size: 16px;
+}
+.order-summary__total {
+  border-top: 1px solid #d9e3e1;
+  padding-top: 8px;
+}
+.order-summary__total b {
+  font-size: 22px;
+  color: #0f5f57;
+}
+.order-summary__discount {
+  max-width: 130px;
+}
+.order-summary__discount :deep(input) {
+  text-align: right;
+}
+.order-summary__copies {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 40px;
+  font-size: 14px;
+}
+.order-summary__copies--off {
+  opacity: 0.45;
+}
+.order-summary__stepper {
+  display: flex;
+  align-items: center;
+  border: 1px solid #b9c8c5;
+  border-radius: 8px;
+  background: #fff;
+}
+.order-summary__stepper b {
+  min-width: 28px;
+  text-align: center;
+}
+
+/* Narrow windows: the summary panel goes under the form. */
+@media (max-width: 899px) {
+  .order-screen__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    overflow-y: auto;
+  }
+  .order-screen__main,
+  .order-screen__side {
+    overflow: visible;
+  }
+  .order-screen__side {
+    border-left: none;
+    border-top: 1px solid #d9e3e1;
+  }
 }
 
 /* Sort icon always on the right of the column title */
