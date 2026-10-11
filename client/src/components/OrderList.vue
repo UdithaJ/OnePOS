@@ -360,7 +360,9 @@
                               placeholder="0"
                               type="number"
                               suffix="kg"
-                              :rules="[v => !!v || 'Weight is required']"
+                              :rules="WEIGHT_RULES"
+                              min="0"
+                              step="any"
                               variant="outlined"
                               density="compact"
                               hide-details="auto"
@@ -863,6 +865,26 @@ const dueSoonLeadDays = ref<number>(1)
 // Refreshed from the backend via fetchDueCounts() whenever the order set changes.
 const overdueCount = ref(0)
 const dueSoonCount = ref(0)
+
+const WEIGHT_RULES = [
+  (v: unknown) => (v !== '' && v !== null && v !== undefined) || 'Weight is required',
+  (v: unknown) => Number(v) > 0 || 'Weight must be greater than 0',
+]
+
+// The form's field rules only mark the inputs; they do not stop a submit, so
+// the order items are checked here before anything is sent. The server applies
+// the same checks.
+function orderItemsProblem(): string | null {
+  if (!suborders.value.length) return 'Add at least one item to the order.'
+  for (const [idx, sub] of suborders.value.entries()) {
+    if (!sub.category) return `Item ${idx + 1}: select a category.`
+    const weight = Number(sub.weight)
+    if (sub.weight === '' || sub.weight === null || !Number.isFinite(weight) || weight <= 0) {
+      return `Item ${idx + 1}: the weight must be greater than 0.`
+    }
+  }
+  return null
+}
 
 function addSuborder() {
   suborders.value.push({ category: '', weight: '', amount: 0 })
@@ -1712,6 +1734,13 @@ async function afterOrderPersist(createdOrder?: any) {
   editOrderNo.value = null
 }
 
+// The server says why it refused an order (e.g. a missing item); show that.
+function showSaveFailed(failed: string, error: unknown) {
+  const reason = (error as any)?.response?.data?.message
+  showToast(reason ? `${failed}: ${reason}` : failed, 'error')
+  console.error('Order save failed', error)
+}
+
 async function handleSubmit() {
   try {
     // A Delivered order is terminal — nothing on it can be changed.
@@ -1724,6 +1753,15 @@ async function handleSubmit() {
     ) {
       showToast('Rack Number is required when the order status is Done or Delivered.', 'error')
       return
+    }
+    // Existing orders only resend their items when they changed, so only check
+    // them then; a status-only change must not be blocked by an old item.
+    if (!editOrderId.value || subordersChanged()) {
+      const problem = orderItemsProblem()
+      if (problem) {
+        showToast(problem, 'error')
+        return
+      }
     }
     if (!editOrderId.value && form.value.deliveryDate) {
       const totalKg = suborders.value.reduce((sum, s) => sum + (Number(s.weight) || 0), 0)
@@ -1750,8 +1788,7 @@ async function handleSubmit() {
     const createdOrder = await persistOrder()
     await afterOrderPersist(createdOrder)
   } catch (error) {
-    showToast(editOrderId.value ? 'Order update failed' : 'Order creation failed', 'error');
-    console.error('Order save failed', error);
+    showSaveFailed(editOrderId.value ? 'Order update failed' : 'Order creation failed', error)
   }
 }
 
@@ -1767,8 +1804,7 @@ async function confirmCapacityWarning() {
     const createdOrder = await persistOrder()
     await afterOrderPersist(createdOrder)
   } catch (error) {
-    showToast('Order creation failed', 'error')
-    console.error('Order save failed', error)
+    showSaveFailed('Order creation failed', error)
   }
 }
 
@@ -1789,8 +1825,7 @@ async function confirmModifyWithPayments() {
     const createdOrder = await persistOrder()
     await afterOrderPersist(createdOrder)
   } catch (error) {
-    showToast('Order update failed', 'error')
-    console.error('Order save failed', error)
+    showSaveFailed('Order update failed', error)
   }
 }
 

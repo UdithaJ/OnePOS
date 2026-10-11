@@ -303,13 +303,14 @@ function expectAllowed(from, to, role, context) {
 
   await test('a rejected transition leaves the suborders untouched', async () => {
     reset();
+    categoryRows = [{ _id: 'cat1', price: 100, unit: 'kg' }];
     orderDoc.status = 'todo';
     orderDoc.suborders = ['sub1', 'sub2'];
     await expectRejected(
       () => orderService.updateOrder('order1', {
         status: 'cancelled',
         actingUserId: 'cash1',
-        suborders: [],
+        suborders: [{ category: 'cat1', weight: 2 }],
       }),
       403,
     );
@@ -331,6 +332,23 @@ function expectAllowed(from, to, role, context) {
     assert.strictEqual(deleteManyCalls.length, 1, 'the old suborders should have been removed');
     assert.strictEqual(createdSuborders.length, 1, 'the new suborder should have been created');
     assert.strictEqual(updateCalls.length, 1);
+  });
+
+  await test('an item change that leaves the order empty is refused before any write', async () => {
+    reset();
+    orderDoc.suborders = ['sub1'];
+    await expectRejected(() => orderService.updateOrder('order1', { suborders: [] }), 422);
+    assert.deepStrictEqual(deleteManyCalls, []);
+    assert.strictEqual(updateCalls.length, 0);
+  });
+
+  await test('an item change with a zero weight is refused before any write', async () => {
+    reset();
+    categoryRows = [{ _id: 'cat1', price: 100, unit: 'kg' }];
+    orderDoc.suborders = ['sub1'];
+    await expectRejected(() => orderService.updateOrder('order1', { suborders: [{ category: 'cat1', weight: 0 }] }), 422);
+    assert.deepStrictEqual(deleteManyCalls, []);
+    assert.strictEqual(updateCalls.length, 0);
   });
 
   await test('an update that does not touch status still works', async () => {
