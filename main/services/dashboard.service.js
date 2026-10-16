@@ -56,9 +56,16 @@ function pendingPipeline() {
   ];
 }
 
-function weightByCategoryPipeline({ start, end }) {
+// Orders created today, for "Orders Today" and today's weight. Cancelled orders
+// keep their items and weights but are not volume, so they are left out, as in
+// the monthly count.
+function todayOrdersMatch({ start, end }) {
+  return { status: { $ne: 'cancelled' }, createdDate: { $gte: start, $lte: end } };
+}
+
+function weightByCategoryPipeline(today) {
   return [
-    { $match: { createdDate: { $gte: start, $lte: end } } },
+    { $match: todayOrdersMatch(today) },
     lookupSuborders(),
     { $unwind: '$_subs' },
     {
@@ -84,7 +91,7 @@ async function getSummary({ dayStart, dayEnd } = {}) {
 
   const [doneCount, ordersTodayCount, pending, byCategory] = await Promise.all([
     Order.countDocuments({ status: 'done' }),
-    Order.countDocuments({ createdDate: { $gte: today.start, $lte: today.end } }),
+    Order.countDocuments(todayOrdersMatch(today)),
     Order.aggregate(pendingPipeline()),
     Order.aggregate(weightByCategoryPipeline(today)),
   ]);
@@ -207,6 +214,7 @@ async function getDeliveryPending() {
 module.exports = {
   resolveDayWindow,
   pendingPipeline,
+  todayOrdersMatch,
   weightByCategoryPipeline,
   shapeSummary,
   resolveMonths,
