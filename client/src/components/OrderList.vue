@@ -187,15 +187,15 @@
           </div>
           <div class="bg-white px-6 pt-4 pb-2 text-gray-700 text-sm">
             <p>
-              Current pending workload : <strong>{{ capacityResult?.pendingKg ?? 0 }} kg</strong><br />
-              Daily processing capacity : <strong>{{ capacityResult?.capacityPerDayKg ?? 0 }} kg/day</strong>
+              Current pending workload : <strong>{{ formatWeight(capacityResult?.pendingKg) }} kg</strong><br />
+              Daily processing capacity : <strong>{{ formatWeight(capacityResult?.capacityPerDayKg) }} kg/day</strong>
             </p>
             <p class="mt-3">
               The current workload requires approximately
               <strong>{{ Math.ceil((capacityResult?.pendingKg ?? 0) / (capacityResult?.capacityPerDayKg || 1)) }} processing day(s)</strong>.
             </p>
             <p class="mt-3">
-              Adding this order (<strong>{{ capacityResult?.newOrderKg ?? 0 }} kg</strong>) may cause the selected delivery date to be missed.
+              Adding this order (<strong>{{ formatWeight(capacityResult?.newOrderKg) }} kg</strong>) may cause the selected delivery date to be missed.
             </p>
             <p class="mt-3">Do you want to continue with the selected delivery date?</p>
           </div>
