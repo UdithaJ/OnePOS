@@ -1495,7 +1495,8 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
         <meta charset="utf-8" />
         <title>Invoice ${escapeHtml(orderId)}</title>
         <style>
-          /* 80mm roll, fixed 100mm slip. The page is the printer's 72mm
+          /* 80mm roll, 100mm minimum slip: the main process measures the bill
+             and lengthens the page to fit (printer.service.js). The page is the printer's 72mm
              PRINTABLE width, not the 80mm paper width, and the content fills it
              from x=0. The driver already offsets by its own unprintable left
              margin, so centring a column inside an 80mm page pays that margin
