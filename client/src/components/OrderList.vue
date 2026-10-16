@@ -1542,7 +1542,8 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
           .summary td {padding: 0.15mm 0;}
           .summary .sum-label { width: 60%;text-align: left;white-space: nowrap;}
           .summary .sum-colon { width: 5%;text-align: center;}
-          .summary .sum-value {width: 35%;text-align: right;white-space: nowrap;}
+          /* Same right inset as the items' Amount column, so all prices line up */
+          .summary .sum-value {width: 35%;text-align: right;white-space: nowrap;padding-right: 1.2mm;}
           .summary .sum-strong td { font-weight: 700; }
           .footer { margin-top: 2mm;}
           .footer .thanks { margin-top: 1.4mm; font-weight: 700; }
