@@ -49,10 +49,37 @@ function resolveDeviceName(printers, requestedName) {
   return '';
 }
 
+// The slip is 68mm wide and grows with the bill: a long order would otherwise
+// spill onto a second slip. 100mm stays the minimum, so short bills print
+// exactly as they did on the fixed slip.
 const BILL_PAGE = {
-  widthMicrons: 68000,
-  heightMicrons: 100000,
+  widthMm: 68,
+  minHeightMm: 100,
+  // Bottom allowance so rounding never pushes the last line onto a new page
+  slackMm: 3,
 };
+
+const PX_PER_MM = 96 / 25.4;
+
+async function measureBillHeightMm(webContents) {
+  // Measure the bill itself: the document is at least as tall as the hidden
+  // print window, which would make every slip the window's height.
+  const px = await webContents.executeJavaScript(
+    "Math.ceil((document.querySelector('.bill') || document.body).getBoundingClientRect().bottom + window.scrollY)"
+  );
+  const contentMm = Math.ceil((Number(px) || 0) / PX_PER_MM) + BILL_PAGE.slackMm;
+  return Math.max(BILL_PAGE.minHeightMm, contentMm);
+}
+
+// The bill's own @page rule names the 100mm minimum; restate it at the measured
+// length so Chromium's CSS page size and the driver's page size agree.
+async function setBillPageHeight(webContents, heightMm) {
+  await webContents.executeJavaScript(`(() => {
+    const style = document.createElement('style');
+    style.textContent = '@page { size: ${BILL_PAGE.widthMm}mm ${heightMm}mm; margin: 0; }';
+    document.head.appendChild(style);
+  })()`);
+}
 
 async function printBill(event, htmlContent, copies = 1, printerName = '') {
   const printers = await event.sender.getPrintersAsync();
@@ -88,7 +115,10 @@ async function printBill(event, htmlContent, copies = 1, printerName = '') {
         // Allow CSS layout to complete before printing
         await new Promise(r => setTimeout(r, 500));
 
-        console.log('[print-bill] sending to printer:', deviceName || 'system default');
+        const heightMm = await measureBillHeightMm(printWindow.webContents);
+        await setBillPageHeight(printWindow.webContents, heightMm);
+
+        console.log('[print-bill] sending to printer:', deviceName || 'system default', `| ${heightMm}mm slip`);
 
         // Use the callback form — Electron calls it even in builds where the return
         // is void. The callback is the only reliable signal that the job was submitted.
@@ -98,7 +128,7 @@ async function printBill(event, htmlContent, copies = 1, printerName = '') {
             printBackground: true,
             deviceName,
             copies: Math.max(1, parseInt(copies) || 1),
-            pageSize: { width: BILL_PAGE.widthMicrons, height: BILL_PAGE.heightMicrons },
+            pageSize: { width: BILL_PAGE.widthMm * 1000, height: heightMm * 1000 },
             margins: { marginType: 'none' },
           },
           (success, failureReason) => {

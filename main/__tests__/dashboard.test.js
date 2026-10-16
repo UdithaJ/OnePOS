@@ -20,6 +20,7 @@ function test(name, fn) {
 const {
   resolveDayWindow,
   pendingPipeline,
+  todayOrdersMatch,
   weightByCategoryPipeline,
   shapeSummary,
   resolveMonths,
@@ -60,11 +61,17 @@ test('pending counts todo orders only', () => {
   assert.deepStrictEqual(pendingPipeline()[0], { $match: { status: 'todo' } });
 });
 
-test("today's weight is limited to orders created inside the window", () => {
+test("today's orders are those created inside the window, cancelled ones left out", () => {
   const window = { start: new Date('2026-09-26T18:30:00Z'), end: new Date('2026-09-27T18:29:59.999Z') };
-  assert.deepStrictEqual(weightByCategoryPipeline(window)[0], {
-    $match: { createdDate: { $gte: window.start, $lte: window.end } },
+  assert.deepStrictEqual(todayOrdersMatch(window), {
+    status: { $ne: 'cancelled' },
+    createdDate: { $gte: window.start, $lte: window.end },
   });
+});
+
+test("today's weight counts the same orders as Orders Today", () => {
+  const window = { start: new Date('2026-09-26T18:30:00Z'), end: new Date('2026-09-27T18:29:59.999Z') };
+  assert.deepStrictEqual(weightByCategoryPipeline(window)[0], { $match: todayOrdersMatch(window) });
 });
 
 test('summed weights lose float noise but keep their decimals', () => {
