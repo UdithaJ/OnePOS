@@ -1422,6 +1422,14 @@ function formatBillTimestamp(date: Date) {
     ` ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+// The delivery date is picked as a calendar day and stored as UTC midnight, so
+// read the day off the ISO string; converting to local time could shift it.
+function formatBillDate(value: any) {
+  if (!value) return ''
+  const iso = value instanceof Date ? value.toISOString() : String(value)
+  return iso.substring(0, 10).replace(/-/g, '/')
+}
+
 function resolveCustomerName(customerId: any) {
   const id = typeof customerId === 'string' ? customerId : customerId?._id
   const selected = customers.value.find((c: any) => c.value === id)
@@ -1451,6 +1459,7 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
   const orderId = order?.orderNo || order?._id || 'N/A'
   const customerName = resolveCustomerName(order?.customerID)
   const customerPhone = resolveCustomerPhone(order?.customerID)
+  const deliveryDate = formatBillDate(order?.deliveryDate)
   const subtotal = Number(order?.totalAmount ?? totalAmount.value ?? 0)
   const discount = Number(order?.discount ?? form.value.discount ?? 0)
   const netTotal = Math.max(subtotal - discount, 0)
@@ -1471,8 +1480,8 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
     `
   }).join('')
 
-  const summaryRow = (label: string, value: number) => `
-    <tr>
+  const summaryRow = (label: string, value: number, bold = false) => `
+    <tr${bold ? ' class="sum-strong"' : ''}>
       <td class="sum-label">${escapeHtml(label)}</td>
       <td class="sum-colon">:</td>
       <td class="sum-value">${escapeHtml(formatMoney(value))}</td>
@@ -1502,7 +1511,17 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
           }
           .bill { width: 100%; max-width: 62mm; margin: 0 auto; padding: 1.2mm 0; }
           .center { text-align: center; }
-          .shop-name { font-size: 13pt; font-weight: 700; letter-spacing: -0.3pt; }
+          /* Logo: rounded hand-lettered face, widely spaced, as on the printed
+             Softwash stationery. Arial stays the fallback if the font is missing. */
+          .shop-name {
+            font-family: 'Comic Sans MS', 'Comic Neue', Arial, sans-serif;
+            font-size: 15pt;
+            font-weight: 700;
+            letter-spacing: 2.2pt;
+            /* letter-spacing trails the last glyph too; pull it back so the
+               word stays centred */
+            margin-right: -2.2pt;
+          }
           .tagline { font-style: italic; font-size: 7pt; margin-top: 0.2mm; }
           .shop-contact { margin-top: 1.1mm; }
           .customer { margin-top: 1.6mm; }
@@ -1523,7 +1542,9 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
           .summary .sum-label { width: 60%;text-align: left;white-space: nowrap;}
           .summary .sum-colon { width: 5%;text-align: center;}
           .summary .sum-value {width: 35%;text-align: right;white-space: nowrap;}
+          .summary .sum-strong td { font-weight: 700; }
           .footer { margin-top: 2mm;}
+          .footer .thanks { margin-top: 1.4mm; font-weight: 700; }
         </style>
       </head>
       <body>
@@ -1540,7 +1561,8 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
             <div>Name: ${escapeHtml(customerName)}</div>
             ${customerPhone ? `<div>Contact: ${escapeHtml(customerPhone)}</div>` : ''}
             <div>Invoice No: ${escapeHtml(orderId)}</div>
-            <div>Date &amp; Time: ${escapeHtml(formatBillTimestamp(created))}</div>
+            ${deliveryDate ? `<div>Delivery Date: ${escapeHtml(deliveryDate)}</div>` : ''}
+            <div>Invoice Date &amp; Time: ${escapeHtml(formatBillTimestamp(created))}</div>
           </div>
 
           <table class="items">
@@ -1566,11 +1588,12 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
             ${paid.advance > 0 ? summaryRow('Advance Paid (Rs)', paid.advance) : ''}
             ${paid.full > 0 ? summaryRow('Paid (Rs)', paid.full) : ''}
             ${paid.settlement > 0 ? summaryRow('Settlement Paid (Rs)', paid.settlement) : ''}
-            ${summaryRow('Amount Due (Rs)', dueAmt)}
+            ${summaryRow('Amount Due (Rs)', dueAmt, true)}
           </table>
 
           <div class="footer center">
-            <div>Thank you for your business.</div>
+            <div>We would appreciate if you could collect your laundry within 7 days of receiving the pickup notification via SMS.</div>
+            <div class="thanks">Thank you for your business</div>
             <div>****</div>
           </div>
         </div>
