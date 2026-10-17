@@ -162,6 +162,7 @@ test('an unknown paymentStatus is a 400, not an empty report', () => {
 console.log('\nCash report periods (transaction date vs business day)');
 
 const CASH_REPORTS = ['cash-box-summary', 'expenses', 'bank-reconciliation'];
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function cashPipeline(id, query) {
   const definition = getDefinition(id);
@@ -216,9 +217,29 @@ for (const id of CASH_REPORTS) {
     assert.ok(lookupsFrom(pipeline).includes('cashledgers') && lookupsFrom(pipeline).includes('cashboxsessions'));
     // The transaction's own date may run past toDate (after midnight), so it
     // is only bounded below; the full period applies to the business date.
-    assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate })));
+    const lookbackFrom = new Date(new Date(values.fromDate).getTime() - 7 * DAY_MS);
+    assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: lookbackFrom })));
     assert.ok(matches(pipeline).some((m) => JSON.stringify(m.businessDate) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
   });
+
+  // The next session is opened at night with its start set to the next working
+  // morning, so its first sales are dated before it starts. The report for the
+  // session's day must still reach them.
+  const lateSales = [
+    // Nightly reopen: Mon 22:02, start Tue 08:00, sale Mon 22:30
+    { name: 'the nightly reopen', day: '2026-10-27', sale: '2026-10-26T22:30:00+05:30' },
+    // Weekend: Fri 22:10, start Mon 08:00, sale Fri 22:30
+    { name: 'a weekend', day: '2026-11-02', sale: '2026-10-30T22:30:00+05:30' },
+    // Long weekend: Fri 22:10, start Tue 08:00, sale Fri 23:50
+    { name: 'a long weekend', day: '2026-11-03', sale: '2026-10-30T23:50:00+05:30' },
+  ];
+  for (const { name, day, sale } of lateSales) {
+    test(`${id}: business basis keeps a sale made before its session's start (${name})`, () => {
+      const { pipeline } = cashPipeline(id, { dateBasis: 'business', fromDate: day, toDate: day });
+      const pre = matches(pipeline).find((m) => m.date && !m.date.$lte);
+      assert.ok(pre && new Date(sale) >= pre.date.$gte, `pre-filter from ${pre && pre.date.$gte.toISOString()} drops the ${sale} sale`);
+    });
+  }
 
   test(`${id}: an unknown dateBasis is a 400`, () => {
     try {
