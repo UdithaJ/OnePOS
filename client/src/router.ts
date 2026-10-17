@@ -43,6 +43,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/components/SystemUpgrades.vue'),
       },
       {
+        path: 'customer-import',
+        name: 'CustomerImport',
+        meta: SYSADMIN_ONLY,
+        component: () => import('@/components/CustomerImport.vue'),
+      },
+      {
         path: 'users',
         name: 'Users',
         meta: ADMIN_ONLY,

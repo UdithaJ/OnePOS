@@ -79,6 +79,15 @@
           >
             <v-list-item-title>System Upgrades</v-list-item-title>
           </v-list-item>
+          <v-list-item
+            v-if="isSysadmin"
+            to="/customer-import"
+            prepend-icon="mdi-account-arrow-up"
+            :active="isActive('/customer-import')"
+            class="neomorphic-sidebar-item"
+          >
+            <v-list-item-title>Import Customers</v-list-item-title>
+          </v-list-item>
         </v-list>
       </div>
     </v-navigation-drawer>
