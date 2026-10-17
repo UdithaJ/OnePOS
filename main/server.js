@@ -25,6 +25,7 @@ import smsRoutes from './routes/sms.route.js';
 import reportRoutes from './routes/report.route.js';
 import upgradeRoutes from './routes/upgrade.route.js';
 import dashboardRoutes from './routes/dashboard.route.js';
+import customerImportRoutes from './routes/customerImport.route.js';
 
 
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/upgrades', upgradeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/customer-import', customerImportRoutes);
 
 // __dirname replacement in ES modules
 import { fileURLToPath } from 'url';
