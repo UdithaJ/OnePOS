@@ -214,10 +214,17 @@ for (const id of CASH_REPORTS) {
   test(`${id}: business basis filters on the session's opening day`, () => {
     const { values, pipeline } = cashPipeline(id, { dateBasis: 'business' });
     assert.ok(lookupsFrom(pipeline).includes('cashledgers') && lookupsFrom(pipeline).includes('cashboxsessions'));
-    // The transaction's own date may run past toDate (after midnight), so it
-    // is only bounded below; the full period applies to the business date.
-    assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate })));
+    // The period applies to the business date alone.
     assert.ok(matches(pipeline).some((m) => JSON.stringify(m.businessDate) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+  });
+
+  // The transaction's own date is never filtered on in business mode: a sale can
+  // be dated after its session's day (past midnight) or before it (the nightly
+  // reopen sets the start to the next working morning, Monday on a Friday
+  // night), by however long the start was set ahead.
+  test(`${id}: business basis never filters on the transaction's own date`, () => {
+    const { pipeline } = cashPipeline(id, { dateBasis: 'business', fromDate: '2026-11-02', toDate: '2026-11-02' });
+    assert.ok(!matches(pipeline).some((m) => 'date' in m), `a $match on the transaction date would drop sales made before or after the session's day`);
   });
 
   test(`${id}: an unknown dateBasis is a 400`, () => {
@@ -281,6 +288,7 @@ test('bank transfer tracking: business basis filters on the session opening day'
   const { values, pipeline } = cashPipeline('bank-transfer-tracking', { dateBasis: 'business' });
   assert.ok(lookupsFrom(pipeline).includes('cashledgers') && lookupsFrom(pipeline).includes('cashboxsessions'));
   assert.ok(matches(pipeline).some((m) => JSON.stringify(m.businessDate) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+  assert.ok(!matches(pipeline).some((m) => 'date' in m), 'business basis must not filter on the transfer date');
 });
 
 test('bank transfer tracking: only bank payments, and an unknown dateBasis is a 400', () => {

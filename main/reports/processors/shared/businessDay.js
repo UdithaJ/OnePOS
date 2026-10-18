@@ -23,11 +23,14 @@ function resolveDateBasis(value) {
 // $match / $lookup stages that keep only rows in the period and leave the
 // row's attributed day in `businessDate`.
 //
-// In business mode the upper bound cannot be applied to the transaction's own
-// date — a session opened on the last day of the period may record activity
-// after midnight — so only the lower bound is used up front. That is safe
-// because a transaction is always dated when it is recorded, which is never
-// before its session opened.
+// In business mode the transaction's own date says nothing reliable about its
+// business day, in either direction: a session opened on the last day of the
+// period may record activity after midnight, and at the nightly reopen (22:00)
+// the cashier sets the next session's start to the next working morning —
+// Monday 08:00 when reopening on a Friday night — so the evening's sales are
+// dated before the session they belong to. So nothing is filtered on the
+// transaction's date; every row is attributed to its session and the period is
+// applied to the business date alone.
 //
 // Rows recorded without a session have no ledger entry and fall back to their
 // own date.
@@ -37,7 +40,6 @@ function periodStages({ basis, dateField, fromDate, toDate }) {
   }
 
   return [
-    { $match: { [dateField]: { $gte: fromDate } } },
     {
       $lookup: {
         from: 'cashledgers',
