@@ -1495,58 +1495,68 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
         <meta charset="utf-8" />
         <title>Invoice ${escapeHtml(orderId)}</title>
         <style>
-          /* 80mm roll, 100mm minimum slip: the main process measures the bill
-             and lengthens the page to fit (printer.service.js). The page is the printer's 72mm
-             PRINTABLE width, not the 80mm paper width, and the content fills it
-             from x=0. The driver already offsets by its own unprintable left
-             margin, so centring a column inside an 80mm page pays that margin
-             twice and pushes the Amount column off the right of the paper. */
+          /* 80mm roll (about 78mm measured), 100mm minimum slip: the main process
+             measures the bill and lengthens the page to fit (printer.service.js).
+             The page is 68mm, inside the printer's printable width of about 71mm
+             (a wider page is shrunk by the driver instead of printed at 100%).
+             The content is 64mm and left-aligned from x=0: the driver already
+             offsets by its own unprintable left margin, so centring it pays that
+             margin twice, and anything wider than about 65mm clips the last
+             character of the Amount column. */
           @page { size: 68mm 100mm; margin: 0; }
           * { box-sizing: border-box; }
           html, body { width: 68mm; margin: 0; padding: 0; background: #fff; }
           body {
             font-family: Arial, Helvetica, sans-serif;
             color: #000;
-            font-size: 7pt;
-            line-height: 1.18;
+            font-size: 9pt;
+            line-height: 1.2;
           }
-          .bill { width: 100%; max-width: 62mm; margin: 0 auto; padding: 1.2mm 0; }
+          .bill { width: 100%; max-width: 64mm; margin: 0; padding: 1.2mm 0; }
           .center { text-align: center; }
           /* Logo: rounded hand-lettered face, widely spaced, as on the printed
              Softwash stationery. Arial stays the fallback if the font is missing. */
           .shop-name {
             font-family: 'Comic Sans MS', 'Comic Neue', Arial, sans-serif;
-            font-size: 15pt;
+            font-size: 22pt;
             font-weight: 700;
-            letter-spacing: 2.2pt;
+            letter-spacing: 3.2pt;
             /* letter-spacing trails the last glyph too; pull it back so the
                word stays centred */
-            margin-right: -2.2pt;
+            margin-right: -3.2pt;
           }
-          .tagline { font-style: italic; font-size: 7pt; margin-top: 0.2mm; }
+          .tagline { font-style: italic; font-size: 9pt; margin-top: 0.2mm; }
           .shop-contact { margin-top: 1.1mm; }
-          .customer { margin-top: 1.6mm; }
+          .customer { margin-top: 1.6mm; font-size: 10pt; font-weight: 700; line-height: 1.25; }
+          /* "Invoice Date & Time: 2026/10/22 14:50" is wider than the slip at this
+             size; keep the value whole so it wraps after the label, not mid-date. */
+          .customer .nowrap { white-space: nowrap; }
           table {width: 100%;border-collapse: collapse;table-layout: fixed;}
           .items {margin-top: 1.8mm;}
           .items th {text-align: left;font-weight: 700;padding-bottom: 0.4mm;overflow-wrap: break-word;}
           .items td {padding: 0.15mm 0;vertical-align: top;overflow-wrap: break-word;}
           .items .num {text-align: right;white-space: nowrap;  padding-right: 0.5mm;}
           .items th.num {text-align: right; white-space: nowrap;}
+          /* Bold headers at the body size are wider than their columns */
+          .items th {font-size: 8.5pt;}
           .items th:last-child,
           .items td:last-child {padding-right: 1.2mm;}
-          .items col.c-cat {width: 40%;}
-          .items col.c-wt {width: 23%;}
-          .items col.c-amt {width: 37%;}
+          .items col.c-cat {width: 36%;}
+          .items col.c-wt {width: 30%;}
+          .items col.c-amt {width: 34%;}
           /* Summary */
           .summary { margin-top: 1.8mm;table-layout: fixed; width: 100%;}
           .summary td {padding: 0.15mm 0;}
-          .summary .sum-label { width: 60%;text-align: left;white-space: nowrap;}
+          .summary .sum-label { width: 55%;text-align: left;white-space: nowrap;}
           .summary .sum-colon { width: 5%;text-align: center;}
           /* Same right inset as the items' Amount column, so all prices line up */
-          .summary .sum-value {width: 35%;text-align: right;white-space: nowrap;padding-right: 1.2mm;}
-          .summary .sum-strong td { font-weight: 700; }
+          .summary .sum-value {width: 40%;text-align: right;white-space: nowrap;padding-right: 1.2mm;}
+          .summary .sum-strong td { font-weight: 700; font-size: 11pt; padding-top: 0.6mm; }
           .footer { margin-top: 2mm;}
           .footer .thanks { margin-top: 1.4mm; font-weight: 700; }
+          /* Same right inset as the Amount column; breaks only if the id is a
+             long fallback (_id) rather than the short order number. */
+          .invoice-no { margin-top: 2.5mm; text-align: right; font-size: 26pt; font-weight: 700; line-height: 1.1; padding-right: 1.2mm; overflow-wrap: anywhere; }
         </style>
       </head>
       <body>
@@ -1556,7 +1566,6 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
             <div class="tagline">${escapeHtml(BILL_COMPANY.tagline)}</div>
             <div class="shop-contact">${escapeHtml(BILL_COMPANY.address)}</div>
             <div>Hotline: ${escapeHtml(BILL_COMPANY.hotline)}</div>
-            <div>E-Mail: ${escapeHtml(BILL_COMPANY.email)}</div>
           </div>
 
           <div class="customer">
@@ -1564,7 +1573,7 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
             ${customerPhone ? `<div>Contact: ${escapeHtml(customerPhone)}</div>` : ''}
             <div>Invoice No: ${escapeHtml(orderId)}</div>
             ${deliveryDate ? `<div>Delivery Date: ${escapeHtml(deliveryDate)}</div>` : ''}
-            <div>Invoice Date &amp; Time: ${escapeHtml(formatBillTimestamp(created))}</div>
+            <div>Invoice Date &amp; Time: <span class="nowrap">${escapeHtml(formatBillTimestamp(created))}</span></div>
           </div>
 
           <table class="items">
@@ -1573,7 +1582,7 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
             </colgroup>
             <thead>
               <tr>
-                <th>Laundry Category</th>
+                <th>Category</th>
                 <th class="num">Weight (Kgs)</th>
                 <th class="num">Amount (Rs)</th>
               </tr>
@@ -1598,6 +1607,8 @@ function buildPrintBillHtml(order: any, orderPayments: any[] | null = null) {
             <div class="thanks">Thank you for your business</div>
             <div>****</div>
           </div>
+
+          <div class="invoice-no">${escapeHtml(orderId)}</div>
         </div>
       </body>
     </html>
