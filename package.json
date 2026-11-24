@@ -12,7 +12,7 @@
     "clear-cache": "node clear-electron-cache.js",
     "dist": "npm run clear-cache && npm run build:client && electron-builder",
     "dist:win": "npm run build:client && electron-builder --win",
-    "test": "npm run test:reports && npm run test:customers && npm run test:orders && npm run test:delivery-date && npm run test:upgrades && npm run test:rounding && npm run test:order-items && npm run test:cash-box && npm run test:dashboard && npm run test:customer-import && npm run test:cash-inflow-remarks && npm run test:order-search && npm run test:new-order-lookups",
+    "test": "npm run test:reports && npm run test:customers && npm run test:orders && npm run test:delivery-date && npm run test:upgrades && npm run test:rounding && npm run test:order-items && npm run test:cash-box && npm run test:dashboard && npm run test:customer-import && npm run test:cash-inflow-remarks && npm run test:order-search && npm run test:new-order-lookups && npm run test:payment-cancelled-order",
     "test:customers": "node main/__tests__/customer-duplicate-mobile.test.js",
     "test:orders": "node main/__tests__/order-workflow.test.js",
     "test:reports": "node main/reports/__tests__/definitions.test.js && node main/reports/__tests__/grouping-parity.test.js && node main/reports/__tests__/csv-parity.test.js",
@@ -25,7 +25,8 @@
     "test:customer-import": "node main/__tests__/customer-import.test.js",
     "test:cash-inflow-remarks": "node main/__tests__/cash-inflow-remarks.test.js",
     "test:order-search": "node main/__tests__/order-search.test.js",
-    "test:new-order-lookups": "node main/__tests__/new-order-lookups.test.js"
+    "test:new-order-lookups": "node main/__tests__/new-order-lookups.test.js",
+    "test:payment-cancelled-order": "node main/__tests__/payment-cancelled-order.test.js"
   },
   "keywords": [],
   "author": "",

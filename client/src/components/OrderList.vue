@@ -442,7 +442,10 @@
                   </div>
                 </div>
                 <div v-else class="text-sm text-gray-500">No payments yet.</div>
-                <v-alert v-if="!canMakePayment" type="success" variant="tonal" class="mt-3">
+                <v-alert v-if="isOrderCancelled" type="warning" variant="tonal" class="mt-3">
+                  This order is cancelled, so no payments can be taken.
+                </v-alert>
+                <v-alert v-else-if="!canMakePayment" type="success" variant="tonal" class="mt-3">
                   Payment completed
                 </v-alert>
               </div>
@@ -543,6 +546,9 @@
                 style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
                 @click="showPaymentDialog = true"
               >{{ paymentButtonLabel }}</v-btn>
+              <span v-else-if="isOrderCancelled" class="text-sm text-gray-500">
+                Cancelled order: payments are disabled
+              </span>
             </template>
             <template v-else>
               <div class="order-screen__total">
@@ -649,8 +655,13 @@ const effectiveDueAmount = computed(() => {
   if (!editOrderId.value) return Math.max(dueAmount.value, 0)
   return Math.max(Number(currentOrderDueAmount.value || 0), 0)
 })
+// A cancelled order takes no payments. Its saved status decides, not an
+// unsaved change in the form.
+const isOrderCancelled = computed(() => originalOrderStatus.value === 'cancelled')
+
 const canMakePayment = computed(() => {
   if (!editOrderId.value) return false
+  if (isOrderCancelled.value) return false
   if (String(currentOrderPaymentStatus.value || '').toLowerCase() === 'paid') return false
   return effectiveDueAmount.value > 0
 })
