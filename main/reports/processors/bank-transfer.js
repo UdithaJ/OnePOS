@@ -1,9 +1,9 @@
 // Bank Transfer Tracking — one row per bank payment, with the period chosen by
 // dateBasis:
 //
-// - order (default) — orders created in the period, as the report always did.
-// - payment — the payment's own date, so a transfer received today counts
-//   today even for an order from last week.
+// - payment (default) — the payment's own date, so a transfer received today
+//   counts today even for an order from last week.
+// - order — orders created in the period, as the report originally did.
 // - business — the business day of the drawer session the payment was taken
 //   in (see `shared/businessDay.js`).
 //
@@ -18,8 +18,8 @@ const ORDER_BASIS = 'order';
 
 // 'payment' is this report's name for the shared 'transaction' basis.
 function resolveBasis(value) {
-  if (value === null || value === undefined || value === ORDER_BASIS) return ORDER_BASIS;
-  if (value === 'payment') return 'transaction';
+  if (value === ORDER_BASIS) return ORDER_BASIS;
+  if (value === null || value === undefined || value === 'payment') return 'transaction';
   if (value === 'business') return resolveDateBasis(value);
   const err = new Error('Parameter "dateBasis" must be one of: order, payment, business');
   err.status = 400;

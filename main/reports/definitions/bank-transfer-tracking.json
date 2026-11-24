@@ -20,7 +20,7 @@
       "name": "dateBasis",
       "type": "select",
       "label": "Date Basis",
-      "default": "order",
+      "default": "payment",
       "options": [
         { "label": "Order Created Date", "value": "order" },
         { "label": "Payment Date", "value": "payment" },

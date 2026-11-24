@@ -278,19 +278,25 @@ test('the Expenses type filter hides the same category the pipelines match', () 
   assert.strictEqual(param.optionsFrom.filter.labelNotMatching, BANK_DEPOSIT_PATTERN);
 });
 
-test('bank transfer tracking: order basis (and absent) filters on the order creation date', () => {
-  for (const query of [{ dateBasis: 'order' }, { dateBasis: undefined }]) {
+test('bank transfer tracking: order basis filters on the order creation date', () => {
+  const { values, pipeline } = cashPipeline('bank-transfer-tracking', { dateBasis: 'order' });
+  assert.ok(matches(pipeline).some((m) => JSON.stringify(m['order.createdDate']) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+  assert.ok(!matches(pipeline).some((m) => 'date' in m), 'must not filter on the payment date');
+});
+
+test('bank transfer tracking: payment basis (and absent) filters on the payment date', () => {
+  for (const query of [{ dateBasis: 'payment' }, { dateBasis: undefined }]) {
     const { values, pipeline } = cashPipeline('bank-transfer-tracking', query);
-    assert.ok(matches(pipeline).some((m) => JSON.stringify(m['order.createdDate']) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
-    assert.ok(!matches(pipeline).some((m) => 'date' in m), 'must not filter on the payment date');
+    assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+    assert.ok(!matches(pipeline).some((m) => 'order.createdDate' in m));
+    assert.ok(!lookupsFrom(pipeline).includes('cashboxsessions'));
   }
 });
 
-test('bank transfer tracking: payment basis filters on the payment date', () => {
-  const { values, pipeline } = cashPipeline('bank-transfer-tracking', { dateBasis: 'payment' });
-  assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
-  assert.ok(!matches(pipeline).some((m) => 'order.createdDate' in m));
-  assert.ok(!lookupsFrom(pipeline).includes('cashboxsessions'));
+test('bank transfer tracking: the Date Basis dropdown defaults to Payment Date', () => {
+  const param = getDefinition('bank-transfer-tracking').params.find((p) => p.name === 'dateBasis');
+  assert.strictEqual(param.default, 'payment');
+  assert.strictEqual(param.options.find((o) => o.value === param.default).label, 'Payment Date');
 });
 
 test('bank transfer tracking: business basis filters on the session opening day', () => {
