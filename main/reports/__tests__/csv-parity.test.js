@@ -226,6 +226,8 @@ function legacyDailyCSV(rows) {
     DAILY_HEADERS,
     ...legacyDailyFlatRows(rows),
     ['', '', '', '', '', '', '', '', '', '', '', 'Total for the given period', legacyDailyGrandTotal(rows).toFixed(2)],
+    // Added after the migration: orders in the period, cancelled ones left out.
+    ['', '', '', '', '', '', '', '', '', '', '', 'Total Records', '3'],
   ];
   return all.map((r) => r.map(escapeCell).join(',')).join('\r\n');
 }
@@ -259,7 +261,7 @@ test('Due Date is suppressed per date group, matching the table', () => {
   // The old CSV re-printed the due date for every order inside a date, while
   // the old table merged it across the whole date. The engine cannot reproduce
   // both; the table's behaviour wins. See MIGRATION-NOTES.md.
-  const lines = pendingCSV.split('\r\n').slice(1, -1);
+  const lines = pendingCSV.split('\r\n').slice(1, -2); // header and the two footer lines
   const dateCells = lines.map((line) => line.split(',')[0]);
   assert.deepStrictEqual(dateCells, ['01/03/2026', '', '', '', '02/03/2026', '']);
 });
@@ -267,12 +269,12 @@ test('Due Date is suppressed per date group, matching the table', () => {
 test('Order Created Date follows Order No and prints once per order', () => {
   const [header, ...rest] = pendingCSV.split('\r\n');
   assert.strictEqual(header.split(',')[2], 'Order Created Date');
-  const createdCells = rest.slice(0, -1).map((line) => line.split(',')[2]);
+  const createdCells = rest.slice(0, -2).map((line) => line.split(',')[2]);
   assert.deepStrictEqual(createdCells, ['01/03/2026', '', '', '01/03/2026', '02/03/2026', '']);
 });
 
 test('Total Pending Weight has no unit suffix in CSV (table shows " kg")', () => {
-  const footer = pendingCSV.split('\r\n').pop();
+  const footer = pendingCSV.split('\r\n').slice(-2)[0];
   assert.ok(footer.endsWith(',24.00'), `footer was: ${footer}`);
 });
 
@@ -366,6 +368,54 @@ test('Excel weights are real numbers formatted as 0.00', () => {
   const matrix = client.rows.excelMatrix(envelopeFor(pendingDef));
   const weightIndex = pendingDef.columns.findIndex((c) => c.key === 'weight');
   assert.deepStrictEqual(matrix[1][weightIndex], { v: 5, t: 'n', z: '0.00' });
+});
+
+console.log('\nTotal Records — every report ends with a record count');
+
+const REPORT_IDS = ['daily-sales', 'pending-orders', 'bank-reconciliation', 'expenses',
+  'returning-customers', 'cash-box-summary', 'bank-transfer-tracking'];
+
+test('each report ends with "Total Records" in its last column', () => {
+  for (const id of REPORT_IDS) {
+    const def = require(`../definitions/${id}.json`);
+    const footer = [].concat(def.footer);
+    const last = footer[footer.length - 1];
+    assert.strictEqual(last.label, 'Total Records', id);
+    assert.strictEqual(last.column, def.columns[def.columns.length - 1].key, id);
+    assert.strictEqual(last.fn, 'count', id);
+  }
+});
+
+test('Daily Sales counts orders, not item lines, and leaves cancelled ones out', () => {
+  const withCancelled = [
+    ...rawRows,
+    { ...rawRows[0], orderId: 'o4', orderNo: 4, status: 'cancelled' },
+    { ...rawRows[1], orderId: 'o4', orderNo: 4, status: 'cancelled' },
+  ];
+  const { rows, spansByRow } = groupRows(withCancelled.map((r) => ({ ...r })), dailyDef, TZ);
+  const envelope = buildEnvelope({ definition: dailyDef, rows, spansByRow, params: {}, timezone: TZ,
+    generatedAt: '2026-03-03T00:00:00.000Z' });
+  // The cancelled order is still listed in the table...
+  assert.ok(envelope.rows.some((r) => r.values.status === 'cancelled'));
+  // ...but not counted: o1, o2, o3.
+  const records = envelope.footer.find((f) => f.label === 'Total Records');
+  assert.strictEqual(records.value, 3);
+  assert.strictEqual(client.format.formatFooter(records, 'display'), '3');
+});
+
+test('Pending Orders counts orders, flat reports count rows', () => {
+  const pending = envelopeFor(pendingDef).footer.find((f) => f.label === 'Total Records');
+  assert.strictEqual(pending.value, 3);
+  assert.strictEqual(pending.suffix, undefined); // no " kg"
+  const cash = cashEnvelope().footer.find((f) => f.label === 'Total Records');
+  assert.strictEqual(cash.value, cashRows.length);
+});
+
+test('Excel gets the record count as a whole number', () => {
+  const matrix = client.rows.excelMatrix(cashEnvelope());
+  const last = matrix[matrix.length - 1];
+  assert.strictEqual(last[10], 'Total Records');
+  assert.deepStrictEqual(last[11], { v: 1, t: 'n', z: '#,##0' });
 });
 
 console.log(failures === 0 ? '\nAll CSV parity checks passed.\n' : `\n${failures} check(s) failed.\n`);

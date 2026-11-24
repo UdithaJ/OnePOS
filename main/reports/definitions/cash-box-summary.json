@@ -45,12 +45,15 @@
     { "key": "paymentReceived", "label": "Payment Received", "type": "number", "align": "right", "format": "grouped", "emptyAs": "-", "decimals": 2 }
   ],
 
-  "footer": {
-    "label": "Total Amount Received",
-    "column": "paymentReceived",
-    "fn": "sum",
-    "of": "paymentReceived",
-    "format": "grouped",
-    "decimals": 2
-  }
+  "footer": [
+    {
+      "label": "Total Amount Received",
+      "column": "paymentReceived",
+      "fn": "sum",
+      "of": "paymentReceived",
+      "format": "grouped",
+      "decimals": 2
+    },
+    { "label": "Total Records", "column": "paymentReceived", "fn": "count", "format": "grouped", "decimals": 0 }
+  ]
 }

@@ -59,12 +59,15 @@
     }
   ],
 
-  "footer": {
-    "label": "Total Expenses for the Given Period",
-    "column": "amount",
-    "fn": "sum",
-    "of": "amount",
-    "format": "grouped",
-    "decimals": 2
-  }
+  "footer": [
+    {
+      "label": "Total Expenses for the Given Period",
+      "column": "amount",
+      "fn": "sum",
+      "of": "amount",
+      "format": "grouped",
+      "decimals": 2
+    },
+    { "label": "Total Records", "column": "amount", "fn": "count", "format": "grouped", "decimals": 0 }
+  ]
 }

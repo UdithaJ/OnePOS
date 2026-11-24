@@ -41,12 +41,15 @@
     { "key": "bankTransferAmount", "label": "Bank Transfer Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 }
   ],
 
-  "footer": {
-    "label": "Total Amount Received",
-    "column": "bankTransferAmount",
-    "fn": "sum",
-    "of": "bankTransferAmount",
-    "format": "grouped",
-    "decimals": 2
-  }
+  "footer": [
+    {
+      "label": "Total Amount Received",
+      "column": "bankTransferAmount",
+      "fn": "sum",
+      "of": "bankTransferAmount",
+      "format": "grouped",
+      "decimals": 2
+    },
+    { "label": "Total Records", "column": "bankTransferAmount", "fn": "count", "format": "grouped", "decimals": 0 }
+  ]
 }

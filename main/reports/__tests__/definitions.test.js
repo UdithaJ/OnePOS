@@ -320,5 +320,18 @@ test('an unknown report id is a 404', () => {
   }
 });
 
+test('a footer "exclude" must map fields to lists of values', () => {
+  const { validateDefinition } = require('../engine/validateDefinition.js');
+  const base = JSON.parse(JSON.stringify(getDefinition('daily-sales')));
+  const withExclude = (exclude) => {
+    const def = JSON.parse(JSON.stringify(base));
+    def.footer[def.footer.length - 1].exclude = exclude;
+    return def;
+  };
+  validateDefinition(withExclude({ status: ['cancelled'] }), 'test');
+  assert.throws(() => validateDefinition(withExclude({ status: 'cancelled' }), 'test'), /exclude/);
+  assert.throws(() => validateDefinition(withExclude(['cancelled']), 'test'), /exclude/);
+});
+
 console.log(failures === 0 ? '\nAll definition checks passed.\n' : `\n${failures} check(s) failed.\n`);
 process.exit(failures === 0 ? 0 : 1);
