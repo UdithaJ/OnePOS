@@ -112,6 +112,35 @@ function expectAllowed(from, to, role, context) {
   // The table is data now, so these cover a table that differs from the shipped
   // one — which is the whole point of storing it.
 
+  await test('an order with payments cannot be cancelled, even by an admin', async () => {
+    for (const from of ['todo', 'done']) {
+      const err = expectBlocked(from, 'cancelled', 'admin', { paymentStatus: 'partial', paidAmount: 200 }, 422);
+      assert.match(err.message, /payments cannot be cancelled/i);
+    }
+    expectBlocked('todo', 'cancelled', 'sysadmin', { paymentStatus: 'paid', paidAmount: 1000 }, 422);
+  });
+
+  await test('an order without payments can still be cancelled by an admin', async () => {
+    expectAllowed('todo', 'cancelled', 'admin', { paymentStatus: 'unpaid', paidAmount: 0 });
+    expectAllowed('done', 'cancelled', 'admin', { paymentStatus: 'unpaid', paidAmount: 0 });
+  });
+
+  await test('a stored table cannot drop the no-payments rule for cancelling', async () => {
+    const permissive = { todo: { cancelled: {} } };
+    const { allowed, error } = wf.canTransition(permissive, 'todo', 'cancelled', 'cashier', { paidAmount: 50 });
+    assert.strictEqual(allowed, false);
+    assert.strictEqual(error.status, 422);
+  });
+
+  await test('the order form is told why Cancelled is unavailable', async () => {
+    const byValue = Object.fromEntries(
+      wf.describeTargets(T, 'todo', 'admin', { paymentStatus: 'partial', paidAmount: 200 }).map(o => [o.value, o]),
+    );
+    assert.strictEqual(byValue.cancelled.allowed, false);
+    assert.match(byValue.cancelled.reason, /payments cannot be cancelled/i);
+    assert.strictEqual(byValue.done.allowed, true);
+  });
+
   await test('a stored table may open a transition the shipped rules restrict', async () => {
     const permissive = { todo: { cancelled: {} } };
     const { allowed } = wf.canTransition(permissive, 'todo', 'cancelled', 'cashier', PAID);
@@ -234,6 +263,17 @@ function expectAllowed(from, to, role, context) {
     await orderService.updateOrder('order1', { status: 'cancelled', actingUserId: 'admin1' });
     assert.strictEqual(updateCalls.length, 1);
     assert.strictEqual(updateCalls[0].data.status, 'cancelled');
+  });
+
+  await test('an admin cancelling an order that has payments is rejected, nothing written', async () => {
+    reset();
+    paymentRows = [{ amount: 200 }];
+    const err = await expectRejected(
+      () => orderService.updateOrder('order1', { status: 'cancelled', actingUserId: 'admin1' }),
+      422,
+    );
+    assert.match(err.message, /payments cannot be cancelled/i);
+    assert.strictEqual(updateCalls.length, 0, 'the order must not have been updated');
   });
 
   await test('the acting user id is never written onto the order', async () => {

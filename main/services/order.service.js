@@ -324,15 +324,17 @@ async function resolveActingRole(actingUserId) {
 async function getAllowedTransitions(orderId, actingUserId) {
   const order = await Order.findById(orderId);
   if (!order) throw new Error('Order not found');
-  const [role, table] = await Promise.all([
+  const [role, table, payments] = await Promise.all([
     resolveActingRole(actingUserId),
     loadOrderTransitions(),
+    Payment.find({ orderId }),
   ]);
   return {
     current: order.status,
     paymentStatus: order.paymentStatus,
     statuses: orderWorkflow.describeTargets(table, order.status, role, {
       paymentStatus: order.paymentStatus,
+      paidAmount: payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
     }),
   };
 }
@@ -447,7 +449,7 @@ async function updateOrder(id, updateData) {
       resolveActingRole(actingUserId),
       loadOrderTransitions(),
     ]);
-    orderWorkflow.assertTransition(table, order.status, updateData.status, role, { paymentStatus });
+    orderWorkflow.assertTransition(table, order.status, updateData.status, role, { paymentStatus, paidAmount: paid });
   }
 
   // --- phase 2: commit ------------------------------------------------------
