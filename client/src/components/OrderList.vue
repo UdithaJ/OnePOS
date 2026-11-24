@@ -1082,31 +1082,40 @@ import type { CustomerPayload } from '@/services/customerApiService'
 
 
 import { getAllCategories } from '@/services/categoryApiService'
-async function loadCustomersAndOrders() {
+// What the order form needs: customers, categories (names and prices only)
+// and settings. Separate from the orders page so the New Order form can open
+// without waiting for the list behind it.
+async function loadFormData() {
+  const [customerData, categoryData, settings] = await Promise.all([
+    getAllCustomers(),
+    getAllCategories({ usage: false }),
+    getSystemSettings().catch(() => null)
+  ])
+  if (settings) {
+    dueSoonLeadDays.value = Number(settings.dueSoonLeadDays) || 0
+  }
+  customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: [c.firstName, c.lastName].filter(Boolean).join(' '), value: c._id, mobileNumber: c.mobileNumber, title: c.title }))
+  if (Array.isArray(categoryData)) {
+    categories.value = categoryData.map((cat: any) => ({
+      label: cat.name,
+      value: cat._id,
+      unitPrice: cat.unitPrice,
+      minimumPrice: cat.minimumPrice,
+    }))
+  } else {
+    categories.value = []
+    console.error('Failed to load categories:', categoryData)
+  }
+}
+
+async function loadCustomersAndOrders(formData: Promise<void> = loadFormData()) {
   loading.value = true
   errorMsg.value = ''
   try {
-    const [customerData, orderResult, categoryData, settings] = await Promise.all([
-      getAllCustomers(),
+    const [, orderResult] = await Promise.all([
+      formData,
       getOrders({ page: page.value, limit: itemsPerPage.value, sortBy: sortKey.value, sortOrder: sortOrder.value }),
-      getAllCategories(),
-      getSystemSettings().catch(() => null)
     ])
-    if (settings) {
-      dueSoonLeadDays.value = Number(settings.dueSoonLeadDays) || 0
-    }
-    customers.value = (customerData || []).map((c: CustomerPayload & { _id: string }) => ({ label: [c.firstName, c.lastName].filter(Boolean).join(' '), value: c._id, mobileNumber: c.mobileNumber, title: c.title }))
-    if (Array.isArray(categoryData)) {
-      categories.value = categoryData.map((cat: any) => ({
-        label: cat.name,
-        value: cat._id,
-        unitPrice: cat.unitPrice,
-        minimumPrice: cat.minimumPrice,
-      }))
-    } else {
-      categories.value = []
-      console.error('Failed to load categories:', categoryData)
-    }
     console.log('[OrderList] orderResult:', orderResult)
     totalOrders.value = orderResult.total
     setOrdersFromData(orderResult.orders)
@@ -1327,13 +1336,22 @@ function handleTableOptions(options: any) {
 onMounted(async () => {
   // Read the flag before the replace below clears it — route.query is reactive.
   const openNew = route.query.new === '1'
-  await loadCustomersAndOrders()
-  if (!openNew) return
+  const formData = loadFormData()
+  const pageLoad = loadCustomersAndOrders(formData)
+  if (!openNew) return pageLoad
   // Drop the flag so a refresh or a back-navigation does not reopen the modal.
   router.replace({ name: 'OrderList' })
-  // Goes through the same entry point as the "+ New order" button, so the
-  // shortcut still gets the active-cash-box-session check.
-  await handleNewOrderClick()
+  // The form opens once the cash box check and the form's own data are in;
+  // the orders page keeps loading behind it. The check runs alongside, not
+  // after, the data load. A data-load failure is shown by the page load.
+  const session = getActiveCashBoxSession()
+  try {
+    await formData
+  } catch {
+    session.catch(() => {})
+    return
+  }
+  await openNewOrder(await session)
 })
 
 const { form, isValid } = useDynamicForm({ fields: [] })
@@ -1991,7 +2009,11 @@ function onNewCustomerSaved(saved: any) {
 }
 
 async function handleNewOrderClick() {
-  const activeSession = await getActiveCashBoxSession();
+  await openNewOrder(await getActiveCashBoxSession());
+}
+
+// The one way into a new order: refuses without an open cash box session.
+async function openNewOrder(activeSession: unknown) {
   if (!activeSession) {
     showToast('No active cash box session. Please open one first.', 'warning');
     return;

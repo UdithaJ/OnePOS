@@ -29,7 +29,10 @@ const cashBoxSessionSchema = new mongoose.Schema({
     type: String,
     enum: ['open', 'closed'],
     default: 'open',
-    required: true
+    required: true,
+    // The open session is looked up on most screens; one session is added per
+    // business day, so without the index the lookup reads every one of them.
+    index: true
   }
 });
 
