@@ -403,6 +403,25 @@ test('Daily Sales counts orders, not item lines, and leaves cancelled ones out',
   assert.strictEqual(client.format.formatFooter(records, 'display'), '3');
 });
 
+test('Daily Sales money totals leave cancelled orders out too', () => {
+  // o4 is cancelled, created on 01/03 alongside o1 and o2.
+  const withCancelled = [
+    ...rawRows,
+    { ...rawRows[0], orderId: 'o4', orderNo: 4, status: 'cancelled', totalAmount: 5000, discount: 0, netAmount: 5000 },
+  ];
+  const { rows, spansByRow } = groupRows(withCancelled.map((r) => ({ ...r })), dailyDef, TZ);
+  const envelope = buildEnvelope({ definition: dailyDef, rows, spansByRow, params: {}, timezone: TZ,
+    generatedAt: '2026-03-03T00:00:00.000Z' });
+  // The cancelled order is still listed, with its own net amount...
+  const cancelledRow = envelope.rows.find((r) => r.values.status === 'cancelled');
+  assert.strictEqual(cancelledRow.values.netAmount, 5000);
+  // ...but neither the day's total nor the period total includes it.
+  const firstDay = envelope.rows.find((r) => r.values.dateTotalAmount !== null && r.values.dateTotalAmount !== undefined);
+  assert.strictEqual(firstDay.values.dateTotalAmount, 2800 + 400); // o1 + o2
+  const total = envelope.footer.find((f) => f.label === 'Total for the given period');
+  assert.strictEqual(total.value, 2800 + 400 + 950); // o1 + o2 + o3
+});
+
 test('Pending Orders counts orders, flat reports count rows', () => {
   const pending = envelopeFor(pendingDef).footer.find((f) => f.label === 'Total Records');
   assert.strictEqual(pending.value, 3);

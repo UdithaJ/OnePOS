@@ -38,7 +38,7 @@
       "by": "createdDate",
       "granularity": "day",
       "aggregates": [
-        { "key": "dateTotalAmount", "fn": "sum", "of": "netAmount", "distinctBy": "order" }
+        { "key": "dateTotalAmount", "fn": "sum", "of": "netAmount", "distinctBy": "order", "exclude": { "status": ["cancelled"] } }
       ]
     },
     { "name": "order", "by": "orderId" }
@@ -67,6 +67,7 @@
       "fn": "sum",
       "of": "netAmount",
       "distinctBy": "order",
+      "exclude": { "status": ["cancelled"] },
       "format": "grouped",
       "decimals": 2
     },
