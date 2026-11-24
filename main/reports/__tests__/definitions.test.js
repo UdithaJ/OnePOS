@@ -195,6 +195,15 @@ test('cash box summary also lists cash inflows from expenses', () => {
   assert.deepStrictEqual(inflowKeys, paymentKeys);
 });
 
+test('cash box summary shows Remarks next to Payment Method, from the inflow', () => {
+  const keys = getDefinition('cash-box-summary').columns.map((c) => c.key);
+  assert.strictEqual(keys[keys.indexOf('paymentMethod') + 1], 'remarks');
+  const { pipeline } = cashPipeline('cash-box-summary', {});
+  const inflowProject = inflowUnion(pipeline).pipeline.find((s) => s.$project).$project;
+  assert.deepStrictEqual(inflowProject.remarks, { $ifNull: ['$remarks', null] });
+  assert.deepStrictEqual(pipeline.find((s) => s.$project).$project.remarks, { $literal: null });
+});
+
 test('cash box summary inflows follow the business day in business mode', () => {
   const { values, pipeline } = cashPipeline('cash-box-summary', { dateBasis: 'business' });
   const union = inflowUnion(pipeline);

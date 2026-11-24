@@ -282,7 +282,7 @@ const cashBoxDef = require('../definitions/cash-box-summary.json');
 const cashRows = [
   { entryType: 'Customer Payment', orderNo: 1, createdDate: '2026-03-01T04:00:00.000Z', paymentDate: '2026-03-02T04:00:00.000Z', customerName: 'A',
     totalAmount: 1500.5, discount: 0, orderAmountAfterDiscount: 1500.5, dueAmount: 0,
-    paymentMethod: 'cash', paymentReceived: 1500.5 },
+    paymentMethod: 'cash', remarks: null, paymentReceived: 1500.5 },
 ];
 
 function cashEnvelope() {
@@ -305,8 +305,8 @@ test('the table and PDF show 1,500.50; CSV writes 1500.50', () => {
 test('the footer total matches its column on screen, in PDF and in CSV', () => {
   const envelope = cashEnvelope();
   assert.strictEqual(client.format.formatFooter(envelope.footer[0], 'display'), '1,500.50');
-  assert.strictEqual(client.rows.footerRows(envelope, 'pdf')[0][10], '1,500.50');
-  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][10], '1500.50');
+  assert.strictEqual(client.rows.footerRows(envelope, 'pdf')[0][11], '1,500.50');
+  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][11], '1500.50');
 });
 
 test('a zero discount still exports as "-"', () => {
@@ -317,14 +317,14 @@ test('a zero discount still exports as "-"', () => {
 test('Excel receives real numbers formatted as #,##0.00, footer included', () => {
   const matrix = client.rows.excelMatrix(cashEnvelope());
   assert.deepStrictEqual(matrix[1][5], { v: 1500.5, t: 'n', z: '#,##0.00' });
-  assert.deepStrictEqual(matrix[2][10], { v: 1500.5, t: 'n', z: '#,##0.00' });
+  assert.deepStrictEqual(matrix[2][11], { v: 1500.5, t: 'n', z: '#,##0.00' });
   assert.strictEqual(matrix[1][6], '-');
 });
 
 test('a cash inflow row shows its type and "-" for the order columns', () => {
   const inflow = { entryType: 'Owner Capital', orderNo: null, createdDate: null, paymentDate: '2026-03-02T05:00:00.000Z',
     customerName: null, totalAmount: null, discount: null, orderAmountAfterDiscount: null, dueAmount: null,
-    paymentMethod: 'cash', paymentReceived: 200 };
+    paymentMethod: 'cash', remarks: 'Bill 0457', paymentReceived: 200 };
   const { rows, spansByRow } = groupRows([...cashRows, inflow].map((r) => ({ ...r })), cashBoxDef, TZ);
   const envelope = buildEnvelope({
     definition: cashBoxDef, rows, spansByRow, params: {}, timezone: TZ,
@@ -335,8 +335,13 @@ test('a cash inflow row shows its type and "-" for the order columns', () => {
   assert.strictEqual(matrix[1][0], 'Customer Payment');
   assert.deepStrictEqual(matrix[2].slice(0, 2), ['Owner Capital', '-']);
   assert.deepStrictEqual(matrix[2].slice(4, 9), ['-', '-', '-', '-', '-']);
-  assert.strictEqual(matrix[2][10], '200.00');
-  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][10], '1700.50');
+  // Remarks sits right after Payment Method; payments have none.
+  assert.strictEqual(matrix[0][9], 'Payment Method');
+  assert.strictEqual(matrix[0][10], 'Remarks');
+  assert.strictEqual(matrix[1][10], '-');
+  assert.strictEqual(matrix[2][10], 'Bill 0457');
+  assert.strictEqual(matrix[2][11], '200.00');
+  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][11], '1700.50');
 });
 
 test('Excel weights are real numbers formatted as 0.00', () => {

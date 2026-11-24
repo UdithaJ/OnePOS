@@ -16,7 +16,7 @@
             :items="filteredCategories"
             item-title="displayName"
             item-value="_id"
-            :label="flowType === 'inflow' ? 'Inflow Category' : 'Expense Category'"
+            :label="flowType === 'inflow' ? 'Inflow Category *' : 'Expense Category *'"
             :rules="[(v) => !!v || 'Category is required']"
             :loading="loadingCategories"
             required
@@ -24,8 +24,19 @@
             class="mb-3"
           />
           <v-text-field
+            v-if="flowType === 'inflow'"
+            v-model="remarks"
+            label="Remarks *"
+            placeholder="Bill number or remarks"
+            persistent-placeholder
+            :rules="[(v) => !!(v && v.trim()) || 'Bill number or Remarks required']"
+            required
+            variant="outlined"
+            class="mb-3"
+          />
+          <v-text-field
             v-model.number="amount"
-            label="Amount"
+            label="Amount *"
             type="number"
             min="0"
             step="0.01"
@@ -87,6 +98,7 @@ const categoriesLoaded = ref(false)
 
 const expenseCategoryId = ref<string | null>(null)
 const amount = ref<number | null>(null)
+const remarks = ref('')
 const isValid = ref(false)
 const saving = ref(false)
 const formRef = ref<any>(null)
@@ -112,6 +124,7 @@ async function loadCategories() {
 function resetForm() {
   expenseCategoryId.value = null
   amount.value = null
+  remarks.value = ''
   formRef.value?.resetValidation?.()
 }
 
@@ -137,6 +150,8 @@ watch(
 
 async function onSave() {
   if (!expenseCategoryId.value || amount.value === null) return
+  const isInflow = effectiveFlowType.value === 'inflow'
+  if (isInflow && !remarks.value.trim()) return
   const user = getUser()
   if (!user?._id) {
     showToast('User not authenticated', 'error')
@@ -153,7 +168,8 @@ async function onSave() {
       amount: Number(amount.value),
       userId: user._id,
       sessionId: props.sessionId,
-      flowType: effectiveFlowType.value
+      flowType: effectiveFlowType.value,
+      ...(isInflow ? { remarks: remarks.value.trim() } : {})
     })
     showToast(effectiveFlowType.value === 'inflow' ? 'Cash inflow recorded' : 'Expense recorded', 'success')
     emit('saved')
