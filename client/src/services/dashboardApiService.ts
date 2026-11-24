@@ -2,10 +2,13 @@ import axios from 'axios'
 import { localToday, localDayStartISO, localDayEndISO } from '@/utils/reportDate'
 
 export interface DashboardSummary {
-  doneCount: number
+  completedUnpaidCount: number
+  completedUnpaidDue: number
   ordersTodayCount: number
+  ordersTodayAmount: number
   pendingCount: number
   pendingWeightKg: number
+  pendingDue: number
   todayWeightByCategory: { category: string; weightKg: number }[]
 }
 
