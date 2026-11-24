@@ -99,6 +99,15 @@ function assertDeliveryDateNotPast(value) {
   }
 }
 
+// The quick search finds one order by its exact number: "2" is order 2, not
+// 2, 12, 21 and 22. The list shows numbers padded ("0002"), so leading zeros
+// are ignored. Anything that is not a whole number matches no order.
+function orderNoSearchFilter(search) {
+  const text = String(search ?? '').trim();
+  if (!text) return {};
+  return /^\d+$/.test(text) ? { orderNo: Number(text) } : { orderNo: { $in: [] } };
+}
+
 async function createOrder(orderData) {
   assertDeliveryDateNotPast(orderData.deliveryDate);
 
@@ -215,14 +224,9 @@ async function getOrdersPaginated({
     if (createdDateTo) filter.createdDate.$lte = new Date(createdDateTo)
   }
 
-  // Quick search matches the order number only (partial, case-insensitive).
+  // Quick search matches the order number only.
   // Customer name / phone lookup is handled separately via the customerID filter.
-  if (search && search.trim()) {
-    const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    filter.$expr = {
-      $regexMatch: { input: { $toString: '$orderNo' }, regex: escaped, options: 'i' }
-    }
-  }
+  Object.assign(filter, orderNoSearchFilter(search))
 
   // Customer sort — lookup customer name from the customers collection
   if (field === 'customer') {
@@ -508,6 +512,7 @@ module.exports = {
   toCalendarDay,
   todayCalendarDay,
   assertDeliveryDateNotPast,
+  orderNoSearchFilter,
   getAllowedTransitions,
   getOrderStatuses,
   createOrder,
