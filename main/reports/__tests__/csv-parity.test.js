@@ -344,6 +344,24 @@ test('a cash inflow row shows its type and "-" for the order columns', () => {
   assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][11], '1700.50');
 });
 
+test('CSV keeps typed text from running as a formula; PDF shows it as typed', () => {
+  const inflow = { entryType: 'Owner Capital', orderNo: null, createdDate: null, paymentDate: '2026-03-02T05:00:00.000Z',
+    customerName: '@Shop', totalAmount: null, discount: null, orderAmountAfterDiscount: null, dueAmount: null,
+    paymentMethod: 'cash', remarks: '=HYPERLINK("http://x","y")', paymentReceived: 200 };
+  const { rows, spansByRow } = groupRows([inflow], cashBoxDef, TZ);
+  const envelope = buildEnvelope({
+    definition: cashBoxDef, rows, spansByRow, params: {}, timezone: TZ,
+    generatedAt: '2026-03-03T00:00:00.000Z',
+  });
+  const csv = client.rows.exportMatrix(envelope, 'csv');
+  assert.strictEqual(csv[1][10], '\'=HYPERLINK("http://x","y")');
+  assert.strictEqual(csv[1][4], "'@Shop");
+  // The "-" placeholder and numbers are ours, not user text.
+  assert.strictEqual(csv[1][1], '-');
+  assert.strictEqual(csv[1][11], '200.00');
+  assert.strictEqual(client.rows.exportMatrix(envelope, 'pdf')[1][10], '=HYPERLINK("http://x","y")');
+});
+
 test('Excel weights are real numbers formatted as 0.00', () => {
   const matrix = client.rows.excelMatrix(envelopeFor(pendingDef));
   const weightIndex = pendingDef.columns.findIndex((c) => c.key === 'weight');
