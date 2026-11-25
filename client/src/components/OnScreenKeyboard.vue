@@ -133,7 +133,7 @@ const showPad = computed(() => keyboard.layout !== 'text' || !fullKeyboard.value
 
 // --- key layouts -------------------------------------------------------------
 
-const shift = ref(false)
+const shift = ref(true)
 const capsLock = ref(false)
 const symbols = ref(false)
 let lastShiftAt = 0
@@ -233,10 +233,11 @@ const padKeys = computed(() => {
     .map((text, i) => ({ id: `p-${i}`, text }))
 })
 
-// Each field starts on the number pad; on the full keyboard, on letters, lower case.
+// Each field starts on the number pad; on the full keyboard, on letters with
+// shift on, so the first letter typed is a capital.
 watch(() => keyboard.target, () => {
   fullKeyboard.value = false
-  shift.value = false
+  shift.value = true
   capsLock.value = false
   symbols.value = false
 })
