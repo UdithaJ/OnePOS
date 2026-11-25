@@ -1,7 +1,7 @@
 <template>
   <v-dialog v-model="dialogValue" max-width="500" @update:model-value="onDialogToggle">
-    <v-card class="rounded-xl overflow-hidden" style="border: none;">
-      <div class="px-6 py-4 flex items-center justify-between"
+    <v-card class="rounded-xl overflow-hidden pos-dialog" style="border: none;">
+      <div class="pos-dialog__header px-6 py-4 flex items-center justify-between"
         :style="flowType === 'inflow' ? 'background: #0d3d38;' : 'background: #0d3d38;'">
         <span class="text-white text-base font-semibold">
           {{ flowType === 'inflow' ? 'Add Cash Inflow' : 'Add Expense' }}
@@ -9,7 +9,7 @@
         <v-btn icon="mdi-close" size="small" variant="text"
           style="color: rgba(255,255,255,0.8);" @click="close" />
       </div>
-      <div class="bg-white px-6 pt-6 pb-4">
+      <div class="pos-dialog__body px-6 pt-6 pb-4">
         <v-form ref="formRef" v-model="isValid">
           <v-select
             v-model="expenseCategoryId"
@@ -48,20 +48,20 @@
             variant="outlined"
           />
         </v-form>
-        <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
-          <v-btn
-            variant="outlined"
-            :disabled="saving"
-            style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
-            @click="close"
-          >Cancel</v-btn>
-          <v-btn
-            :loading="saving"
-            :disabled="!isValid || saving"
-            style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-            @click="onSave"
-          >Save</v-btn>
-        </div>
+      </div>
+      <div class="pos-dialog__actions">
+        <v-btn
+          variant="outlined"
+          :disabled="saving"
+          style="border-color: #d1d5db; color: #6b7280; text-transform: none;"
+          @click="close"
+        >Cancel</v-btn>
+        <v-btn
+          :loading="saving"
+          :disabled="!isValid || saving"
+          style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
+          @click="onSave"
+        >Save</v-btn>
       </div>
     </v-card>
   </v-dialog>
