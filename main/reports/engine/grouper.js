@@ -91,7 +91,13 @@ function findInstances(keyPaths, depth) {
 // `distinctBy` names another group: the aggregate then counts each instance of
 // that group once, taking the value from its first row. This is what expresses
 // "sum net amount once per order, not once per sub-order line".
-function evaluateAggregate(rows, agg, groupDefs, timezone) {
+//
+// `exclude` leaves out rows whose field holds one of the listed values before
+// anything is counted or summed: { "status": ["cancelled"] } is "every order
+// except the cancelled ones".
+function evaluateAggregate(allRows, agg, groupDefs, timezone) {
+  const rows = agg.exclude ? allRows.filter((row) => !isExcluded(row, agg.exclude)) : allRows;
+
   if (agg.fn === 'count') {
     if (!agg.distinctBy) return rows.length;
     const def = findGroup(groupDefs, agg.distinctBy);
@@ -117,6 +123,10 @@ function evaluateAggregate(rows, agg, groupDefs, timezone) {
     total += numeric(row[agg.of]);
   }
   return stripFloatNoise(total);
+}
+
+function isExcluded(row, exclude) {
+  return Object.entries(exclude).some(([field, values]) => values.includes(row[field]));
 }
 
 /**

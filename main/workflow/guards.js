@@ -16,6 +16,15 @@ const GUARDS = {
     check: (context) => context.paymentStatus === 'paid',
     message: 'An order can only be marked Delivered once its payment status is Paid.',
   },
+  // Money taken on an order stays in the cash box and the reports, and there
+  // is no refund, so an order that has been paid on (even partly) cannot be
+  // cancelled. Reads the amount actually paid, not the payment status, which
+  // is missing on some older orders.
+  requireNoPayments: {
+    describe: 'no payments have been taken',
+    check: (context) => !(Number(context.paidAmount) > 0),
+    message: 'An order with payments cannot be cancelled.',
+  },
 };
 
 const GUARD_NAMES = Object.keys(GUARDS);

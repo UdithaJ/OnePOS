@@ -38,5 +38,9 @@
       "format": "plain"
     },
     { "key": "totalWeight", "label": "Total No of Kilos", "type": "number", "align": "right", "format": "fixed", "decimals": 2 }
+  ],
+
+  "footer": [
+    { "label": "Total Records", "column": "totalWeight", "fn": "count", "format": "grouped", "decimals": 0 }
   ]
 }

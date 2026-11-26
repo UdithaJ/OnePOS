@@ -43,7 +43,7 @@
         </tbody>
 
         <tfoot v-if="envelope.footer.length">
-          <tr v-for="entry in envelope.footer" :key="entry.column" class="grand-total-row">
+          <tr v-for="(entry, i) in envelope.footer" :key="i" class="grand-total-row">
             <!-- labelSpan is derived server-side from the column index; it
                  replaces the colspan that used to be hand-maintained per
                  report. -->

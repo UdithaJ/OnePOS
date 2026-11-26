@@ -10,13 +10,20 @@ exports.updateCategory = async (id, data) => {
   return await Category.findByIdAndUpdate(id, data, { new: true });
 };
 
-exports.getAllCategories = async () => {
-  // Return categories with `inUse` flag when referenced by any OrderCategory
+// Marks each category `inUse` when any order item refers to it (a used
+// category cannot be deleted). One indexed query for the whole list, rather
+// than a count per category.
+async function withUsage(categories) {
+  const used = await OrderCategory.distinct('category', { category: { $in: categories.map((c) => c._id) } });
+  const usedIds = new Set(used.map(String));
+  return categories.map((c) => ({ ...c, inUse: usedIds.has(String(c._id)) }));
+}
+exports.withUsage = withUsage;
+
+// The order form only needs names and prices, so it asks without `inUse`.
+exports.getAllCategories = async ({ usage = true } = {}) => {
   const categories = await Category.find().lean();
-  return await Promise.all(categories.map(async (c) => {
-    const count = await OrderCategory.countDocuments({ category: c._id });
-    return { ...c, inUse: count > 0 };
-  }));
+  return usage ? await withUsage(categories) : categories;
 };
 
 const CATEGORY_SORTABLE = new Set(['name', 'minimumPrice', 'unitPrice']);
@@ -30,10 +37,7 @@ exports.getCategoriesPaginated = async ({ page = 1, limit = 10, sort = 'name', o
     Category.find().sort({ [field]: dir }).skip((p - 1) * l).limit(l).lean(),
     Category.countDocuments(),
   ]);
-  const items = await Promise.all(rows.map(async (c) => {
-    const count = await OrderCategory.countDocuments({ category: c._id });
-    return { ...c, inUse: count > 0 };
-  }));
+  const items = await withUsage(rows);
   return { items, total, page: p, limit: l };
 };
 

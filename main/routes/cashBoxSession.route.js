@@ -11,6 +11,10 @@ router.patch('/:id', cashBoxSessionController.updateCashBoxSession);
 // Get all cash box sessions
 router.get('/', cashBoxSessionController.getAllCashBoxSessions);
 
+// Get the open session (null when none). Before /:id, so "active" is not
+// taken for an id.
+router.get('/active', cashBoxSessionController.getActiveCashBoxSession);
+
 // Get calculated balance for a session
 router.get('/:id/balance', cashBoxSessionController.getCashBoxSessionBalance);
 

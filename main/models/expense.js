@@ -14,6 +14,12 @@ const expenseSchema = new mongoose.Schema({
   date: {
     type: Date,
     default: Date.now
+  },
+  // Bill number or a note. Required for cash inflows (checked when the entry
+  // is created), optional for expenses.
+  remarks: {
+    type: String,
+    trim: true
   }
 });
 

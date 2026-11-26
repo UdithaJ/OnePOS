@@ -133,7 +133,7 @@ const showPad = computed(() => keyboard.layout !== 'text' || !fullKeyboard.value
 
 // --- key layouts -------------------------------------------------------------
 
-const shift = ref(false)
+const shift = ref(true)
 const capsLock = ref(false)
 const symbols = ref(false)
 let lastShiftAt = 0
@@ -233,10 +233,11 @@ const padKeys = computed(() => {
     .map((text, i) => ({ id: `p-${i}`, text }))
 })
 
-// Each field starts on the number pad; on the full keyboard, on letters, lower case.
+// Each field starts on the number pad; on the full keyboard, on letters with
+// shift on, so the first letter typed is a capital.
 watch(() => keyboard.target, () => {
   fullKeyboard.value = false
-  shift.value = false
+  shift.value = true
   capsLock.value = false
   symbols.value = false
 })
@@ -444,10 +445,12 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 $teal: #0f766e;
 $teal-dark: #0d3d38;
-// Both layouts share one key-area height (the full keyboard's five 34px rows
+// Both layouts share one key-area height (the full keyboard's five 40px rows
 // and their gaps), so the toolbar above them — and the 123 | ABC switch in
 // it — does not move when switching.
-$keys-height: 5 * 34px + 4 * 4px;
+$keys-height: 5 * 40px + 4 * 4px;
+// The full keyboard's width; the toolbar matches it.
+$board-width: 900px;
 
 .osk {
   position: fixed;
@@ -469,7 +472,7 @@ $keys-height: 5 * 34px + 4 * 4px;
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: 760px;
+  max-width: $board-width;
   min-height: 34px;
   margin: 0 auto;
   padding: 3px 2px;
@@ -546,11 +549,11 @@ $keys-height: 5 * 34px + 4 * 4px;
   justify-content: center;
   flex: 1 1 0;
   min-width: 0;
-  height: 34px;
+  height: 40px;
   border-radius: 7px;
   background: #fff;
   color: #111827;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 500;
   box-shadow: 0 1px 0 #b8c4c1, 0 1px 2px rgba(0, 0, 0, 0.06);
   cursor: pointer;
@@ -579,7 +582,7 @@ $keys-height: 5 * 34px + 4 * 4px;
   flex-direction: column;
   gap: 4px;
   height: $keys-height;
-  max-width: 760px;
+  max-width: $board-width;
   margin: 0 auto;
 }
 
@@ -597,7 +600,7 @@ $keys-height: 5 * 34px + 4 * 4px;
   display: flex;
   gap: 6px;
   height: $keys-height;
-  max-width: 320px;
+  max-width: 440px;
   margin: 0 auto;
 
   .osk-key { height: auto; }
@@ -609,6 +612,8 @@ $keys-height: 5 * 34px + 4 * 4px;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(4, 1fr);
   gap: 4px;
+
+  .osk-key { font-size: 22px; }
 }
 
 .osk-pad-actions {

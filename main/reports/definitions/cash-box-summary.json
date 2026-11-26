@@ -41,15 +41,19 @@
     { "key": "orderAmountAfterDiscount", "label": "Order Amount After Discount", "type": "number", "align": "right", "format": "grouped", "emptyAs": "-", "decimals": 2 },
     { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "emptyAs": "-", "decimals": 2 },
     { "key": "paymentMethod", "label": "Payment Method", "type": "badge", "valueMap": "paymentMethod", "emptyAs": "-" },
+    { "key": "remarks", "label": "Remarks", "type": "text", "emptyAs": "-" },
     { "key": "paymentReceived", "label": "Payment Received", "type": "number", "align": "right", "format": "grouped", "emptyAs": "-", "decimals": 2 }
   ],
 
-  "footer": {
-    "label": "Total Amount Received",
-    "column": "paymentReceived",
-    "fn": "sum",
-    "of": "paymentReceived",
-    "format": "grouped",
-    "decimals": 2
-  }
+  "footer": [
+    {
+      "label": "Total Amount Received",
+      "column": "paymentReceived",
+      "fn": "sum",
+      "of": "paymentReceived",
+      "format": "grouped",
+      "decimals": 2
+    },
+    { "label": "Total Records", "column": "paymentReceived", "fn": "count", "format": "grouped", "decimals": 0 }
+  ]
 }
