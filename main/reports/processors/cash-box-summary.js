@@ -2,7 +2,8 @@
 // period, plus one row per cash inflow (an expense whose category is an
 // inflow) recorded in it. The Type column tells them apart: payments read
 // "Customer Payment", inflows carry their category name and leave the order
-// and customer columns empty.
+// and customer columns empty. Remarks (bill number or note) are entered on
+// inflows only; payment rows leave them empty.
 //
 // The period is the payment's own date (or, with dateBasis=business, the
 // business day of the drawer session it was taken in), never the order's
@@ -48,6 +49,7 @@ const inflowStages = (period) => [
       orderAmountAfterDiscount: { $literal: null },
       dueAmount: { $literal: null },
       paymentMethod: { $literal: 'cash' },
+      remarks: { $ifNull: ['$remarks', null] },
       paymentReceived: '$amount',
     },
   },
@@ -116,6 +118,7 @@ exports.buildPipeline = ({ params }) => {
         orderAmountAfterDiscount: { $subtract: ['$frozenTotal', '$frozenDiscount'] },
         dueAmount: '$frozenDue',
         paymentMethod: 1,
+        remarks: { $literal: null },
         paymentReceived: '$amount',
       },
     },

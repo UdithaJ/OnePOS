@@ -75,6 +75,12 @@ exports.getAllCashBoxSessions = async () => {
   return await CashBoxSession.find();
 };
 
+// The open session, or null. Oldest first, as the client's old
+// "first open one in the full list" lookup picked.
+exports.getActiveCashBoxSession = async () => {
+  return await CashBoxSession.findOne({ status: 'open' }).sort({ _id: 1 });
+};
+
 exports.getCashBoxSessionById = async (id) => {
   return await CashBoxSession.findById(id);
 };

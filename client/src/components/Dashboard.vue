@@ -14,15 +14,15 @@
 
       <!-- Stat cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-        <!-- Completed Orders -->
+        <!-- Completed-Unpaid: finished orders still owed money -->
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="bg-[#0d3d38] px-5 py-3 flex items-center gap-2">
             <v-icon color="white" size="20">mdi-check-circle-outline</v-icon>
-            <span class="text-white text-sm font-medium">Completed Orders</span>
+            <span class="text-white text-sm font-medium">Completed-Unpaid</span>
           </div>
           <div class="px-5 py-5">
-            <div class="text-3xl font-bold text-gray-900">{{ doneCount }}</div>
-            <div class="text-sm text-gray-500 mt-1">Orders Done</div>
+            <div class="text-3xl font-bold text-gray-900">{{ completedUnpaidCount }} <span class="text-lg font-medium text-gray-500">Order(s)</span></div>
+            <div class="text-sm text-gray-500 mt-1">Rs {{ formatAmount(completedUnpaidDue) }}</div>
           </div>
         </div>
 
@@ -30,30 +30,24 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="px-5 py-3 flex items-center gap-2" style="background: #0f766e;">
             <v-icon color="white" size="20">mdi-cart</v-icon>
-            <span class="text-white text-sm font-medium">Orders</span>
+            <span class="text-white text-sm font-medium">Orders Today</span>
           </div>
           <div class="px-5 py-5">
-            <div class="text-3xl font-bold text-gray-900">{{ ordersTodayCount }}</div>
-            <div class="text-sm text-gray-500 mt-1">Orders Today</div>
+            <div class="text-3xl font-bold text-gray-900">{{ ordersTodayCount }} <span class="text-lg font-medium text-gray-500">Order(s)</span></div>
+            <div class="text-sm text-gray-500 mt-1">Rs {{ formatAmount(ordersTodayAmount) }}</div>
           </div>
         </div>
 
-        <!-- Pending Orders -->
+        <!-- Orders Pending: status To Do -->
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="px-5 py-3 flex items-center gap-2" style="background: #b45309;">
             <v-icon color="white" size="20">mdi-timer-sand</v-icon>
-            <span class="text-white text-sm font-medium">Pending Orders</span>
+            <span class="text-white text-sm font-medium">Orders Pending</span>
           </div>
-          <div class="px-5 py-5 flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <div class="text-3xl font-bold text-gray-900">{{ pendingCount }}</div>
-              <div class="text-sm text-gray-500 mt-1">Orders Pending</div>
-            </div>
-            <div class="w-px h-10 bg-gray-200"></div>
-            <div>
-              <div class="text-3xl font-bold text-gray-900">{{ formatWeight(pendingWeightKg) }} <span class="text-lg font-medium text-gray-500">kg</span></div>
-              <div class="text-sm text-gray-500 mt-1">Pending</div>
-            </div>
+          <div class="px-5 py-5">
+            <div class="text-3xl font-bold text-gray-900">{{ pendingCount }} <span class="text-lg font-medium text-gray-500">Order(s)</span></div>
+            <div class="text-sm text-gray-500 mt-1">{{ formatWeight(pendingWeightKg) }} Kg</div>
+            <div class="text-sm text-gray-500 mt-1">Rs {{ formatAmount(pendingDue) }}</div>
           </div>
         </div>
       </div>
@@ -160,7 +154,7 @@ const bankTransfersCard = ref<InstanceType<typeof BankTransfersCard> | null>(nul
 import DeliveryPending from './DeliveryPending.vue'
 import { useAuth } from '@/composables/useAuth'
 import { getDashboardSummary, getMonthlyOrderCount, type MonthRange } from '@/services/dashboardApiService'
-import { formatWeight } from '@/utils/number'
+import { formatAmount, formatWeight } from '@/utils/number'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler)
 
@@ -170,9 +164,12 @@ const { getUser } = useAuth()
 const isAdmin = computed(() => getUser()?.userRole === 'admin')
 
 const ordersTodayCount = ref(0)
-const doneCount = ref(0)
+const ordersTodayAmount = ref(0)
+const completedUnpaidCount = ref(0)
+const completedUnpaidDue = ref(0)
 const pendingCount = ref(0)
 const pendingWeightKg = ref(0)
+const pendingDue = ref(0)
 const barChartData = ref<any>(null)
 const lineChartData = ref<any>(null)
 
@@ -233,10 +230,13 @@ onMounted(async () => {
 
   const summary = await getDashboardSummary()
 
-  doneCount.value = summary.doneCount
+  completedUnpaidCount.value = summary.completedUnpaidCount
+  completedUnpaidDue.value = summary.completedUnpaidDue
   ordersTodayCount.value = summary.ordersTodayCount
+  ordersTodayAmount.value = summary.ordersTodayAmount
   pendingCount.value = summary.pendingCount
   pendingWeightKg.value = summary.pendingWeightKg
+  pendingDue.value = summary.pendingDue
 
   const byCategory = summary.todayWeightByCategory
   if (byCategory.length) {

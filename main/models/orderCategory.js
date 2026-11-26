@@ -9,7 +9,11 @@ const orderCategorySchema = new mongoose.Schema({
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
-    required: true
+    required: true,
+    // "Is this category used by any order?" is asked when categories are
+    // listed and before one is deleted; without the index each check reads
+    // every order item ever saved.
+    index: true
   },
   weight: {
     type: Number,

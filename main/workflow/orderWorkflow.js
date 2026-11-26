@@ -37,6 +37,13 @@ const ORDER_STATUS_LABELS = {
 
 const { GUARDS } = require('./guards');
 
+// Guards that apply to a target status whatever the stored rules say. The
+// stored rules are seeded once and never updated on an existing database, so a
+// rule that protects the money has to live here to reach every installation.
+const ALWAYS_GUARDS = {
+  cancelled: ['requireNoPayments'],
+};
+
 // The rules as shipped, read from the same file the installer seeds into the
 // database (main/install/001-workflowStateMachine.json). One definition serves
 // both, so the seed and the fallback cannot drift apart.
@@ -93,7 +100,7 @@ function unknownGuard(name, to) {
 // Returns { allowed, error } rather than throwing, so callers that are building
 // a list of options (describeTargets) don't pay for exceptions. `table` is the
 // transition table, `context` carries the order state the guards read, e.g.
-// { paymentStatus }.
+// { paymentStatus, paidAmount }.
 function canTransition(table, from, to, role, context = {}) {
   const f = normalize(from);
   const t = normalize(to);
@@ -121,7 +128,8 @@ function canTransition(table, from, to, role, context = {}) {
     };
   }
 
-  for (const name of rule.guards || []) {
+  const guards = [...new Set([...(rule.guards || []), ...(ALWAYS_GUARDS[t] || [])])];
+  for (const name of guards) {
     const guard = GUARDS[name];
     if (!guard) return { allowed: false, error: unknownGuard(name, t) };
     if (!guard.check(context)) {
@@ -174,4 +182,5 @@ module.exports = {
   assertTransition,
   allowedTargets,
   describeTargets,
+  ALWAYS_GUARDS,
 };

@@ -48,14 +48,17 @@
     { "key": "weight", "label": "Weight (kg)", "type": "number", "align": "right", "format": "fixed", "decimals": 2 }
   ],
 
-  "footer": {
-    "label": "Total Pending Weight",
-    "column": "weight",
-    "fn": "sum",
-    "of": "weight",
-    "format": "fixed",
-    "decimals": 2,
-    "suffix": " kg",
-    "exportSuffix": ""
-  }
+  "footer": [
+    {
+      "label": "Total Pending Weight",
+      "column": "weight",
+      "fn": "sum",
+      "of": "weight",
+      "format": "fixed",
+      "decimals": 2,
+      "suffix": " kg",
+      "exportSuffix": ""
+    },
+    { "label": "Total Records", "column": "weight", "fn": "count", "distinctBy": "order", "format": "grouped", "decimals": 0 }
+  ]
 }

@@ -6,6 +6,7 @@ export interface ExpensePayload {
   userId: string
   sessionId: string
   flowType: 'inflow' | 'outflow'
+  remarks?: string
 }
 
 export interface Expense {
@@ -15,6 +16,7 @@ export interface Expense {
   userId: string
   sessionId: string
   date: string
+  remarks?: string
 }
 
 const baseUrl = () => import.meta.env.VITE_API_BASE_URL || ''

@@ -38,7 +38,7 @@
       "by": "createdDate",
       "granularity": "day",
       "aggregates": [
-        { "key": "dateTotalAmount", "fn": "sum", "of": "netAmount", "distinctBy": "order" }
+        { "key": "dateTotalAmount", "fn": "sum", "of": "netAmount", "distinctBy": "order", "exclude": { "status": ["cancelled"] } }
       ]
     },
     { "name": "order", "by": "orderId" }
@@ -60,13 +60,17 @@
     { "key": "dateTotalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2, "span": "date", "emphasis": true }
   ],
 
-  "footer": {
-    "label": "Total for the given period",
-    "column": "dateTotalAmount",
-    "fn": "sum",
-    "of": "netAmount",
-    "distinctBy": "order",
-    "format": "grouped",
-    "decimals": 2
-  }
+  "footer": [
+    {
+      "label": "Total for the given period",
+      "column": "dateTotalAmount",
+      "fn": "sum",
+      "of": "netAmount",
+      "distinctBy": "order",
+      "exclude": { "status": ["cancelled"] },
+      "format": "grouped",
+      "decimals": 2
+    },
+    { "label": "Total Records", "column": "dateTotalAmount", "fn": "count", "distinctBy": "order", "exclude": { "status": ["cancelled"] }, "format": "grouped", "decimals": 0 }
+  ]
 }

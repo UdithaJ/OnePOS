@@ -20,7 +20,7 @@
       "name": "dateBasis",
       "type": "select",
       "label": "Date Basis",
-      "default": "order",
+      "default": "payment",
       "options": [
         { "label": "Order Created Date", "value": "order" },
         { "label": "Payment Date", "value": "payment" },
@@ -36,17 +36,22 @@
     { "key": "createdDate", "label": "Order Created Date", "type": "date" },
     { "key": "bankTransferDate", "label": "Bank Transfer Date", "type": "date", "emptyAs": "-" },
     { "key": "customerName", "label": "Customer", "type": "text" },
-    { "key": "totalAmount", "label": "Order Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
+    { "key": "totalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
+    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "emptyAs": "-", "decimals": 2 },
+    { "key": "orderAmountAfterDiscount", "label": "Order Amount After Discount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
     { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "decimals": 2 },
     { "key": "bankTransferAmount", "label": "Bank Transfer Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 }
   ],
 
-  "footer": {
-    "label": "Total Amount Received",
-    "column": "bankTransferAmount",
-    "fn": "sum",
-    "of": "bankTransferAmount",
-    "format": "grouped",
-    "decimals": 2
-  }
+  "footer": [
+    {
+      "label": "Total Amount Received",
+      "column": "bankTransferAmount",
+      "fn": "sum",
+      "of": "bankTransferAmount",
+      "format": "grouped",
+      "decimals": 2
+    },
+    { "label": "Total Records", "column": "bankTransferAmount", "fn": "count", "format": "grouped", "decimals": 0 }
+  ]
 }

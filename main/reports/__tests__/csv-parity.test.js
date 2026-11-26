@@ -226,6 +226,8 @@ function legacyDailyCSV(rows) {
     DAILY_HEADERS,
     ...legacyDailyFlatRows(rows),
     ['', '', '', '', '', '', '', '', '', '', '', 'Total for the given period', legacyDailyGrandTotal(rows).toFixed(2)],
+    // Added after the migration: orders in the period, cancelled ones left out.
+    ['', '', '', '', '', '', '', '', '', '', '', 'Total Records', '3'],
   ];
   return all.map((r) => r.map(escapeCell).join(',')).join('\r\n');
 }
@@ -259,7 +261,7 @@ test('Due Date is suppressed per date group, matching the table', () => {
   // The old CSV re-printed the due date for every order inside a date, while
   // the old table merged it across the whole date. The engine cannot reproduce
   // both; the table's behaviour wins. See MIGRATION-NOTES.md.
-  const lines = pendingCSV.split('\r\n').slice(1, -1);
+  const lines = pendingCSV.split('\r\n').slice(1, -2); // header and the two footer lines
   const dateCells = lines.map((line) => line.split(',')[0]);
   assert.deepStrictEqual(dateCells, ['01/03/2026', '', '', '', '02/03/2026', '']);
 });
@@ -267,12 +269,12 @@ test('Due Date is suppressed per date group, matching the table', () => {
 test('Order Created Date follows Order No and prints once per order', () => {
   const [header, ...rest] = pendingCSV.split('\r\n');
   assert.strictEqual(header.split(',')[2], 'Order Created Date');
-  const createdCells = rest.slice(0, -1).map((line) => line.split(',')[2]);
+  const createdCells = rest.slice(0, -2).map((line) => line.split(',')[2]);
   assert.deepStrictEqual(createdCells, ['01/03/2026', '', '', '01/03/2026', '02/03/2026', '']);
 });
 
 test('Total Pending Weight has no unit suffix in CSV (table shows " kg")', () => {
-  const footer = pendingCSV.split('\r\n').pop();
+  const footer = pendingCSV.split('\r\n').slice(-2)[0];
   assert.ok(footer.endsWith(',24.00'), `footer was: ${footer}`);
 });
 
@@ -282,7 +284,7 @@ const cashBoxDef = require('../definitions/cash-box-summary.json');
 const cashRows = [
   { entryType: 'Customer Payment', orderNo: 1, createdDate: '2026-03-01T04:00:00.000Z', paymentDate: '2026-03-02T04:00:00.000Z', customerName: 'A',
     totalAmount: 1500.5, discount: 0, orderAmountAfterDiscount: 1500.5, dueAmount: 0,
-    paymentMethod: 'cash', paymentReceived: 1500.5 },
+    paymentMethod: 'cash', remarks: null, paymentReceived: 1500.5 },
 ];
 
 function cashEnvelope() {
@@ -305,8 +307,8 @@ test('the table and PDF show 1,500.50; CSV writes 1500.50', () => {
 test('the footer total matches its column on screen, in PDF and in CSV', () => {
   const envelope = cashEnvelope();
   assert.strictEqual(client.format.formatFooter(envelope.footer[0], 'display'), '1,500.50');
-  assert.strictEqual(client.rows.footerRows(envelope, 'pdf')[0][10], '1,500.50');
-  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][10], '1500.50');
+  assert.strictEqual(client.rows.footerRows(envelope, 'pdf')[0][11], '1,500.50');
+  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][11], '1500.50');
 });
 
 test('a zero discount still exports as "-"', () => {
@@ -317,14 +319,14 @@ test('a zero discount still exports as "-"', () => {
 test('Excel receives real numbers formatted as #,##0.00, footer included', () => {
   const matrix = client.rows.excelMatrix(cashEnvelope());
   assert.deepStrictEqual(matrix[1][5], { v: 1500.5, t: 'n', z: '#,##0.00' });
-  assert.deepStrictEqual(matrix[2][10], { v: 1500.5, t: 'n', z: '#,##0.00' });
+  assert.deepStrictEqual(matrix[2][11], { v: 1500.5, t: 'n', z: '#,##0.00' });
   assert.strictEqual(matrix[1][6], '-');
 });
 
 test('a cash inflow row shows its type and "-" for the order columns', () => {
   const inflow = { entryType: 'Owner Capital', orderNo: null, createdDate: null, paymentDate: '2026-03-02T05:00:00.000Z',
     customerName: null, totalAmount: null, discount: null, orderAmountAfterDiscount: null, dueAmount: null,
-    paymentMethod: 'cash', paymentReceived: 200 };
+    paymentMethod: 'cash', remarks: 'Bill 0457', paymentReceived: 200 };
   const { rows, spansByRow } = groupRows([...cashRows, inflow].map((r) => ({ ...r })), cashBoxDef, TZ);
   const envelope = buildEnvelope({
     definition: cashBoxDef, rows, spansByRow, params: {}, timezone: TZ,
@@ -335,14 +337,104 @@ test('a cash inflow row shows its type and "-" for the order columns', () => {
   assert.strictEqual(matrix[1][0], 'Customer Payment');
   assert.deepStrictEqual(matrix[2].slice(0, 2), ['Owner Capital', '-']);
   assert.deepStrictEqual(matrix[2].slice(4, 9), ['-', '-', '-', '-', '-']);
-  assert.strictEqual(matrix[2][10], '200.00');
-  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][10], '1700.50');
+  // Remarks sits right after Payment Method; payments have none.
+  assert.strictEqual(matrix[0][9], 'Payment Method');
+  assert.strictEqual(matrix[0][10], 'Remarks');
+  assert.strictEqual(matrix[1][10], '-');
+  assert.strictEqual(matrix[2][10], 'Bill 0457');
+  assert.strictEqual(matrix[2][11], '200.00');
+  assert.strictEqual(client.rows.footerRows(envelope, 'csv')[0][11], '1700.50');
+});
+
+test('CSV keeps typed text from running as a formula; PDF shows it as typed', () => {
+  const inflow = { entryType: 'Owner Capital', orderNo: null, createdDate: null, paymentDate: '2026-03-02T05:00:00.000Z',
+    customerName: '@Shop', totalAmount: null, discount: null, orderAmountAfterDiscount: null, dueAmount: null,
+    paymentMethod: 'cash', remarks: '=HYPERLINK("http://x","y")', paymentReceived: 200 };
+  const { rows, spansByRow } = groupRows([inflow], cashBoxDef, TZ);
+  const envelope = buildEnvelope({
+    definition: cashBoxDef, rows, spansByRow, params: {}, timezone: TZ,
+    generatedAt: '2026-03-03T00:00:00.000Z',
+  });
+  const csv = client.rows.exportMatrix(envelope, 'csv');
+  assert.strictEqual(csv[1][10], '\'=HYPERLINK("http://x","y")');
+  assert.strictEqual(csv[1][4], "'@Shop");
+  // The "-" placeholder and numbers are ours, not user text.
+  assert.strictEqual(csv[1][1], '-');
+  assert.strictEqual(csv[1][11], '200.00');
+  assert.strictEqual(client.rows.exportMatrix(envelope, 'pdf')[1][10], '=HYPERLINK("http://x","y")');
 });
 
 test('Excel weights are real numbers formatted as 0.00', () => {
   const matrix = client.rows.excelMatrix(envelopeFor(pendingDef));
   const weightIndex = pendingDef.columns.findIndex((c) => c.key === 'weight');
   assert.deepStrictEqual(matrix[1][weightIndex], { v: 5, t: 'n', z: '0.00' });
+});
+
+console.log('\nTotal Records — every report ends with a record count');
+
+const REPORT_IDS = ['daily-sales', 'pending-orders', 'bank-reconciliation', 'expenses',
+  'returning-customers', 'cash-box-summary', 'bank-transfer-tracking'];
+
+test('each report ends with "Total Records" in its last column', () => {
+  for (const id of REPORT_IDS) {
+    const def = require(`../definitions/${id}.json`);
+    const footer = [].concat(def.footer);
+    const last = footer[footer.length - 1];
+    assert.strictEqual(last.label, 'Total Records', id);
+    assert.strictEqual(last.column, def.columns[def.columns.length - 1].key, id);
+    assert.strictEqual(last.fn, 'count', id);
+  }
+});
+
+test('Daily Sales counts orders, not item lines, and leaves cancelled ones out', () => {
+  const withCancelled = [
+    ...rawRows,
+    { ...rawRows[0], orderId: 'o4', orderNo: 4, status: 'cancelled' },
+    { ...rawRows[1], orderId: 'o4', orderNo: 4, status: 'cancelled' },
+  ];
+  const { rows, spansByRow } = groupRows(withCancelled.map((r) => ({ ...r })), dailyDef, TZ);
+  const envelope = buildEnvelope({ definition: dailyDef, rows, spansByRow, params: {}, timezone: TZ,
+    generatedAt: '2026-03-03T00:00:00.000Z' });
+  // The cancelled order is still listed in the table...
+  assert.ok(envelope.rows.some((r) => r.values.status === 'cancelled'));
+  // ...but not counted: o1, o2, o3.
+  const records = envelope.footer.find((f) => f.label === 'Total Records');
+  assert.strictEqual(records.value, 3);
+  assert.strictEqual(client.format.formatFooter(records, 'display'), '3');
+});
+
+test('Daily Sales money totals leave cancelled orders out too', () => {
+  // o4 is cancelled, created on 01/03 alongside o1 and o2.
+  const withCancelled = [
+    ...rawRows,
+    { ...rawRows[0], orderId: 'o4', orderNo: 4, status: 'cancelled', totalAmount: 5000, discount: 0, netAmount: 5000 },
+  ];
+  const { rows, spansByRow } = groupRows(withCancelled.map((r) => ({ ...r })), dailyDef, TZ);
+  const envelope = buildEnvelope({ definition: dailyDef, rows, spansByRow, params: {}, timezone: TZ,
+    generatedAt: '2026-03-03T00:00:00.000Z' });
+  // The cancelled order is still listed, with its own net amount...
+  const cancelledRow = envelope.rows.find((r) => r.values.status === 'cancelled');
+  assert.strictEqual(cancelledRow.values.netAmount, 5000);
+  // ...but neither the day's total nor the period total includes it.
+  const firstDay = envelope.rows.find((r) => r.values.dateTotalAmount !== null && r.values.dateTotalAmount !== undefined);
+  assert.strictEqual(firstDay.values.dateTotalAmount, 2800 + 400); // o1 + o2
+  const total = envelope.footer.find((f) => f.label === 'Total for the given period');
+  assert.strictEqual(total.value, 2800 + 400 + 950); // o1 + o2 + o3
+});
+
+test('Pending Orders counts orders, flat reports count rows', () => {
+  const pending = envelopeFor(pendingDef).footer.find((f) => f.label === 'Total Records');
+  assert.strictEqual(pending.value, 3);
+  assert.strictEqual(pending.suffix, undefined); // no " kg"
+  const cash = cashEnvelope().footer.find((f) => f.label === 'Total Records');
+  assert.strictEqual(cash.value, cashRows.length);
+});
+
+test('Excel gets the record count as a whole number', () => {
+  const matrix = client.rows.excelMatrix(cashEnvelope());
+  const last = matrix[matrix.length - 1];
+  assert.strictEqual(last[10], 'Total Records');
+  assert.deepStrictEqual(last[11], { v: 1, t: 'n', z: '#,##0' });
 });
 
 console.log(failures === 0 ? '\nAll CSV parity checks passed.\n' : `\n${failures} check(s) failed.\n`);

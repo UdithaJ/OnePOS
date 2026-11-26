@@ -51,6 +51,22 @@ function pendingPipeline() {
         _id: null,
         count: { $sum: 1 },
         weightKg: { $sum: { $sum: '$_subs.weight' } },
+        dueAmount: { $sum: { $ifNull: ['$dueAmount', 0] } },
+      },
+    },
+  ];
+}
+
+// Completed-Unpaid: finished orders still owed money, i.e. status done and
+// payment unpaid or partly paid. The paid ones are the Delivery Pending list.
+function completedUnpaidPipeline() {
+  return [
+    { $match: { status: 'done', paymentStatus: { $in: ['unpaid', 'partial'] } } },
+    {
+      $group: {
+        _id: null,
+        count: { $sum: 1 },
+        dueAmount: { $sum: { $ifNull: ['$dueAmount', 0] } },
       },
     },
   ];
@@ -61,6 +77,23 @@ function pendingPipeline() {
 // the monthly count.
 function todayOrdersMatch({ start, end }) {
   return { status: { $ne: 'cancelled' }, createdDate: { $gte: start, $lte: end } };
+}
+
+// Orders Today: how many, and the sum of their invoice amounts. The invoice
+// amount is the bill's net amount, total less discount, as in Daily Sales.
+function ordersTodayPipeline(today) {
+  return [
+    { $match: todayOrdersMatch(today) },
+    {
+      $group: {
+        _id: null,
+        count: { $sum: 1 },
+        invoiceAmount: {
+          $sum: { $subtract: [{ $ifNull: ['$totalAmount', 0] }, { $ifNull: ['$discount', 0] }] },
+        },
+      },
+    },
+  ];
 }
 
 function weightByCategoryPipeline(today) {
@@ -89,24 +122,28 @@ function weightByCategoryPipeline(today) {
 async function getSummary({ dayStart, dayEnd } = {}) {
   const today = resolveDayWindow(dayStart, dayEnd);
 
-  const [doneCount, ordersTodayCount, pending, byCategory] = await Promise.all([
-    Order.countDocuments({ status: 'done' }),
-    Order.countDocuments(todayOrdersMatch(today)),
+  const [completedUnpaid, ordersToday, pending, byCategory] = await Promise.all([
+    Order.aggregate(completedUnpaidPipeline()),
+    Order.aggregate(ordersTodayPipeline(today)),
     Order.aggregate(pendingPipeline()),
     Order.aggregate(weightByCategoryPipeline(today)),
   ]);
 
-  return shapeSummary({ doneCount, ordersTodayCount, pending, byCategory });
+  return shapeSummary({ completedUnpaid, ordersToday, pending, byCategory });
 }
 
 // Weights are summed as floats, so 2.30 + 5.14 comes back as 7.4399999999999995;
-// strip that noise before they reach the screen (see stripFloatNoise).
-function shapeSummary({ doneCount, ordersTodayCount, pending, byCategory }) {
+// strip that noise before they reach the screen (see stripFloatNoise). Amounts
+// can carry the same noise.
+function shapeSummary({ completedUnpaid, ordersToday, pending, byCategory }) {
   return {
-    doneCount,
-    ordersTodayCount,
+    completedUnpaidCount: completedUnpaid[0]?.count || 0,
+    completedUnpaidDue: stripFloatNoise(completedUnpaid[0]?.dueAmount || 0),
+    ordersTodayCount: ordersToday[0]?.count || 0,
+    ordersTodayAmount: stripFloatNoise(ordersToday[0]?.invoiceAmount || 0),
     pendingCount: pending[0]?.count || 0,
     pendingWeightKg: stripFloatNoise(pending[0]?.weightKg || 0),
+    pendingDue: stripFloatNoise(pending[0]?.dueAmount || 0),
     todayWeightByCategory: byCategory.map(r => ({ category: r._id, weightKg: stripFloatNoise(r.weightKg || 0) })),
   };
 }
@@ -213,8 +250,10 @@ async function getDeliveryPending() {
 
 module.exports = {
   resolveDayWindow,
+  completedUnpaidPipeline,
   pendingPipeline,
   todayOrdersMatch,
+  ordersTodayPipeline,
   weightByCategoryPipeline,
   shapeSummary,
   resolveMonths,

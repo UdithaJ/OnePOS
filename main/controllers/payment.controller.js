@@ -5,12 +5,21 @@ const { createCashLedger } = require('../services/cashLedger.service');
 
 const Order = require('../models/order');
 const { toCents } = require('../utils/money');
+
+// A cancelled order takes no payments.
+const CANCELLED = 'cancelled';
+const CANCELLED_MESSAGE = 'Payments cannot be made on a cancelled order.';
+exports.CANCELLED_MESSAGE = CANCELLED_MESSAGE;
+
 exports.createPayment = async (req, res) => {
   try {
     // Backend validation: prevent overpayment
     const orderId = req.body.orderId;
     const order = await Order.findById(orderId);
     if (!order) return res.status(400).json({ message: 'Order not found' });
+    if (order.status === CANCELLED) {
+      return res.status(400).json({ message: CANCELLED_MESSAGE });
+    }
     const payments = await Payment.find({ orderId });
     const paid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     // Compared in cents, so the due amount shown on screen is always payable —

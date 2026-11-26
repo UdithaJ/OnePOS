@@ -16,8 +16,10 @@ export interface Category {
 
 const baseUrl = () => import.meta.env.VITE_API_BASE_URL || ''
 
-export async function getAllCategories(): Promise<Category[]> {
-  const res = await axios.get(`${baseUrl()}/api/categories`)
+// `usage: false` leaves out `inUse`, which costs a lookup across all order
+// items; screens that only need names and prices should pass it.
+export async function getAllCategories({ usage = true }: { usage?: boolean } = {}): Promise<Category[]> {
+  const res = await axios.get(`${baseUrl()}/api/categories`, usage ? undefined : { params: { usage: false } })
   return res.data
 }
 

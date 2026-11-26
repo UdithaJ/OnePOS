@@ -15,10 +15,11 @@ export interface CashBoxSessionBalance {
   currentAmount: number;
 }
 
+// The open session, or null. Asks the server for that one session rather than
+// downloading every session ever opened.
 export const getActiveCashBoxSession = async () => {
-  // Fetch all sessions and return the open one (if any)
-  const { data } = await axios.get(API_BASE);
-  return data.find((session: any) => session.status === 'open') || null;
+  const { data } = await axios.get(`${API_BASE}/active`);
+  return data || null;
 };
 
 export const createCashBoxSession = async (payload: { openingAmount: number, openedBy: string, openedAt?: string }) => {

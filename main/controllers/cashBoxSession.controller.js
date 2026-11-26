@@ -28,6 +28,14 @@ exports.getAllCashBoxSessions = async (req, res) => {
   }
 };
 
+exports.getActiveCashBoxSession = async (req, res) => {
+  try {
+    res.json(await cashBoxSessionService.getActiveCashBoxSession());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.getCashBoxSessionById = async (req, res) => {
   try {
     const session = await cashBoxSessionService.getCashBoxSessionById(req.params.id);

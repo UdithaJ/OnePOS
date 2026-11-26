@@ -39,8 +39,23 @@ function cellRows<T>(envelope: ReportEnvelope, cell: (value: unknown, column: Re
   )
 }
 
+// Spreadsheet apps run a CSV cell that starts with = + - @ (or a tab / carriage
+// return) as a formula. Free text such as remarks, names and descriptions is
+// typed by users, so in CSV it gets a leading ' to keep it plain text. Numbers
+// and dates are formatted by us and left alone, as is the "-" placeholder.
+const FORMULA_START = /^[=+\-@\t\r]/
+
+export function csvSafeText(value: unknown, formatted: string): string {
+  if (typeof value !== 'string' || formatted !== value) return formatted
+  return FORMULA_START.test(formatted) ? `'${formatted}` : formatted
+}
+
 export function bodyRows(envelope: ReportEnvelope, target: TextTarget): string[][] {
-  return cellRows(envelope, (value, column) => formatCell(value, column, textMode(target)))
+  return cellRows(envelope, (value, column) => {
+    const text = formatCell(value, column, textMode(target))
+    if (target !== 'csv' || column.type === 'number' || column.type === 'date') return text
+    return csvSafeText(value, text)
+  })
 }
 
 function footerCells<T>(envelope: ReportEnvelope, total: (entry: ReportFooterEntry) => T): (T | string)[][] {

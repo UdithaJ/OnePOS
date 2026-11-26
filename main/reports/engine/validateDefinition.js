@@ -95,6 +95,11 @@ function validateAggregate(id, agg, groupNames, where) {
   if (agg.distinctBy && !groupNames.has(agg.distinctBy)) {
     fail(id, `${where} has distinctBy "${agg.distinctBy}" which is not a declared group`);
   }
+  if (agg.exclude !== undefined) {
+    const ok = agg.exclude && typeof agg.exclude === 'object' && !Array.isArray(agg.exclude)
+      && Object.values(agg.exclude).every(Array.isArray);
+    if (!ok) fail(id, `${where} "exclude" must map a field to a list of values`);
+  }
 }
 
 function toArray(value) {

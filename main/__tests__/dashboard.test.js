@@ -19,8 +19,10 @@ function test(name, fn) {
 
 const {
   resolveDayWindow,
+  completedUnpaidPipeline,
   pendingPipeline,
   todayOrdersMatch,
+  ordersTodayPipeline,
   weightByCategoryPipeline,
   shapeSummary,
   resolveMonths,
@@ -61,11 +63,31 @@ test('pending counts todo orders only', () => {
   assert.deepStrictEqual(pendingPipeline()[0], { $match: { status: 'todo' } });
 });
 
+test('pending sums the due amounts of those orders', () => {
+  const group = pendingPipeline().find(stage => stage.$group).$group;
+  assert.deepStrictEqual(group.dueAmount, { $sum: { $ifNull: ['$dueAmount', 0] } });
+});
+
 test("today's orders are those created inside the window, cancelled ones left out", () => {
   const window = { start: new Date('2026-09-26T18:30:00Z'), end: new Date('2026-09-27T18:29:59.999Z') };
   assert.deepStrictEqual(todayOrdersMatch(window), {
     status: { $ne: 'cancelled' },
     createdDate: { $gte: window.start, $lte: window.end },
+  });
+});
+
+test('Completed-Unpaid is done orders that are unpaid or partly paid', () => {
+  assert.deepStrictEqual(completedUnpaidPipeline()[0], {
+    $match: { status: 'done', paymentStatus: { $in: ['unpaid', 'partial'] } },
+  });
+});
+
+test('Orders Today sums invoice amounts (total less discount) of today\'s non-cancelled orders', () => {
+  const window = { start: new Date('2026-09-26T18:30:00Z'), end: new Date('2026-09-27T18:29:59.999Z') };
+  const pipeline = ordersTodayPipeline(window);
+  assert.deepStrictEqual(pipeline[0], { $match: todayOrdersMatch(window) });
+  assert.deepStrictEqual(pipeline[1].$group.invoiceAmount, {
+    $sum: { $subtract: [{ $ifNull: ['$totalAmount', 0] }, { $ifNull: ['$discount', 0] }] },
   });
 });
 
@@ -76,15 +98,20 @@ test("today's weight counts the same orders as Orders Today", () => {
 
 test('summed weights lose float noise but keep their decimals', () => {
   const summary = shapeSummary({
-    doneCount: 1,
-    ordersTodayCount: 2,
-    pending: [{ count: 1, weightKg: 2.3 + 5.14 }], // 7.4399999999999995
+    completedUnpaid: [{ count: 2, dueAmount: 0.1 + 0.2 }],
+    ordersToday: [{ count: 3, invoiceAmount: 1950.1 + 0.2 }],
+    pending: [{ count: 1, weightKg: 2.3 + 5.14, dueAmount: 0.1 + 0.2 }], // 7.4399999999999995
     byCategory: [
       { _id: 'Bed Sheets & Towels', weightKg: 0.1 + 0.2 },
       { _id: 'Curtains', weightKg: 1.125 },
     ],
   });
   assert.strictEqual(summary.pendingWeightKg, 7.44);
+  assert.strictEqual(summary.pendingDue, 0.3);
+  assert.strictEqual(summary.completedUnpaidCount, 2);
+  assert.strictEqual(summary.completedUnpaidDue, 0.3);
+  assert.strictEqual(summary.ordersTodayCount, 3);
+  assert.strictEqual(summary.ordersTodayAmount, 1950.3);
   assert.deepStrictEqual(summary.todayWeightByCategory, [
     { category: 'Bed Sheets & Towels', weightKg: 0.3 },
     { category: 'Curtains', weightKg: 1.125 },
@@ -92,9 +119,14 @@ test('summed weights lose float noise but keep their decimals', () => {
 });
 
 test('no pending orders gives zero counts', () => {
-  const summary = shapeSummary({ doneCount: 0, ordersTodayCount: 0, pending: [], byCategory: [] });
+  const summary = shapeSummary({ completedUnpaid: [], ordersToday: [], pending: [], byCategory: [] });
+  assert.strictEqual(summary.ordersTodayCount, 0);
+  assert.strictEqual(summary.ordersTodayAmount, 0);
+  assert.strictEqual(summary.completedUnpaidCount, 0);
+  assert.strictEqual(summary.completedUnpaidDue, 0);
   assert.strictEqual(summary.pendingCount, 0);
   assert.strictEqual(summary.pendingWeightKg, 0);
+  assert.strictEqual(summary.pendingDue, 0);
 });
 
 test('the monthly chart offers 3, 6 or 12 months and defaults to 12', () => {

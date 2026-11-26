@@ -23,7 +23,8 @@ exports.updateCategory = async (req, res) => {
 
 exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await categoryService.getAllCategories();
+    // ?usage=false skips the `inUse` flag (the order form does not need it).
+    const categories = await categoryService.getAllCategories({ usage: req.query.usage !== 'false' });
     res.json(categories);
   } catch (err) {
     res.status(500).json({ message: err.message });

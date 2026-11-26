@@ -195,6 +195,15 @@ test('cash box summary also lists cash inflows from expenses', () => {
   assert.deepStrictEqual(inflowKeys, paymentKeys);
 });
 
+test('cash box summary shows Remarks next to Payment Method, from the inflow', () => {
+  const keys = getDefinition('cash-box-summary').columns.map((c) => c.key);
+  assert.strictEqual(keys[keys.indexOf('paymentMethod') + 1], 'remarks');
+  const { pipeline } = cashPipeline('cash-box-summary', {});
+  const inflowProject = inflowUnion(pipeline).pipeline.find((s) => s.$project).$project;
+  assert.deepStrictEqual(inflowProject.remarks, { $ifNull: ['$remarks', null] });
+  assert.deepStrictEqual(pipeline.find((s) => s.$project).$project.remarks, { $literal: null });
+});
+
 test('cash box summary inflows follow the business day in business mode', () => {
   const { values, pipeline } = cashPipeline('cash-box-summary', { dateBasis: 'business' });
   const union = inflowUnion(pipeline);
@@ -269,19 +278,38 @@ test('the Expenses type filter hides the same category the pipelines match', () 
   assert.strictEqual(param.optionsFrom.filter.labelNotMatching, BANK_DEPOSIT_PATTERN);
 });
 
-test('bank transfer tracking: order basis (and absent) filters on the order creation date', () => {
-  for (const query of [{ dateBasis: 'order' }, { dateBasis: undefined }]) {
+test('bank transfer tracking: order basis filters on the order creation date', () => {
+  const { values, pipeline } = cashPipeline('bank-transfer-tracking', { dateBasis: 'order' });
+  assert.ok(matches(pipeline).some((m) => JSON.stringify(m['order.createdDate']) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+  assert.ok(!matches(pipeline).some((m) => 'date' in m), 'must not filter on the payment date');
+});
+
+test('bank transfer tracking: payment basis (and absent) filters on the payment date', () => {
+  for (const query of [{ dateBasis: 'payment' }, { dateBasis: undefined }]) {
     const { values, pipeline } = cashPipeline('bank-transfer-tracking', query);
-    assert.ok(matches(pipeline).some((m) => JSON.stringify(m['order.createdDate']) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
-    assert.ok(!matches(pipeline).some((m) => 'date' in m), 'must not filter on the payment date');
+    assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
+    assert.ok(!matches(pipeline).some((m) => 'order.createdDate' in m));
+    assert.ok(!lookupsFrom(pipeline).includes('cashboxsessions'));
   }
 });
 
-test('bank transfer tracking: payment basis filters on the payment date', () => {
-  const { values, pipeline } = cashPipeline('bank-transfer-tracking', { dateBasis: 'payment' });
-  assert.ok(matches(pipeline).some((m) => JSON.stringify(m.date) === JSON.stringify({ $gte: values.fromDate, $lte: values.toDate })));
-  assert.ok(!matches(pipeline).some((m) => 'order.createdDate' in m));
-  assert.ok(!lookupsFrom(pipeline).includes('cashboxsessions'));
+test('bank transfer tracking: the Date Basis dropdown defaults to Payment Date', () => {
+  const param = getDefinition('bank-transfer-tracking').params.find((p) => p.name === 'dateBasis');
+  assert.strictEqual(param.default, 'payment');
+  assert.strictEqual(param.options.find((o) => o.value === param.default).label, 'Payment Date');
+});
+
+test('bank transfer tracking: Total Amount, Discount and Order Amount After Discount, from the payment snapshot', () => {
+  const labels = getDefinition('bank-transfer-tracking').columns.map((c) => c.label);
+  const at = labels.indexOf('Total Amount');
+  assert.deepStrictEqual(labels.slice(at, at + 4), ['Total Amount', 'Discount', 'Order Amount After Discount', 'Due Amount']);
+  assert.ok(!labels.includes('Order Amount'));
+  const { pipeline } = cashPipeline('bank-transfer-tracking', {});
+  const frozen = pipeline.find((s) => s.$addFields).$addFields;
+  assert.deepStrictEqual(frozen.frozenTotal, { $ifNull: ['$orderTotalAmount', '$order.totalAmount'] });
+  assert.deepStrictEqual(frozen.frozenDiscount, { $ifNull: ['$orderDiscount', { $ifNull: ['$order.discount', 0] }] });
+  const project = pipeline.find((s) => s.$project).$project;
+  assert.deepStrictEqual(project.orderAmountAfterDiscount, { $subtract: ['$frozenTotal', '$frozenDiscount'] });
 });
 
 test('bank transfer tracking: business basis filters on the session opening day', () => {
@@ -309,6 +337,19 @@ test('an unknown report id is a 404', () => {
   } catch (err) {
     assert.strictEqual(err.status, 404);
   }
+});
+
+test('a footer "exclude" must map fields to lists of values', () => {
+  const { validateDefinition } = require('../engine/validateDefinition.js');
+  const base = JSON.parse(JSON.stringify(getDefinition('daily-sales')));
+  const withExclude = (exclude) => {
+    const def = JSON.parse(JSON.stringify(base));
+    def.footer[def.footer.length - 1].exclude = exclude;
+    return def;
+  };
+  validateDefinition(withExclude({ status: ['cancelled'] }), 'test');
+  assert.throws(() => validateDefinition(withExclude({ status: 'cancelled' }), 'test'), /exclude/);
+  assert.throws(() => validateDefinition(withExclude(['cancelled']), 'test'), /exclude/);
 });
 
 console.log(failures === 0 ? '\nAll definition checks passed.\n' : `\n${failures} check(s) failed.\n`);
