@@ -7,6 +7,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 // CommonJS module, so its exports arrive as the default import.
 import bootstrap from './bootstrap/index.js';
+import smsWorker from './services/smsWorker.js';
 
 // Routes
 
@@ -92,6 +93,9 @@ mongoose.connect(process.env.MONGO_URI, {
 })
   .then(() => {
     console.log('✅ Connected to MongoDB');
+    // Drains SMS campaigns in the background; picks up any campaign that was
+    // still sending when the app last closed.
+    smsWorker.start();
     // First-run data. Never awaited and never fatal: the application starts
     // regardless, and everything seeded has a working fallback.
     return bootstrap.runBootstrap();

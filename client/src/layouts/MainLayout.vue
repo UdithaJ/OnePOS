@@ -147,6 +147,7 @@ const allMenuItems: MenuItem[] = [
   { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
   { title: 'Orders', to: '/order-list', icon: 'mdi-clipboard-list' },
   { title: 'Customers', to: '/customers', icon: 'mdi-account-group', adminOnly: true },
+  { title: 'Bulk SMS', to: '/bulk-sms', icon: 'mdi-message-text-outline', adminOnly: true },
   {
     title: 'Administration',
     icon: 'mdi-shield-account-outline',
@@ -189,8 +190,11 @@ const menuItems = computed(() => {
   return isAdmin.value ? items : items.filter(item => !item.adminOnly)
 })
 
+// Pages under a menu entry (e.g. /bulk-sms/new) keep that entry highlighted.
+// Dashboard ('/') matches only itself.
 function isActive(to?: string) {
-  return !!to && route.path === to
+  if (!to) return false
+  return route.path === to || (to !== '/' && route.path.startsWith(`${to}/`))
 }
 
 function handleLogout() {

@@ -73,6 +73,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/components/SystemSettings.vue'),
       },
       {
+        path: 'bulk-sms',
+        name: 'BulkSms',
+        meta: ADMIN_ONLY,
+        component: () => import('@/components/sms/SmsCampaignList.vue'),
+      },
+      {
+        path: 'bulk-sms/new',
+        name: 'BulkSmsNew',
+        meta: ADMIN_ONLY,
+        component: () => import('@/components/sms/SmsCampaignNew.vue'),
+      },
+      {
+        path: 'bulk-sms/:id',
+        name: 'BulkSmsCampaign',
+        meta: ADMIN_ONLY,
+        component: () => import('@/components/sms/SmsCampaignDetail.vue'),
+      },
+      {
         // One route serves every report. Which report is rendered comes from
         // the backend definition matching :reportId — adding a definition file
         // adds a working page with no change here.
