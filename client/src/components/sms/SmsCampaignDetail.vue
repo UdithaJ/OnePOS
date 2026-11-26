@@ -229,7 +229,7 @@ import {
 } from '@/services/smsApiService'
 import {
   RECIPIENT_STATUS, COUNT_ORDER, campaignStatus, finished, sendable, formatDuration, formatDateTime,
-} from './smsStatus'
+} from '@/utils/smsCampaign'
 import DeleteCampaignDialog from './DeleteCampaignDialog.vue'
 
 const route = useRoute()

@@ -77,7 +77,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { listCampaigns, getSmsConfig, type SmsCampaign, type SmsConfig } from '@/services/smsApiService'
-import { campaignStatus, finished, sendable, formatDateTime } from './smsStatus'
+import { campaignStatus, finished, sendable, formatDateTime } from '@/utils/smsCampaign'
 import DeleteCampaignDialog from './DeleteCampaignDialog.vue'
 
 const router = useRouter()

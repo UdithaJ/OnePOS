@@ -1,6 +1,6 @@
 import type { CampaignCounts, RecipientStatus, SmsCampaign } from '@/services/smsApiService'
 
-// Labels and colours shared by the Bulk SMS pages.
+// Labels, colours and helpers shared by the Bulk SMS campaign pages.
 
 export const RECIPIENT_STATUS: Record<RecipientStatus, { label: string; color: string; hint: string }> = {
   pending: { label: 'Pending', color: 'grey', hint: 'Waiting to be sent' },

@@ -234,7 +234,7 @@ import { useAuth } from '@/composables/useAuth'
 import { getAllCustomers } from '@/services/customerApiService'
 import { createCampaign, getSmsConfig, sendTestSms, type SmsConfig } from '@/services/smsApiService'
 import { smsInfo, measureText, infoFromMeasure } from '@/utils/smsEncoding'
-import { toNotifyNumber, renderMessage, greetingName, formatDuration } from './smsStatus'
+import { toNotifyNumber, renderMessage, greetingName, formatDuration } from '@/utils/smsCampaign'
 
 interface CustomerRow {
   _id: string
