@@ -36,7 +36,9 @@
     { "key": "createdDate", "label": "Order Created Date", "type": "date" },
     { "key": "bankTransferDate", "label": "Bank Transfer Date", "type": "date", "emptyAs": "-" },
     { "key": "customerName", "label": "Customer", "type": "text" },
-    { "key": "totalAmount", "label": "Order Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
+    { "key": "totalAmount", "label": "Total Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
+    { "key": "discount", "label": "Discount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "emptyAs": "-", "decimals": 2 },
+    { "key": "orderAmountAfterDiscount", "label": "Order Amount After Discount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 },
     { "key": "dueAmount", "label": "Due Amount", "type": "number", "align": "right", "format": "grouped", "zeroAs": "-", "decimals": 2 },
     { "key": "bankTransferAmount", "label": "Bank Transfer Amount", "type": "number", "align": "right", "format": "grouped", "decimals": 2 }
   ],

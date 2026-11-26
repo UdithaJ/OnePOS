@@ -7,7 +7,7 @@
 // - business — the business day of the drawer session the payment was taken
 //   in (see `shared/businessDay.js`).
 //
-// Rows are payment events, so Total Amount and Due Amount come from the
+// Rows are payment events, so Total Amount, Discount and Due Amount come from the
 // snapshot frozen onto the payment, not from the live order — otherwise a later
 // payment or an order edit silently rewrites an already-printed report. See
 // `processors/cash-box-summary.js` for the same treatment.
@@ -56,6 +56,14 @@ exports.buildPipeline = ({ params }) => {
       },
     },
     { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+    // Resolve the frozen figures once; fall back to the live order for payments
+    // taken before the snapshot fields existed.
+    {
+      $addFields: {
+        frozenTotal: { $ifNull: ['$orderTotalAmount', '$order.totalAmount'] },
+        frozenDiscount: { $ifNull: ['$orderDiscount', { $ifNull: ['$order.discount', 0] }] },
+      },
+    },
     {
       $project: {
         _id: 0,
@@ -75,7 +83,9 @@ exports.buildPipeline = ({ params }) => {
             },
           ],
         },
-        totalAmount: { $ifNull: ['$orderTotalAmount', '$order.totalAmount'] },
+        totalAmount: '$frozenTotal',
+        discount: '$frozenDiscount',
+        orderAmountAfterDiscount: { $subtract: ['$frozenTotal', '$frozenDiscount'] },
         dueAmount: { $ifNull: ['$dueAfter', '$order.dueAmount'] },
         bankTransferAmount: '$amount',
       },

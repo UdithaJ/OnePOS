@@ -299,6 +299,19 @@ test('bank transfer tracking: the Date Basis dropdown defaults to Payment Date',
   assert.strictEqual(param.options.find((o) => o.value === param.default).label, 'Payment Date');
 });
 
+test('bank transfer tracking: Total Amount, Discount and Order Amount After Discount, from the payment snapshot', () => {
+  const labels = getDefinition('bank-transfer-tracking').columns.map((c) => c.label);
+  const at = labels.indexOf('Total Amount');
+  assert.deepStrictEqual(labels.slice(at, at + 4), ['Total Amount', 'Discount', 'Order Amount After Discount', 'Due Amount']);
+  assert.ok(!labels.includes('Order Amount'));
+  const { pipeline } = cashPipeline('bank-transfer-tracking', {});
+  const frozen = pipeline.find((s) => s.$addFields).$addFields;
+  assert.deepStrictEqual(frozen.frozenTotal, { $ifNull: ['$orderTotalAmount', '$order.totalAmount'] });
+  assert.deepStrictEqual(frozen.frozenDiscount, { $ifNull: ['$orderDiscount', { $ifNull: ['$order.discount', 0] }] });
+  const project = pipeline.find((s) => s.$project).$project;
+  assert.deepStrictEqual(project.orderAmountAfterDiscount, { $subtract: ['$frozenTotal', '$frozenDiscount'] });
+});
+
 test('bank transfer tracking: business basis filters on the session opening day', () => {
   const { values, pipeline } = cashPipeline('bank-transfer-tracking', { dateBasis: 'business' });
   assert.ok(lookupsFrom(pipeline).includes('cashledgers') && lookupsFrom(pipeline).includes('cashboxsessions'));
