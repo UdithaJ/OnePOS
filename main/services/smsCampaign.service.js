@@ -79,7 +79,8 @@ async function countsFor(campaignIds) {
 function etaSeconds(counts) {
   const remaining = counts.pending + counts.retrying + counts.sending;
   if (!remaining) return 0;
-  const perBatch = smsWorker.CONFIG.batchDelayMs / 1000 + 0.5;
+  // The pause plus Notify.lk's reply and the database steps (~1.2s measured).
+  const perBatch = smsWorker.CONFIG.batchDelayMs / 1000 + 1.2;
   return Math.ceil(remaining / smsWorker.CONFIG.concurrency) * perBatch;
 }
 

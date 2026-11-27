@@ -28,11 +28,17 @@ function positiveInt(value, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+// One SMS at a time. Notify.lk rejects some requests that arrive at the same
+// moment with a misleading "unsupported content" error: in testing, 3 in
+// parallel lost 7-10 of 30 messages, while one at a time sent all 30.
+const DEFAULT_CONCURRENCY = 1;
+const DEFAULT_BATCH_DELAY_MS = 1000;
+
 const CONFIG = {
-  // SMS sent in parallel per batch, and the pause between batches. Notify.lk
-  // publishes no rate limit, so these start conservative (~2-3 SMS/second).
-  concurrency: Math.min(positiveInt(process.env.SMS_CONCURRENCY, 3), 10),
-  batchDelayMs: positiveInt(process.env.SMS_BATCH_DELAY_MS, 1000),
+  // SMS sent in parallel per batch, and the pause between batches.
+  // Set from SMS_CONCURRENCY / SMS_BATCH_DELAY_MS by applyEnvSettings().
+  concurrency: DEFAULT_CONCURRENCY,
+  batchDelayMs: DEFAULT_BATCH_DELAY_MS,
   maxAttempts: 3,
   retryBaseMs: 30 * 1000,
   idleMs: 3000,
@@ -42,6 +48,15 @@ const CONFIG = {
   staleCheckEveryMs: 60 * 1000,
   abandonedDraftMs: 30 * 60 * 1000,
 };
+
+// Reads the speed settings from the environment. Called from start(), not when
+// this file loads: server.js's imports run before it loads .env, so reading at
+// load time would always see the defaults.
+function applyEnvSettings(env = process.env) {
+  CONFIG.concurrency = Math.min(positiveInt(env.SMS_CONCURRENCY, DEFAULT_CONCURRENCY), 10);
+  CONFIG.batchDelayMs = positiveInt(env.SMS_BATCH_DELAY_MS, DEFAULT_BATCH_DELAY_MS);
+  return CONFIG;
+}
 
 const WORKER_ID = `${os.hostname()}:${process.pid}`;
 
@@ -226,8 +241,9 @@ async function loop() {
 function start() {
   if (started) return;
   started = true;
+  applyEnvSettings();
   console.log(`[SMS] Campaign worker started (${CONFIG.concurrency} per batch, ${CONFIG.batchDelayMs}ms between batches)`);
   loop();
 }
 
-module.exports = { start, decideUpdate, removeCampaignData, CONFIG, REMOVE, STALE_REASON };
+module.exports = { start, applyEnvSettings, decideUpdate, removeCampaignData, CONFIG, REMOVE, STALE_REASON };

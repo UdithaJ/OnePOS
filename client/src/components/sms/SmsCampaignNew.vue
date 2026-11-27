@@ -406,7 +406,7 @@ const previewText = computed(() =>
 const estimatedSeconds = computed(() => {
   const cfg = config.value
   if (!cfg || !stats.value.sendable) return 0
-  return Math.ceil(stats.value.sendable / cfg.concurrency) * (cfg.batchDelayMs / 1000 + 0.5)
+  return Math.ceil(stats.value.sendable / cfg.concurrency) * (cfg.batchDelayMs / 1000 + 1.2)
 })
 
 const testNumber = ref('')

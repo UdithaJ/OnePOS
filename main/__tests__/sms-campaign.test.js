@@ -171,6 +171,38 @@ async function test(name, fn) {
     assert.strictEqual(set.reason, 'Invalid number');
   });
 
+  console.log('speed settings');
+
+  await test('settings in .env are used even though .env loads after the worker file', () => {
+    // server.js imports the worker before it loads .env; reproduce that order.
+    const saved = { c: process.env.SMS_CONCURRENCY, d: process.env.SMS_BATCH_DELAY_MS };
+    try {
+      process.env.SMS_CONCURRENCY = '1';
+      process.env.SMS_BATCH_DELAY_MS = '500';
+      smsWorker.applyEnvSettings();
+      assert.strictEqual(smsWorker.CONFIG.concurrency, 1);
+      assert.strictEqual(smsWorker.CONFIG.batchDelayMs, 500);
+    } finally {
+      process.env.SMS_CONCURRENCY = saved.c ?? '';
+      process.env.SMS_BATCH_DELAY_MS = saved.d ?? '';
+      smsWorker.applyEnvSettings();
+    }
+  });
+
+  await test('missing or invalid settings fall back to 1 at a time, 1 second apart', () => {
+    smsWorker.applyEnvSettings({ SMS_CONCURRENCY: 'abc', SMS_BATCH_DELAY_MS: '-5' });
+    assert.strictEqual(smsWorker.CONFIG.concurrency, 1);
+    assert.strictEqual(smsWorker.CONFIG.batchDelayMs, 1000);
+    smsWorker.applyEnvSettings({});
+    assert.strictEqual(smsWorker.CONFIG.concurrency, 1);
+  });
+
+  await test('concurrency is capped at 10', () => {
+    smsWorker.applyEnvSettings({ SMS_CONCURRENCY: '50' });
+    assert.strictEqual(smsWorker.CONFIG.concurrency, 10);
+    smsWorker.applyEnvSettings({});
+  });
+
   if (failures) {
     console.error(`\n${failures} failing`);
     process.exit(1);
