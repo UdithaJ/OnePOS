@@ -1,7 +1,7 @@
 <template>
   <!-- The page fills the screen below the app bar and above the on-screen
-       keyboard (--osk-h while it is open). Each card scrolls on its own, with
-       Save Settings and Send pinned at the bottom. -->
+       keyboard (--osk-h while it is open). The card scrolls on its own, with
+       Save Settings pinned at the bottom. -->
   <div class="settings-page p-6">
     <h2 class="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-3" style="flex: none;">
       <span class="w-1 h-7 bg-[#0f766e] rounded-full inline-block"></span>
@@ -48,107 +48,14 @@
       </v-form>
     </v-card>
 
-    <!-- Bulk SMS -->
-    <v-card class="rounded-xl overflow-hidden pos-dialog" style="border: 1px solid #e5e7eb; flex: 1 1 0; min-width: 0;">
-      <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4">
-        <span class="text-base font-semibold">Bulk SMS</span>
-      </div>
-      <div class="pos-dialog__body px-6 py-6 flex flex-col">
-        <v-textarea
-          v-model="smsMessage"
-          label="Message"
-          placeholder="Type your SMS message here…"
-          :counter="smsMeta.singleMax"
-          rows="3"
-          no-resize
-          variant="outlined"
-          class="mb-2"
-          style="flex: none;"
-          :hint="`${smsMeta.length}/${smsMeta.singleMax} characters`"
-          persistent-hint
-          :error="smsMeta.overLimit"
-          :error-messages="smsMeta.overLimit ? [`Message exceeds one SMS (${smsMeta.singleMax} chars for ${smsMeta.encoding}). Shorten it to send.`] : []"
-        />
-
-        <div class="flex items-center justify-between mb-3" style="flex: none;">
-          <span class="text-sm font-medium text-gray-700">Select Customers</span>
-          <v-text-field
-            v-model="customerSearch"
-            placeholder="Search…"
-            prepend-inner-icon="mdi-magnify"
-            density="compact"
-            variant="outlined"
-            hide-details
-            style="max-width: 220px;"
-          />
-        </div>
-
-        <!-- Takes the space left in the card, scrolling under a fixed header;
-             it shrinks while the keyboard is open but stays visible. -->
-        <v-data-table
-          v-model="selectedCustomers"
-          :items="customers"
-          :headers="customerHeaders"
-          :search="customerSearch"
-          item-value="_id"
-          show-select
-          fixed-header
-          density="compact"
-          class="rounded-lg"
-          style="border: 1px solid #e5e7eb; flex: 1 1 auto; min-height: 160px;"
-        />
-      </div>
-      <div class="pos-dialog__actions" style="justify-content: space-between;">
-        <span class="text-sm text-gray-500">{{ selectedCustomers.length }} customer(s) selected</span>
-        <v-btn
-          :disabled="selectedCustomers.length === 0 || !smsMessage.trim() || smsMeta.overLimit"
-          style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-          @click="confirmDialog = true"
-        >Send</v-btn>
-      </div>
-    </v-card>
     </div>
-
-    <!-- Confirmation dialog -->
-    <v-dialog v-model="confirmDialog" max-width="420">
-      <v-card class="rounded-xl overflow-hidden pos-dialog">
-        <div class="pos-dialog__header bg-[#0d3d38] text-white px-6 py-4">
-          <span class="text-base font-semibold">Send SMS Confirmation</span>
-        </div>
-        <div class="pos-dialog__body px-6 py-5">
-          <p class="text-sm text-gray-600 mb-3">
-            Recipients: <strong>{{ selectedCustomers.length }} customer(s)</strong>
-          </p>
-          <p class="text-sm font-medium text-gray-700 mb-2">Message:</p>
-          <div
-            class="bg-gray-50 rounded-lg p-3 text-sm text-gray-800 whitespace-pre-wrap"
-            style="border: 1px solid #e5e7eb;"
-          >{{ smsMessage }}</div>
-        </div>
-        <div class="pos-dialog__actions">
-          <v-btn
-            variant="outlined"
-            style="text-transform: none;"
-            @click="confirmDialog = false"
-          >Cancel</v-btn>
-          <v-btn
-            :loading="sending"
-            style="background: #0f766e; color: #ffffff; text-transform: none; font-weight: 600;"
-            @click="sendSms"
-          >Send Now</v-btn>
-        </div>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { getSystemSettings, updateSystemSettings } from '@/services/systemSettingsApiService'
-import { getAllCustomers } from '@/services/customerApiService'
-import { sendBulkSms } from '@/services/smsApiService'
-import { smsInfo } from '@/utils/smsEncoding'
 
 const { showToast } = useToast()
 
@@ -184,56 +91,8 @@ async function save() {
   }
 }
 
-// Bulk SMS state
-const customers = ref<any[]>([])
-const selectedCustomers = ref<string[]>([])
-const customerSearch = ref('')
-const smsMessage = ref('')
-const sending = ref(false)
-const confirmDialog = ref(false)
-
-// Encoding-aware character info for the bulk SMS composer.
-const smsMeta = computed(() => smsInfo(smsMessage.value))
-
-const customerHeaders = [
-  { title: 'Name', key: 'fullName', sortable: true },
-  { title: 'Mobile', key: 'mobileNumber', sortable: false },
-  { title: 'City', key: 'city', sortable: true },
-]
-
-async function loadCustomers() {
-  try {
-    const data = await getAllCustomers()
-    customers.value = data.map((c: any) => ({
-      ...c,
-      fullName: [c.firstName, c.lastName].filter(Boolean).join(' '),
-    }))
-  } catch {
-    showToast('Failed to load customers', 'error')
-  }
-}
-
-async function sendSms() {
-  sending.value = true
-  try {
-    const result = await sendBulkSms({
-      message: smsMessage.value,
-      customerIds: selectedCustomers.value,
-    })
-    confirmDialog.value = false
-    showToast(`SMS sent to ${result.sent} customer(s)`, 'success')
-    selectedCustomers.value = []
-    smsMessage.value = ''
-  } catch (err: any) {
-    showToast(err?.response?.data?.message || 'Failed to send SMS', 'error')
-  } finally {
-    sending.value = false
-  }
-}
-
 onMounted(() => {
   load()
-  loadCustomers()
 })
 </script>
 
