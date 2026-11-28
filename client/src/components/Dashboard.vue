@@ -22,7 +22,7 @@
           </div>
           <div class="px-5 py-5">
             <div class="text-3xl font-bold text-gray-900">{{ completedUnpaidCount }} <span class="text-lg font-medium text-gray-500">Order(s)</span></div>
-            <div class="text-sm text-gray-500 mt-1">Rs {{ formatAmount(completedUnpaidDue) }}</div>
+            <div class="text-base font-bold text-black mt-1">Rs {{ formatAmount(completedUnpaidDue) }}</div>
           </div>
         </div>
 
@@ -34,7 +34,7 @@
           </div>
           <div class="px-5 py-5">
             <div class="text-3xl font-bold text-gray-900">{{ ordersTodayCount }} <span class="text-lg font-medium text-gray-500">Order(s)</span></div>
-            <div class="text-sm text-gray-500 mt-1">Rs {{ formatAmount(ordersTodayAmount) }}</div>
+            <div class="text-base font-bold text-black mt-1">Rs {{ formatAmount(ordersTodayAmount) }}</div>
           </div>
         </div>
 
@@ -46,8 +46,8 @@
           </div>
           <div class="px-5 py-5">
             <div class="text-3xl font-bold text-gray-900">{{ pendingCount }} <span class="text-lg font-medium text-gray-500">Order(s)</span></div>
-            <div class="text-sm text-gray-500 mt-1">{{ formatWeight(pendingWeightKg) }} Kg</div>
-            <div class="text-sm text-gray-500 mt-1">Rs {{ formatAmount(pendingDue) }}</div>
+            <div class="text-base font-bold text-black mt-1">{{ formatWeight(pendingWeightKg) }} Kg</div>
+            <div class="text-base font-bold text-black mt-1">Rs {{ formatAmount(pendingDue) }}</div>
           </div>
         </div>
       </div>
