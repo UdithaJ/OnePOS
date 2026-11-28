@@ -11,6 +11,12 @@ const CANCELLED = 'cancelled';
 const CANCELLED_MESSAGE = 'Payments cannot be made on a cancelled order.';
 exports.CANCELLED_MESSAGE = CANCELLED_MESSAGE;
 
+// A full payment or a settlement clears the order, so it must be exactly the
+// due amount; only an advance may be less.
+const EXACT_AMOUNT_TYPES = ['full_payment', 'settlement'];
+const EXACT_AMOUNT_MESSAGE = 'A full payment or settlement must equal the due amount.';
+exports.EXACT_AMOUNT_MESSAGE = EXACT_AMOUNT_MESSAGE;
+
 exports.createPayment = async (req, res) => {
   try {
     // Backend validation: prevent overpayment
@@ -27,6 +33,9 @@ exports.createPayment = async (req, res) => {
     const due = toCents(order.totalAmount - Number(order.discount || 0) - paid);
     if (toCents(req.body.amount) > due) {
       return res.status(400).json({ message: 'Payment exceeds due amount.' });
+    }
+    if (EXACT_AMOUNT_TYPES.includes(req.body.type) && toCents(req.body.amount) !== due) {
+      return res.status(400).json({ message: EXACT_AMOUNT_MESSAGE });
     }
     // A settlement pays off what is left after an earlier payment.
     if (req.body.type === 'settlement' && payments.length === 0) {
