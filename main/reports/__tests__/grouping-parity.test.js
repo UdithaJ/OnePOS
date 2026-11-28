@@ -319,5 +319,14 @@ test('Returning Customers total weight carries no floating-point noise', () => {
   assert.strictEqual(row.totalWeight, 7.44);
 });
 
+test('Returning Customers leaves cancelled orders out of the count and the kilos', () => {
+  const { buildPipeline } = require('../processors/returning-customers.js');
+  const pipeline = buildPipeline({ params: { minOrderCount: 1 } });
+  // The filter must come before the $group, so cancelled orders reach neither
+  // orderCount nor the orderIds whose categories are summed for totalWeight.
+  assert.deepStrictEqual(pipeline[0], { $match: { status: { $ne: 'cancelled' } } });
+  assert.ok(pipeline.findIndex((s) => s.$group) > 0);
+});
+
 console.log(failures === 0 ? '\nAll parity checks passed.\n' : `\n${failures} check(s) failed.\n`);
 process.exit(failures === 0 ? 0 : 1);
