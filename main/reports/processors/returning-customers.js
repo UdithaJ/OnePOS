@@ -1,4 +1,6 @@
 // Returning Customers — customers with more than N orders to date.
+// Cancelled orders count for nothing: not toward the order count, nor the
+// kilos.
 //
 // The only report with no date range; its single `minOrderCount` parameter is
 // why the engine treats a date range as one declarable param type rather than
@@ -11,6 +13,7 @@ exports.buildPipeline = ({ params }) => {
   const min = Number.isFinite(threshold) && threshold > 0 ? Math.floor(threshold) : 0;
 
   return [
+    { $match: { status: { $ne: 'cancelled' } } },
     {
       $group: {
         _id: '$customerID',

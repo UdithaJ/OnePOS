@@ -160,6 +160,11 @@ async function submitPayment() {
     errorMsg.value = 'Payment amount must be greater than zero.'
     return
   }
+  // Full payment and settlement clear the order: exactly the due amount.
+  if (type.value !== 'advance' && toCents(amount.value) !== toCents(props.dueAmount)) {
+    errorMsg.value = 'A full payment or settlement must equal the due amount.'
+    return
+  }
   if (paymentMethod.value === 'bank' && !transactionId.value.trim()) {
     errorMsg.value = 'Transaction ID is required for bank transfers.'
     return
